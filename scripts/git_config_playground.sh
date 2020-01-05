@@ -88,3 +88,7 @@ git status
 # stage modified and untracked
 # git add . && git add -u.
 git add -A
+
+# commit, push
+git commit -m "say hello to git + add license"
+git push -u origin master
