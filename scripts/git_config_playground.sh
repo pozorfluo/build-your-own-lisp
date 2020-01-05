@@ -53,7 +53,7 @@ WINTEMPLATES="${WINGEN//[$'\t\r\n']}/_templates/C/default"
 echo $WINTEMPLATES
 
 # create new project folder
-NEWPROJECT="build-your-own-lisp2"
+NEWPROJECT="build-your-own-lisp"
 cd ~/_source/C
 mkdir $NEWPROJECT && cd $NEWPROJECT
 
@@ -67,3 +67,24 @@ echo "copy ${WINTEMPLATES} -> $(pwd)"
 # cp -R ${WINTEMPLATES}/* .
 cp -R ${WINTEMPLATES}/. ~/_source/C/${NEWPROJECT}
 ls -a
+
+# create remote repo on github
+# see https://help.github.com/en/github/importing-your-projects-to-github/adding-an-existing-project-to-github-using-the-command-line
+USERNAME="pozorfluo"
+
+# init repo
+# add, push
+# see https://git-scm.com/book/en/v2/Git-Basics-Working-with-Remotes
+git init
+git add .
+git commit -m "first commit"
+git remote add origin https://github.com/${USERNAME}/${NEWPROJECT}.git
+git push -u origin master
+
+
+# check working directory, staging area
+git status
+
+# stage modified and untracked
+# git add . && git add -u.
+git add -A
