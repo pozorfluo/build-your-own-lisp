@@ -12,6 +12,7 @@
                 "-pedantic",
                 "-g",
                 "${file}",
+                "-ledit", // editline lib
                 "-o",
                 "${fileDirname}/../bin/${fileBasenameNoExtension}"
             ],

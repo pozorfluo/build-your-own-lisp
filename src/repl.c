@@ -1,10 +1,16 @@
 #include <stdio.h>
-#include <string.h>
+#include <stdlib.h>
+
+/* step 2 */
+#include <editline/readline.h>
+#include <editline/history.h>
 
 /*
  * ----------------------------------------------------------- MAGIC NUMBERS ---
  */
-#define BUFFER_SIZE 2048
+
+/* step 1 */
+// #define BUFFER_SIZE 2048
 
 /*
  * ------------------------------------------------------------- ANSI MACROS ---
@@ -92,7 +98,9 @@
 /*
  * ------------------------------------------------- Static Global Variables ---
  */
-static char inputBuffer[BUFFER_SIZE];
+
+/* step 1 */
+// static char inputBuffer[BUFFER_SIZE];
 
 /*
  * -------------------------------------------------------------------- main ---
@@ -109,17 +117,41 @@ int main()
     puts("Lispy version 0.0.0.0.1");
     puts("to Exit press CTRL + C");
 
+    /* step 1 */
+    // for(;;){
+    //     /* print prompt */
+    //     fputs(BOLD FG_GREEN "lispy> " RESET, 
+    //           stdout);
+
+    //     /* read a line of user input up to max buffer size */
+    //     fgets(inputBuffer, BUFFER_SIZE, stdin);
+
+    //     /* echo input back */
+    //     printf(BOLD FG_BRIGHT_RED"No you a %s\n" RESET,
+    //            inputBuffer);
+    // }
+
+    /* step 2 */
     for(;;){
         /* print prompt */
-        fputs(FG_GREEN "lispy> " RESET, 
+        fputs(BOLD FG_GREEN "lispy>" RESET, 
               stdout);
 
-        /* read a line of user input up to max buffer size */
-        fgets(inputBuffer, BUFFER_SIZE, stdin);
+        /* get input*/
+        /* readline doesn't like escape codes :/ */
+        char* input = readline("");
+        
+        if (input != NULL){
+            /* add input to history */
+            add_history(input);
 
-        /* echo input back */
-        printf(BOLD FG_BRIGHT_RED"No you a %s" RESET,
-               inputBuffer);
+            /* echo input back */
+            printf(BOLD FG_BRIGHT_RED"No you a %s\n" RESET,
+                input);
+
+            /* free input */
+            free(input);
+        }
     }
 
     return 0;
