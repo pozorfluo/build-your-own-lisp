@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/* step 2 */
 #include <string.h>
 #include <editline/readline.h>
 #include <editline/history.h>
+
+#include "../include/mpc.h"
 
 /*
  * --------------------------------------------------------- PLATFORM MACROS ---
@@ -23,8 +24,7 @@
  * ----------------------------------------------------------- MAGIC NUMBERS ---
  */
 
-/* step 1 */
-// #define BUFFER_SIZE 2048
+
 
 /*
  * ------------------------------------------------------------- ANSI MACROS ---
@@ -113,10 +113,6 @@
  * ------------------------------------------------- Static Global Variables ---
  */
 
-/* step 1 */
-// static char inputBuffer[BUFFER_SIZE];
-
-/* step 2 */
 /* readline auto-completion configuration */
     static char *vocabulary[] = {
         "fourcheau",
@@ -193,26 +189,28 @@ char** completer(const char *text, int start, int end) {
  */
 int main()
 {
+
+    /* create parsers */
+    mpc_parser_t *parserNumber   = mpc_new("number");
+    mpc_parser_t *parserOperator = mpc_new("operator");
+    mpc_parser_t *parserExpr     = mpc_new("expr");
+    mpc_parser_t *parserLispy    = mpc_new("lispy");
+
+    /* define parsers language */
+    mpca_lang(MPCA_LANG_DEFAULT,
+    "                                                             \
+      number   : /[-]?[0-9]+([.]?[0-9]+([eE][-+]?[0-9]+)?)?/;     \
+      operator : '+' | '-' | '*' | '/' | '%' |                    \
+                 \"add\" | \"sub\" | \"mul\" | \"div\" | \"mod\"; \
+      expr     : <number> | '(' <operator> <expr>+ ')' ;          \
+      lispy    : /^/ <operator> <expr>+ /$/;                      \
+    ",
+    parserNumber, parserOperator, parserExpr, parserLispy);
+
     /* print version and some instructions */
     puts("Lispy version 0.0.0.0.1");
     puts("to Exit press CTRL + C");
 
-    /* step 1 */
-    // for(;;){
-    //     /* print prompt */
-    //     fputs(BOLD FG_GREEN "lispy> " RESET, 
-    //           stdout);
-
-    //     /* read a line of user input up to max buffer size */
-    //     fgets(inputBuffer, BUFFER_SIZE, stdin);
-
-    //     /* echo input back */
-    //     printf(BOLD FG_BRIGHT_RED"No you a %s\n" RESET,
-    //            inputBuffer);
-    // }
-
-
-    /* step 2 */
     /* register custom completer with readline global variable */
     rl_attempted_completion_function = &completer;
 
@@ -233,11 +231,38 @@ int main()
             printf(BOLD FG_BRIGHT_RED"No you a %s\n" RESET,
                 input);
 
+            /* try to parse input */
+            mpc_result_t mpcResult;
+
+            if(mpc_parse("<stdin>", input, parserLispy, &mpcResult)) {
+                /* print the AST */
+                mpc_ast_print(mpcResult.output);
+                mpc_ast_delete(mpcResult.output);
+            }
+            else {
+                /* print the error */
+                mpc_err_print(mpcResult.error);
+                mpc_err_delete(mpcResult.error);
+            }
+
             /* free readline malloc'd input*/
             free(input);
         }
     }
 
+    /* undefine and delete parsers */
+    mpc_cleanup(4, parserNumber, parserOperator, parserExpr, parserLispy);
+
     return 0;
 }
 
+/* 
+ * Write a regular expression matching strings of all a or b such as aababa or bbaa.
+ *   \b[ab]+\b
+ * 
+ * Write a regular expression matching strings of consecutive a and b such as ababab or aba.
+ *   \b(?<pattern>ab)((\k<pattern>)|(?:a))+\b
+ * 
+ * Write a regular expression matching pit, pot and respite but not peat, spit, or part.
+ *   \b(?:pit)|\b(?:pot)|\b(?:respite)
+ */

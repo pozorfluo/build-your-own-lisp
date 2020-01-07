@@ -12,7 +12,9 @@
                 "-pedantic",
                 "-g",
                 "${file}",
+                "${fileDirname}/mpc.c", // link mpc lib
                 "-ledit", // editline lib
+                "-lm", // link math lib
                 "-o",
                 "${fileDirname}/../bin/${fileBasenameNoExtension}"
             ],
