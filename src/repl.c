@@ -2,8 +2,10 @@
 #include <stdlib.h>
 
 /* step 2 */
+#include <string.h>
 #include <editline/readline.h>
 #include <editline/history.h>
+
 
 /*
  * ----------------------------------------------------------- MAGIC NUMBERS ---
@@ -102,6 +104,72 @@
 /* step 1 */
 // static char inputBuffer[BUFFER_SIZE];
 
+/* step 2 */
+/* readline auto-completion configuration */
+    static char *vocabulary[] = {
+        "fourcheau",
+        "monparounaze",
+        "karl",
+        "lagerfeld",
+        NULL
+    };
+
+/*
+ * ---------------------------------------------------------------- Function ---
+ * generates auto-completes matches from global word vocabulary
+ * 
+ *   -> Returns matches from vocabulary
+ *
+ * time  O(?)
+ * space O(?)
+ * 
+ * see https://thoughtbot.com/blog/tab-completion-in-gnu-readline
+ */
+char* completion_generator(const char *text, int state)
+{
+    static int matchIndex, length;
+    char *match;
+
+    /* 
+     * readline calls this function with state = 0 the first time
+     * this initialize once for the completion session
+     */
+    if (!state) {
+        matchIndex =0;
+        length = strlen(text);
+    }
+
+    while ((match = vocabulary[matchIndex++])) {
+        if (strncmp(match, text, length) == 0) {
+            /* readline free() the returned string, correct ? */
+            return strdup(match);
+        }
+    }
+
+    return NULL;
+}
+
+/*
+ * ---------------------------------------------------------------- Function ---
+ * handles custom completion registered to readline global variable
+ * 
+ *   -> completion matches
+ *
+ * time  O(?)
+ * space O(?)
+ */
+char** completer(const char *text, int start, int end) {
+    // not doing filename completion even if 0 matches
+    rl_attempted_completion_over = 1;
+
+    /* temp workaround a compiler warning for unused-parameter */
+   // printf("%d %d", start, end);
+   int unused  = start + end;
+   unused++;
+    
+    return rl_completion_matches(text, &completion_generator);
+}
+
 /*
  * -------------------------------------------------------------------- main ---
  * is the program entry point
@@ -131,7 +199,12 @@ int main()
     //            inputBuffer);
     // }
 
+
     /* step 2 */
+
+    /* register custom completer with readline global variable */
+    rl_attempted_completion_function = &completer;
+
     for(;;){
         /* print prompt */
         fputs(BOLD FG_GREEN "lispy>" RESET, 
