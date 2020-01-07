@@ -6,6 +6,18 @@
 #include <editline/readline.h>
 #include <editline/history.h>
 
+/*
+ * --------------------------------------------------------- PLATFORM MACROS ---
+ * see https://sourceforge.net/p/predef/wiki/OperatingSystems/
+ */
+
+// #ifdef _WIN32
+
+// #elif defined __gnu_linux__
+
+// #elif defined __APPLE__
+
+// #endif
 
 /*
  * ----------------------------------------------------------- MAGIC NUMBERS ---
@@ -162,8 +174,8 @@ char** completer(const char *text, int start, int end) {
     // not doing filename completion even if 0 matches
     rl_attempted_completion_over = 1;
 
-    /* temp workaround a compiler warning for unused-parameter */
-   // printf("%d %d", start, end);
+    /* readline expects char** fn(char*, int, int) */
+    /* temp workaround compiler warnings for unused-parameters */
    int unused  = start + end;
    unused++;
     
@@ -201,7 +213,6 @@ int main()
 
 
     /* step 2 */
-
     /* register custom completer with readline global variable */
     rl_attempted_completion_function = &completer;
 
@@ -222,7 +233,7 @@ int main()
             printf(BOLD FG_BRIGHT_RED"No you a %s\n" RESET,
                 input);
 
-            /* free input */
+            /* free readline malloc'd input*/
             free(input);
         }
     }

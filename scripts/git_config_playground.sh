@@ -90,5 +90,5 @@ git status
 git add -A
 
 # commit, push
-git commit -m "say hello to git + add license"
+git commit -m "chapter 4 done, win32 fakery skipped for custom tab completion"
 git push -u origin master
