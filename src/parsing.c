@@ -113,7 +113,7 @@
  * ------------------------------------------------- Static Global Variables ---
  */
 
-/* readline auto-completion configuration */
+/* Readline auto-completion configuration */
     static char *vocabulary[] = {
         "fourcheau",
         "monparounaze",
@@ -124,7 +124,7 @@
 
 /*
  * ---------------------------------------------------------------- Function ---
- * generates auto-completes matches from global word vocabulary
+ * Generates auto-completes matches from global word vocabulary
  * 
  *   -> Returns matches from vocabulary
  *
@@ -133,8 +133,8 @@
  * 
  * see https://thoughtbot.com/blog/tab-completion-in-gnu-readline
  */
-char* completion_generator(const char *text, int state)
-{
+char* completion_generator(const char *text, int state) {
+
     static int matchIndex, length;
     char *match;
 
@@ -159,14 +159,15 @@ char* completion_generator(const char *text, int state)
 
 /*
  * ---------------------------------------------------------------- Function ---
- * handles custom completion registered to readline global variable
+ * Handles custom completion registered to readline global variable
  * 
- *   -> completion matches
+ *   -> Completion matches
  *
  * time  O(?)
  * space O(?)
  */
 char** completer(const char *text, int start, int end) {
+
     /* not doing filename completion even if 0 matches */
     // rl_attempted_completion_over = 1;
 
@@ -178,18 +179,180 @@ char** completer(const char *text, int start, int end) {
     return rl_completion_matches(text, &completion_generator);
 }
 
+
 /*
- * -------------------------------------------------------------------- main ---
- * is the program entry point
+ * ---------------------------------------------------------------- Function ---
+ * Performs operation for given operator string and numbers
  * 
- *   -> error code
+ *   -> Evaluation
+ *
+ * time  O(?)
+ * space O(?)
+ * 
+ * todo 
+ *   [] process the alternate add, sub, mul, div, mod, pow, min, max form
+ */
+double mpc_ast_eval_op(double x, char *operator, double y) {
+
+    switch(*operator) {
+        case '+' :
+            return x + y;
+        case '-' :
+            return x - y;
+        case '*' :
+            return x * y;
+        case '/' :
+            return x / y;
+        case '%' :
+            return fmod(x, y);
+        case '^' :
+            return pow(x, y);
+        case '>' :
+            return (x > y) ? x : y;
+        case '<' :
+            return (x < y) ? x : y;
+
+    }
+
+    return 0.0;
+}
+
+/*
+ * ---------------------------------------------------------------- Function ---
+ * Traverses AST and evaluates the expression
+ * 
+ *   -> Evaluation
+ *
+ * time  O(?)
+ * space O(?)
+ */
+double mpc_ast_eval(mpc_ast_t *ast) {
+
+    /* return numbers directly */
+    if (strstr(ast->tag, "number")) {
+        return atof(ast->contents);
+    }
+
+    /* operator is always expected to be the second child */
+    char *operator = ast->children[1]->contents;
+
+    /* evaluate expression in third child */
+    double x = mpc_ast_eval(ast->children[2]);
+
+    /* iterate over remaining children */
+    int i = 3;
+    while (strstr(ast->children[i]->tag, "expr")) {
+        x = mpc_ast_eval_op(x, operator, mpc_ast_eval(ast->children[i]));
+        i++;
+    }
+
+    return x;
+}
+
+/*
+ * ---------------------------------------------------------------- Function ---
+ * Traverses AST and counts the nodes
+ * 
+ *   -> Number of nodes
  *
  * time  O(n)
- * space O(1)
+ * space O(?)
+ */
+int mpc_ast_count_nodes(mpc_ast_t *ast) {
+
+    /* base case */
+    if (ast->children_num == 0) {
+         return 1; 
+    }
+    /* recursive case */
+    else if (ast->children_num >= 1) {
+        int total = 1;
+        for (int i = 0; i < ast->children_num; i++)
+        {
+            total += mpc_ast_count_nodes(ast->children[i]);
+        }
+        return total;
+    }
+    else {
+        return 0;
+    }
+}
+
+/*
+ * ---------------------------------------------------------------- Function ---
+ * Traverses AST and counts the leaves
+ * 
+ *   -> Number of leaves
+ *
+ * time  O(n)
+ * space O(?)
+ */
+int mpc_ast_count_leaves(mpc_ast_t *ast) {
+
+    /* base case */
+    if (ast->children_num == 0) {
+         return 1; 
+    }
+    /* recursive case */
+    else if (ast->children_num >= 1) {
+        int total = 0;
+        for (int i = 0; i < ast->children_num; i++)
+        {
+            total += mpc_ast_count_leaves(ast->children[i]);
+        }
+        return total;
+    }
+    else {
+        return 0;
+    }
+}
+
+/*
+ * ---------------------------------------------------------------- Function ---
+ * Traverses AST and counts the branches
+ * 
+ * we assume the goal of the exercice was to count the number of times
+ * the AST splits
+ * 
+ *   -> Number of branches
+ *
+ * time  O(n)
+ * space O(?)
+ */
+int mpc_ast_count_branches(mpc_ast_t *ast) {
+
+    /* base case */
+    if (ast->children_num == 0) {
+         return 0; 
+    }
+    /* recursive case */
+    else if (ast->children_num >= 1) {
+        int total = ast->children_num;
+        for (int i = 0; i < ast->children_num; i++)
+        {
+            total += mpc_ast_count_branches(ast->children[i]);
+        }
+        return total;
+    }
+    else {
+        return 0;
+    }
+}
+
+/*
+ * -------------------------------------------------------------------- main ---
+ * Is the program entry point
+ * 
+ *   -> Error code
+ *
+ * time  O(?)
+ * space O(?)
  */
 int main()
 {
-
+    /*
+     * ---------------------------------------------------------- parser ---
+     */
     /* create parsers */
     mpc_parser_t *parserNumber   = mpc_new("number");
     mpc_parser_t *parserOperator = mpc_new("operator");
@@ -198,22 +361,32 @@ int main()
 
     /* define parsers language */
     mpca_lang(MPCA_LANG_DEFAULT,
-    "                                                             \
-      number   : /[-]?[0-9]+([.]?[0-9]+([eE][-+]?[0-9]+)?)?/;     \
-      operator : '+' | '-' | '*' | '/' | '%' |                    \
-                 \"add\" | \"sub\" | \"mul\" | \"div\" | \"mod\"; \
-      expr     : <number> | '(' <operator> <expr>+ ')' ;          \
-      lispy    : /^/ <operator> <expr>+ /$/;                      \
+    "                                                                       \
+      number   : /[-]?[0-9]+([.]?[0-9]+([eE][-+]?[0-9]+)?)?/;               \
+      operator : '+' | '-' | '*' | '/' | '%' | '^' | '>' | '<' |            \
+                 \"add\" | \"sub\" | \"mul\" | \"div\" | \"mod\" | \"pow\"; \
+      expr     : <number> | '(' <operator> <expr>+ ')' ;                    \
+      lispy    : /^/ <operator> <expr>+ /$/;                                \
     ",
     parserNumber, parserOperator, parserExpr, parserLispy);
 
+    /*
+     * ------------------------------------------------------- completer ---
+     */
+    /* register custom completer with readline global variable */
+    rl_attempted_completion_function = &completer;
+
+    /*
+     * ----------------------------------------------------------- intro ---
+     */
     /* print version and some instructions */
     puts("Lispy version 0.0.0.0.1");
     puts("to Exit press CTRL + C");
 
-    /* register custom completer with readline global variable */
-    rl_attempted_completion_function = &completer;
 
+    /*
+     * ------------------------------------------------------------ loop ---
+     */
     for(;;){
         /* print prompt */
         fputs(BOLD FG_GREEN "lispy>" RESET, 
@@ -237,6 +410,29 @@ int main()
             if(mpc_parse("<stdin>", input, parserLispy, &mpcResult)) {
                 /* print the AST */
                 mpc_ast_print(mpcResult.output);
+
+                /* get AST from output */
+                mpc_ast_t *ast = mpcResult.output;
+                printf(FG_YELLOW "Number of nodes    : %i\n" RESET, 
+                       mpc_ast_count_nodes(ast));
+                printf(FG_YELLOW "Number of leaves   : %i\n" RESET, 
+                       mpc_ast_count_leaves(ast));
+                printf(FG_YELLOW "Number of branches : %i\n" RESET, 
+                       mpc_ast_count_branches(ast));
+                printf("Tag                : %s\n", ast->tag);
+                printf("Contents           : %s\n", ast->contents);
+                printf("Number of children : %i\n", ast->children_num);
+
+                /* get first child */
+                mpc_ast_t *astC0 = ast->children[0];
+                printf("C0 Tag                : %s\n", astC0->tag);
+                printf("C0 Contents           : %s\n", astC0->contents);
+                printf("C0 Number of children : %i\n", astC0->children_num);
+
+                /* print AST evaluation */
+                printf(BOLD FG_BRIGHT_RED "-> Eval : %f\n" RESET,
+                       mpc_ast_eval(ast));
+
                 mpc_ast_delete(mpcResult.output);
             }
             else {
@@ -250,6 +446,9 @@ int main()
         }
     }
 
+    /*
+     * --------------------------------------------------------- cleanup ---
+     */
     /* undefine and delete parsers */
     mpc_cleanup(4, parserNumber, parserOperator, parserExpr, parserLispy);
 

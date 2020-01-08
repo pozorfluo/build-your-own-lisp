@@ -90,5 +90,5 @@ git status
 git add -A
 
 # commit, push
-git commit -m "chapter 6 done"
+git commit -m "chapter 7 done, unsure about 2nd bonus mark question meaning"
 git push -u origin master

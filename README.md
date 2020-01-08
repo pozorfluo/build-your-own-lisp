@@ -14,11 +14,12 @@
 - [ ] Make haste, spread the word
 
 
-## Where needed
+## build-your-own-lisp
 ---
-> ok to use
++ following http://www.buildyourownlisp.com/ tutorial
++ nothing fancy move along
 ```C
-int foo, bar;
+int fourcheau, monparounaze;
 ```
 
 ---
