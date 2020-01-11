@@ -11,8 +11,7 @@
 git config --global user.name "spagbol"
 git config --global user.email "38818825+pozorfluo@users.noreply.github.com"
 
-# 
-git config --global credential.helper wincred
+# git config --global credential.helper wincred
 
 nano ~/.gitconfig
 
@@ -90,5 +89,5 @@ git status
 git add -A
 
 # commit, push
-git commit -m "chapter 7 done, unsure about 2nd bonus mark question meaning"
+git commit -m "chapter 8 done"
 git push -u origin master
