@@ -89,5 +89,5 @@ git status
 git add -A
 
 # commit, push
-git commit -m "chapter 8 done"
+git commit -m "made style more pep8-ish for readability, chapter 9 done"
 git push -u origin master

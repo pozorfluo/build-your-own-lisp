@@ -104,13 +104,34 @@ typedef struct LispValue
 {
     int type;
     double number;
-    char *pError;
-    char *pSymbol;
+    char *error;
+    char *symbol;
     /* sexpr */
     int count;
-    struct LispValue **pCell;
+    struct LispValue **cells;
 } LispValue;
 
+//--------------------------------------------------------------- PROTOTYPES ---
+LispValue* new_lispvalue_number(double number);
+LispValue* new_lispvalue_error(char *message);
+LispValue* new_lispvalue_symbol(char *symbol);
+LispValue* new_lispvalue_sexpr(void);
+void delete_lispvalue(LispValue *lispvalue);
+LispValue* read_lispvalue_number(mpc_ast_t *ast);
+LispValue* add_lispvalue(LispValue *sexpr, LispValue *lispvalue);
+LispValue* read_lispvalue(mpc_ast_t *ast);
+void print_lispvalue_sexpr(LispValue *lispvalue, char open, char close);
+void print_lispvalue(LispValue *lispvalue);
+void print_lispvalue_newline(LispValue *lispvalue);
+LispValue* eval_lispvalue_sexpr(LispValue *lispvalue);
+LispValue* eval_lispvalue(LispValue *lispvalue);
+LispValue* pop_lispvalue(LispValue *lispvalue, int index);
+LispValue* take_lispvalue(LispValue *lispvalue, int index);
+int are_all_numbers(LispValue *arguments);
+LispValue* eval_lispvalue_operator(LispValue *arguments, char *operator);
+char* completion_generator(const char *text, int state);
+char** completer(const char *text, int start, int end);
+void print_prompt();
 //-------------------------------------------------- STATIC GLOBAL VARIABLES ---
 /* Readline auto-completion configuration */
 static char *vocabulary[] =
@@ -119,6 +140,14 @@ static char *vocabulary[] =
     "monparounaze",
     "karl",
     "lagerfeld",
+    "+",
+    "-",
+    "*",
+    "/",
+    "%",
+    "^",
+    ">",
+    "<",
     NULL
 };
 
@@ -132,14 +161,14 @@ static char *vocabulary[] =
  * time  O(?)
  * space O(?)
  */
-LispValue* new_lispvalue_number(double x)
+LispValue* new_lispvalue_number(double number)
 {
-    LispValue *pLispValue = malloc(sizeof(LispValue));
+    LispValue *new_value = malloc(sizeof(LispValue));
 
-    pLispValue->type = LVAL_NUMBER;
-    pLispValue->number = x;
+    new_value->type = LVAL_NUMBER;
+    new_value->number = number;
 
-    return pLispValue;
+    return new_value;
 }
 
 //----------------------------------------------------------------- FUNCTION ---
@@ -151,15 +180,15 @@ LispValue* new_lispvalue_number(double x)
  * time  O(?)
  * space O(?)
  */
-LispValue* new_lispvalue_error(char *pMessage)
+LispValue* new_lispvalue_error(char *message)
 {
-    LispValue *pLispValue = malloc(sizeof(LispValue));
+    LispValue *new_value = malloc(sizeof(LispValue));
 
-    pLispValue->type = LVAL_ERR;
-    pLispValue->pError = malloc(strlen(pMessage) + 1);
-    strcpy(pLispValue->pError, pMessage);
+    new_value->type = LVAL_ERR;
+    new_value->error = malloc(strlen(message) + 1);
+    strcpy(new_value->error, message);
 
-    return pLispValue;
+    return new_value;
 }
 
 //----------------------------------------------------------------- FUNCTION ---
@@ -171,15 +200,17 @@ LispValue* new_lispvalue_error(char *pMessage)
  * time  O(?)
  * space O(?)
  */
-LispValue* new_lispvalue_symbol(char *pSymbol)
+LispValue* new_lispvalue_symbol(char *symbol)
 {
-    LispValue *pLispValue = malloc(sizeof(LispValue));
+    LispValue *new_value = malloc(sizeof(LispValue));
 
-    pLispValue->type = LVAL_SYMBOL;
-    pLispValue->pSymbol = malloc(strlen(pSymbol) + 1);
-    strcpy(pLispValue->pSymbol, pSymbol);
+    new_value->type = LVAL_SYMBOL;
+    // printf(FG_BRIGHT_RED "\n%s\n" RESET, symbol);
+    new_value->symbol = malloc(strlen(symbol) + 1);
 
-    return pLispValue;
+    strcpy(new_value->symbol, symbol);
+
+    return new_value;
 }
 
 //----------------------------------------------------------------- FUNCTION ---
@@ -193,16 +224,16 @@ LispValue* new_lispvalue_symbol(char *pSymbol)
  */
 LispValue* new_lispvalue_sexpr(void)
 {
-    LispValue *pLispValue = malloc(sizeof(LispValue));
+    LispValue *new_value = malloc(sizeof(LispValue));
 
-    pLispValue->type = LVAL_SEXPR;
-    pLispValue->count = 0;
-    pLispValue->pCell = NULL;
+    new_value->type = LVAL_SEXPR;
+    new_value->count = 0;
+    new_value->cells = NULL;
 
-    return pLispValue;
+    return new_value;
 }
 
-//----------------------------------------------------------------- Function ---
+//----------------------------------------------------------------- FUNCTION ---
 /**
  * Frees given LispValue ressources according to its type
  *
@@ -211,34 +242,34 @@ LispValue* new_lispvalue_sexpr(void)
  * time  O(?)
  * space O(?)
  */
-void delete_lispvalue(LispValue *pLispValue)
+void delete_lispvalue(LispValue *lispvalue)
 {
-    switch (pLispValue->type)
+    switch (lispvalue->type)
     {
         case LVAL_NUMBER:
             break;
 
         case LVAL_ERR:
-            free(pLispValue->pError);
+            free(lispvalue->error);
             break;
 
         case LVAL_SYMBOL:
-            free(pLispValue->pSymbol);
+            free(lispvalue->symbol);
             break;
 
         case LVAL_SEXPR:
-            for (int i = 0; i < pLispValue->count; i++)
+            for (int i = 0; i < lispvalue->count; i++)
             {
-                delete_lispvalue(pLispValue->pCell[i]);
+                delete_lispvalue(lispvalue->cells[i]);
             }
-            free(pLispValue->pCell);
+            free(lispvalue->cells);
             break;
     }
 
-    free(pLispValue);
+    free(lispvalue);
 }
 
-//----------------------------------------------------------------- Function ---
+//----------------------------------------------------------------- FUNCTION ---
 /**
  * Evaluates given AST node of type number
  * 
@@ -247,17 +278,17 @@ void delete_lispvalue(LispValue *pLispValue)
  * time  O(?)
  * space O(?)
  */
-LispValue* read_lispvalue_number(mpc_ast_t *pAST)
+LispValue* read_lispvalue_number(mpc_ast_t *ast)
 {
     errno = 0;
-    double number = strtod(pAST->contents, NULL);
+    double number = strtod(ast->contents, NULL);
 
     return (errno != ERANGE)
         ? new_lispvalue_number(number)
         : new_lispvalue_error("invalid number");
 }
 
-//----------------------------------------------------------------- Function ---
+//----------------------------------------------------------------- FUNCTION ---
 /**
  * Adds a given LispValue to the list of expressions of a given LispValue of 
  * type sexpr
@@ -267,17 +298,15 @@ LispValue* read_lispvalue_number(mpc_ast_t *pAST)
  * time  O(?)
  * space O(?)
  */
-LispValue* add_lispvalue(
-    LispValue *pLispValueSexpr,
-    LispValue *pLispValue)
+LispValue* add_lispvalue(LispValue *sexpr, LispValue *lispvalue)
 {
-    pLispValueSexpr->count++;
-    pLispValueSexpr->pCell = realloc(
-        pLispValueSexpr->pCell,
-        sizeof(LispValue*) * pLispValueSexpr->count);
-    pLispValueSexpr->pCell[pLispValueSexpr->count-1] = pLispValue;
+    sexpr->count++;
+    sexpr->cells = realloc(
+        sexpr->cells,
+        sizeof(LispValue*) * sexpr->count);
+    sexpr->cells[sexpr->count-1] = lispvalue;
 
-    return pLispValueSexpr;
+    return sexpr;
 }
 
 //----------------------------------------------------------------- FUNCTION ---
@@ -289,77 +318,375 @@ LispValue* add_lispvalue(
  * time  O(?)
  * space O(?)
  */
-LispValue* read_lispvalue(mpc_ast_t *pAST)
+LispValue* read_lispvalue(mpc_ast_t *ast)
 {
-    if (strstr(pAST->tag, "number"))
+    if (strstr(ast->tag, "number"))
     {
-        return read_lispvalue_number(pAST);
+        return read_lispvalue_number(ast);
     }
-    else 
+    else if (strstr(ast->tag, "symbol"))
     {
-        LispValue *pLispValue = NULL;
+        return new_lispvalue_symbol(ast->contents);
+    }
+    else
+    {
+        LispValue *lispvalue = NULL;
 
-        if (!(strcmp(pAST->tag, ">")) || (strstr(pAST->tag, "sexpr")))
+        if (!(strcmp(ast->tag, ">")) || (strstr(ast->tag, "sexpr")))
         {
-            pLispValue = new_lispvalue_sexpr();
+            lispvalue = new_lispvalue_sexpr();
         }
 
-        for (int i = 0; i < pAST->children_num; i++)
+        for (int i = 0; i < ast->children_num; i++)
         {
-            if (!(strcmp(pAST->children[i]->contents, "(")) ||
-                !(strcmp(pAST->children[i]->contents, ")")) ||
-                !(strcmp(pAST->children[i]->tag, "regex")))
+            if (!(strcmp(ast->children[i]->contents, "(")) ||
+                !(strcmp(ast->children[i]->contents, ")")) ||
+                !(strcmp(ast->children[i]->tag, "regex")))
             {
                 continue;
             }
             else
             {
-                pLispValue = add_lispvalue(
-                    pLispValue, 
-                    read_lispvalue(pAST->children[i]));
+                lispvalue = add_lispvalue(
+                    lispvalue, 
+                    read_lispvalue(ast->children[i]));
             }
         }
         
-        return pLispValue;
+        return lispvalue;
     }
 }
 
-
-//----------------------------------------------------------------- FUNCTION ---
+//----------------------------------------------------------------- Function ---
 /**
- * Pretty prints a dump of all fields of a given LispValue
- *
- *   -> nothing
+ * Pretty prints given LispValue of type sexpr
+ * 
+ *   -> Nothing
  *
  * time  O(?)
  * space O(?)
  */
-// void print_lispvalue_debug(const LispValue *v)
-// {
-//     printf(
-//         FG_YELLOW
-//         "LispValue.type   = %d\n"
-//         "LispValue.number = %f\n"
-//         "LispValue.error  = %d\n"
-//         RESET,
-//         v->type, v->number, v->pError);
-// }
+void print_lispvalue_sexpr(LispValue *lispvalue, char open, char close)
+{
+    putchar(open);
 
+    for (int i = 0; i < lispvalue->count; i++)
+    {
+        print_lispvalue(lispvalue->cells[i]);
+        putchar(' ');
+    }
+    
+    putchar(close);
+}
+
+//----------------------------------------------------------------- Function ---
+/**
+ * Pretty prints given LispValue according to its type
+ * 
+ *   -> Nothing
+ *
+ * time  O(?)
+ * space O(?)
+ */
+void print_lispvalue(LispValue *lispvalue)
+{
+    switch (lispvalue->type)
+    {
+    case LVAL_NUMBER:
+        printf(FG_YELLOW "%f" RESET, lispvalue->number);
+        break;
+
+    case LVAL_ERR:
+        printf(FG_RED "Error : %s" RESET, lispvalue->error);
+        break;
+
+    case LVAL_SYMBOL:
+        printf(FG_CYAN "%s" RESET, lispvalue->symbol);
+        break;
+
+    case LVAL_SEXPR:
+        print_lispvalue_sexpr(lispvalue, '(', ')');
+        break;                
+    }
+}
 
 //----------------------------------------------------------------- FUNCTION ---
 /**
- * pretty prints a given LispValue followed by newline
+ * Pretty prints given LispValue followed by newline
  *
  *   -> Nothing
  *
  * time  O(?)
  * space O(?)
  */
-// void print_lispvalue_newline(const LispValue *v)
-// {
-//     print_lispvalue(v);
-//     putchar('\n');
-// }
+void print_lispvalue_newline(LispValue *lispvalue)
+{
+    print_lispvalue(lispvalue);
+    putchar('\n');
+}
+
+
+//----------------------------------------------------------------- Function ---
+/**
+ * Evaluates given LispValue of type sexpr
+ * 
+ *   -> pointer to result LispValue
+ *
+ * time  O(?)
+ * space O(?)
+ */
+LispValue* eval_lispvalue_sexpr(LispValue *lispvalue)
+{
+    /* evaluate children */
+    for (int i = 0; i < lispvalue->count; i++)
+    {
+        lispvalue->cells[i] = eval_lispvalue(lispvalue->cells[i]);
+    }
+
+    /* check for errors */
+    /* ? can we abort sooner on error as we evaluate children ? */
+    for (int i = 0; i < lispvalue->count; i++)
+    {
+        if (lispvalue->cells[i]->type == LVAL_ERR)
+        {
+            return take_lispvalue(lispvalue, i);
+        }
+    }    
+
+    /* empty expression */
+    if (lispvalue->count == 0) 
+    { 
+        return lispvalue;
+    }
+    /* single expression */
+    else if (lispvalue->count == 1) 
+    { 
+        return take_lispvalue(lispvalue, 0);
+    }
+    else
+    {
+        /* make sure first element is a symbol */
+        LispValue *first_element = pop_lispvalue(lispvalue, 0);
+        if (first_element->type != LVAL_SYMBOL)
+        {
+            delete_lispvalue(first_element);
+            delete_lispvalue(lispvalue);
+            return new_lispvalue_error(
+                "S-expression does not start with a symbol !");
+        }
+        else
+        {
+            LispValue *result = eval_lispvalue_operator(
+                lispvalue, 
+                first_element->symbol);
+            delete_lispvalue(first_element);
+            return result;
+        }
+    }   
+}
+
+//----------------------------------------------------------------- Function ---
+/**
+ * Evaluates given LispValue
+ * 
+ *   -> pointer to result LispValue
+ *
+ * time  O(?)
+ * space O(?)
+ */
+LispValue* eval_lispvalue(LispValue *lispvalue)
+{
+    if (lispvalue->type == LVAL_SEXPR)
+    {
+        return eval_lispvalue_sexpr(lispvalue);
+    }
+    else
+    {
+        return lispvalue;
+    }
+    
+}
+
+//----------------------------------------------------------------- Function ---
+/**
+ * Extracts single element from given LispValue of type sexpr
+ * Shifts the rest of element list backward over extracted element
+ * 
+ *   -> Extracted LispValue
+ *
+ * time  O(?)
+ * space O(?)
+ * 
+ * todo
+ *   [] make sure you understand why extracted_element still points to something
+ */
+LispValue* pop_lispvalue(LispValue *lispvalue, int index)
+{
+    LispValue *extracted_element = lispvalue->cells[index];
+
+    memmove(
+        &lispvalue->cells[index],
+        &lispvalue->cells[index+1],
+        sizeof(LispValue*) * (lispvalue->count - index - 1));
+
+    lispvalue->count--;
+
+    lispvalue->cells = realloc(
+        lispvalue->cells,
+        sizeof(LispValue*) * lispvalue->count);
+    
+    return extracted_element;
+}
+
+//----------------------------------------------------------------- Function ---
+/**
+ * Extracts single element from given LispValue of type sexpr
+ * Deletes the rest
+ * 
+ *   -> Extracted LispValue
+ *
+ * time  O(?)
+ * space O(?)
+ * 
+ * todo
+ *   [] make sure you understand why extracted_element still points to something
+ */
+LispValue* take_lispvalue(LispValue *lispvalue, int index)
+{
+    LispValue *extracted_element = pop_lispvalue(lispvalue, index);
+    delete_lispvalue(lispvalue);
+
+    return extracted_element;
+}
+
+/*
+ * ---------------------------------------------------------------- Function ---
+ * Goes over all elements of given LispValue
+ * Checks that they are all of type number
+ * 
+ *   -> Truth value of predicate
+ *
+ * time  O(?)
+ * space O(?)
+ *
+ */
+int are_all_numbers(LispValue *arguments)
+{
+    // int result = 1;
+    for (int i = 0; i < arguments->count; i++)
+    {
+        if (arguments->cells[i]->type != LVAL_NUMBER)
+        {
+            // result = 0;
+            return 0;
+        }
+    }
+    return 1;
+}
+
+/*
+ * ---------------------------------------------------------------- Function ---
+ * Performs operation for given operator and LispValue representing all the
+ * arguments to operate on
+ * 
+ *   -> Evaluation result LispValue
+ *
+ * time  O(?)
+ * space O(?)
+ *
+ */
+LispValue* eval_lispvalue_operator(LispValue *arguments, char *operator)
+{
+    /* make sure all arguments are numbers */
+    // for (int i = 0; i < arguments->count; i++)
+    // {
+    //     if (arguments->cells[i]->type != LVAL_NUMBER)
+    //     {
+    //         delete_lispvalue(arguments);
+    //         return new_lispvalue_error("Cannot operate on non-number !");
+    //     }
+    // }
+    if (!(are_all_numbers(arguments)))
+    {
+        delete_lispvalue(arguments);
+        return new_lispvalue_error("Cannot operate on non-number !");
+    }
+    else
+    {
+        LispValue *first_argument = pop_lispvalue(arguments, 0);
+
+        /* unary negation */
+        if (!(strcmp(operator, "-")) && arguments->count == 0)
+        {
+            first_argument->number = -(first_argument->number);
+        }
+
+        while(arguments->count > 0)
+        {
+            LispValue *next_argument = pop_lispvalue(arguments, 0);
+
+            switch (*operator)
+            {
+                case '+' :
+                    first_argument->number += next_argument->number;
+                    break;
+                
+                case '-' :
+                    first_argument->number -= next_argument->number;
+                    break;
+
+                case '*' :
+                    first_argument->number *= next_argument->number;
+                    break;
+
+                case '/' :
+                    if (next_argument->number == 0)
+                    {
+                        delete_lispvalue(first_argument);
+                        // delete_lispvalue(next_argument);
+                        first_argument = new_lispvalue_error(
+                            "Division by Zero !");
+                    }
+                    else
+                    {
+                        first_argument->number /= next_argument->number;
+                    }                    
+                    break;
+
+                case '%' :
+                    first_argument->number = fmod(
+                        first_argument->number,
+                        next_argument->number);
+                    break;
+
+                case '^' :
+                    first_argument->number = pow(
+                        first_argument->number,
+                        next_argument->number);
+                    break;
+
+                case '>' :
+                    first_argument->number = 
+                        (first_argument->number > next_argument->number)
+                            ? first_argument->number
+                            : next_argument->number;
+                    break;
+                    
+                case '<' :
+                 first_argument->number = 
+                        (first_argument->number < next_argument->number)
+                            ? first_argument->number
+                            : next_argument->number;
+                    break;
+            }
+
+            delete_lispvalue(next_argument);
+        }
+
+    delete_lispvalue(arguments);
+    return first_argument;
+    }
+}
 
 //----------------------------------------------------------------- FUNCTION ---
 /**
@@ -374,7 +701,7 @@ LispValue* read_lispvalue(mpc_ast_t *pAST)
  */
 char* completion_generator(const char *text, int state)
 {
-    static int matchIndex, length;
+    static int match_index, length;
     char *match;
 
     /*
@@ -383,11 +710,11 @@ char* completion_generator(const char *text, int state)
      */
     if (!state)
     {
-        matchIndex =0;
+        match_index =0;
         length = strlen(text);
     }
 
-    while ((match = vocabulary[matchIndex++]))
+    while ((match = vocabulary[match_index++]))
     {
         if (strncmp(match, text, length) == 0)
         {
@@ -421,93 +748,7 @@ char** completer(const char *text, int start, int end)
     return rl_completion_matches(text, &completion_generator);
 }
 
-
 //----------------------------------------------------------------- FUNCTION ---
-/**
- * Performs operation for given operator string and numbers
- *
- *   -> Evaluation result
- *
- * time  O(?)
- * space O(?)
- *
- * todo
- *   [] process the alternate add, sub, mul, div, mod, pow, min, max form
- */
-// LispValue mpc_ast_eval_op(
-//     const LispValue *x,
-//     const char *operator,
-//     const LispValue *y)
-// {
-//     if (x->type == LVAL_ERR) { return *x; }
-//     if (y->type == LVAL_ERR) { return *y; }
-
-//     switch(*operator)
-//     {
-//         case '+' :
-//             return create_lispvalue_number(x->number + y->number);
-//         case '-' :
-//             return create_lispvalue_number(x->number - y->number);
-//         case '*' :
-//             return create_lispvalue_number(x->number * y->number);
-//         case '/' :
-//             return (y->number == 0)
-//                 ? create_lispvalue_err(LERR_DIV_ZERO)
-//                 : create_lispvalue_number(x->number / y->number);
-//         case '%' :
-//             return create_lispvalue_number(fmod(x->number, y->number));
-//         case '^' :
-//             return create_lispvalue_number(pow(x->number, y->number));
-//         case '>' :
-//             return (x->number > y->number) ? *x : *y;
-//         case '<' :
-//             return (x->number < y->number) ? *x : *y;
-//     }
-
-//     /* if given operator is not supported */
-//     return create_lispvalue_number(LERR_BAD_OP);
-// }
-
-//----------------------------------------------------------------- FUNCTION ---
-/**
- * Traverses AST and evaluates the expression
- *
- *   -> Evaluation
- *
- * time  O(?)
- * space O(?)
- */
-// LispValue mpc_ast_eval(mpc_ast_t *ast)
-// {
-//     /* return numbers directly */
-//     if (strstr(ast->tag, "number"))
-//     {
-//         errno = 0;
-//         double x = strtod(ast->contents, NULL);
-//         return (errno != ERANGE)
-//             ? create_lispvalue_number(x)
-//             : create_lispvalue_err(LERR_BAD_NUM);
-//     }
-
-//     /* operator is always expected to be the second child */
-//     char *operator = ast->children[1]->contents;
-
-//     LispValue v = mpc_ast_eval(ast->children[2]);
-//     LispValue y;
-
-//     /* iterate over remaining children */
-//     int i = 3;
-//     while (strstr(ast->children[i]->tag, "expr"))
-//     {
-//         y = mpc_ast_eval(ast->children[i]);
-//         v = mpc_ast_eval_op(&v, operator, &y);
-//         i++;
-//     }
-
-//     return v;
-// }
-
-//----------------------------------------------------------------- Function ---
 /**
  * pretty prints a prompt
  *
@@ -541,22 +782,26 @@ int main()
 
 
     //--------------------------------------------------------------- parser
-    mpc_parser_t *pNumberParser = mpc_new("number");
-    mpc_parser_t *pSymbolParser = mpc_new("symbol");
-    mpc_parser_t *pSexprParser  = mpc_new("sexpr");
-    mpc_parser_t *pExprParser   = mpc_new("expr");
-    mpc_parser_t *pLispyParser  = mpc_new("lispy");
+    mpc_parser_t *number_parser = mpc_new("number");
+    mpc_parser_t *symbol_parser = mpc_new("symbol");
+    mpc_parser_t *sexpr_parser  = mpc_new("sexpr");
+    mpc_parser_t *expr_parser   = mpc_new("expr");
+    mpc_parser_t *lispy_parser  = mpc_new("lispy");
 
     mpca_lang(
         MPCA_LANG_DEFAULT,
         "                                                                      \
-        number   : /[-]?[0-9]+([.]?[0-9]+([eE][-+]?[0-9]+)?)?/ ;               \
-        symbol   : '+' | '-' | '*' | '/' | '%' | '^' | '>' | '<' | ;           \
+        number   : /[-]?[0-9]*[.]?[0-9]+([eE][-+]?[0-9]+)?/ ;                  \
+        symbol   : '+' | '-' | '*' | '/' | '%' | '^' | '>' | '<' ;             \
         sexpr    : '(' <expr>* ')' ;                                           \
         expr     : <number> | <symbol> | <sexpr> ;                             \
         lispy    : /^/ <expr>* /$/ ;                                           \
         ",
-        pNumberParser, pSymbolParser, pSexprParser, pExprParser, pLispyParser);
+        number_parser,
+        symbol_parser, 
+        sexpr_parser, 
+        expr_parser, 
+        lispy_parser);
 
     //------------------------------------------------------------ completer
     /* register custom completer with readline global variable */
@@ -583,22 +828,26 @@ int main()
             add_history(input);
 
             /* try to parse input */
-            mpc_result_t mpcResult;
+            mpc_result_t mpc_result;
 
-            if(mpc_parse("<stdin>", input, pLispyParser, &mpcResult))
+            if(mpc_parse("<stdin>", input, lispy_parser, &mpc_result))
             {
-                mpc_ast_print(mpcResult.output);
+                mpc_ast_print(mpc_result.output);
 
-                // LispValue LispValueResult = mpc_ast_eval(mpcResult.output);
-                // print_lispvalue_newline(&LispValueResult);
-                // print_lispvalue_debug(&LispValueResult);
 
-                mpc_ast_delete(mpcResult.output);
+                LispValue *lispvalue_result = read_lispvalue(mpc_result.output);
+                print_lispvalue_newline(lispvalue_result);
+
+                lispvalue_result = eval_lispvalue(lispvalue_result);
+                print_lispvalue_newline(lispvalue_result);
+                delete_lispvalue(lispvalue_result);
+
+                mpc_ast_delete(mpc_result.output);
             }
             else
             {
-                mpc_err_print(mpcResult.error);
-                mpc_err_delete(mpcResult.error);
+                mpc_err_print(mpc_result.error);
+                mpc_err_delete(mpc_result.error);
             }
 
             /* readline malloc'd input*/
@@ -609,11 +858,11 @@ int main()
     //-------------------------------------------------------------- cleanup
     mpc_cleanup(
         5,
-        pNumberParser,
-        pSymbolParser,
-        pSexprParser,
-        pExprParser,
-        pLispyParser);
+        number_parser,
+        symbol_parser,
+        sexpr_parser,
+        expr_parser,
+        lispy_parser);
 
     return 0;
 }
