@@ -2,6 +2,7 @@
     "files.associations": {
         "exception": "c",
         "limits": "c",
-        "*.tcc": "c"
+        "*.tcc": "c",
+        "stdlib.h": "c"
     }
 }

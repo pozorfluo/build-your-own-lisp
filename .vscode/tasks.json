@@ -11,6 +11,11 @@
                 "-Werror",
                 "-pedantic",
                 "-g",
+                "-O3",
+                "-ftree-vectorize",
+                "-msse2",
+                // "-fopt-info-vec-all",
+                "-fopt-info-vec-optimized",
                 "${file}",
                 "${fileDirname}/mpc.c", // link mpc lib
                 "-ledit", // editline lib

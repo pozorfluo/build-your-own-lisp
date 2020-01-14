@@ -11,7 +11,7 @@
 
 
 //-------------------------------------------------------------- ANSI MACROS ---
-/*
+/**
  * see https://invisible-island.net/xterm/ctlseqs/ctlseqs.html
  *
  * todo
@@ -760,7 +760,7 @@ char** completer(const char *text, int start, int end)
 void print_prompt()
 {
     fputs(
-        BOLD FG_GREEN "lispy>" RESET,
+        BOLD FG_GREEN "lispy> " RESET,
         stdout);
 }
 
@@ -791,7 +791,7 @@ int main()
     mpca_lang(
         MPCA_LANG_DEFAULT,
         "                                                                      \
-        number   : /[-]?[0-9]*[.]?[0-9]+([eE][-+]?[0-9]+)?/ ;                  \
+        number   : /[-]?[0-9]+[.]?[0-9]*([eE][-+]?[0-9]+)?/ ;                  \
         symbol   : '+' | '-' | '*' | '/' | '%' | '^' | '>' | '<' ;             \
         sexpr    : '(' <expr>* ')' ;                                           \
         expr     : <number> | <symbol> | <sexpr> ;                             \
