@@ -1,0 +1,38 @@
+---
+Language: Cpp
+BasedOnStyle: LLVM
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+UseTab: Always
+IndentWidth: 4
+TabWidth: 4
+ConstructorInitializerIndentWidth: 4
+ContinuationIndentWidth: 4
+IndentCaseLabels: false
+AlwaysBreakBeforeMultilineStrings : true
+AllowShortIfStatementsOnASingleLine: false
+AllowShortBlocksOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AlignEscapedNewlinesLeft: false
+ColumnLimit: 80
+BinPackArguments: false
+BinPackParameters: false
+AlignAfterOpenBracket: Align
+KeepEmptyLinesAtTheStartOfBlocks: true
+BreakBeforeBraces: Custom
+BraceWrapping:   
+  AfterClass:      true
+  AfterControlStatement: false
+  AfterEnum:       false
+  AfterFunction:   true
+  AfterNamespace:  true
+  AfterObjCDeclaration: false
+  AfterStruct:     false
+  AfterUnion:      false
+  BeforeCatch:     false
+  BeforeElse:      true
+  IndentBraces:    false
+...
+
+
+

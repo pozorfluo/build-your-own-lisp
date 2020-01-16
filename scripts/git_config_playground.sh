@@ -35,6 +35,9 @@ find -name stdio.h
 # see https://superuser.com/questions/1271205/how-to-get-the-host-user-home-directory-in-wsl-bash
 # with wslpath
 
+echo "${WINTEMPLATES}"/.clang-format
+cp .clang-format "${WINTEMPLATES}"/.clang-format
+
 export WINHOME=$(wslpath $(cmd.exe /C "echo %USERPROFILE%"))
 echo $WINHOME
 
@@ -64,7 +67,7 @@ mkdir $NEWPROJECT && cd $NEWPROJECT
 echo "copy ${WINTEMPLATES} -> $(pwd)"
 # ~/_source/C/${NEWPROJECT}
 # cp -R ${WINTEMPLATES}/* .
-cp -R ${WINTEMPLATES}/. ~/_source/C/${NEWPROJECT}
+cp -R "${WINTEMPLATES}/." " ~/_source/C/${NEWPROJECT}"
 ls -a
 
 # create remote repo on github
@@ -91,3 +94,5 @@ git add -A
 # commit, push
 git commit -m "bonus adventure : hello vectors"
 git push -u origin master
+
+

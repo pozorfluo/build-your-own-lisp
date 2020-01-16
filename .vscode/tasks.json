@@ -17,11 +17,12 @@
                 // "-fopt-info-vec-all",
                 "-fopt-info-vec-optimized",
                 "${file}",
-                "${fileDirname}/mpc.c", // link mpc lib
+                "${workspaceRoot}/src/mpc.c", // link mpc lib
                 "-ledit", // editline lib
                 "-lm", // link math lib
                 "-o",
-                "${fileDirname}/../bin/${fileBasenameNoExtension}"
+                // "${fileDirname}/../bin/${fileBasenameNoExtension}"
+                "${workspaceRoot}/bin/${fileBasenameNoExtension}"
             ],
             "options": {
                 "cwd": "/usr/bin"
