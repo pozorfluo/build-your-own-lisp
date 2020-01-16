@@ -1,8 +1,10 @@
 {
     "files.associations": {
-        "exception": "c",
-        "limits": "c",
-        "*.tcc": "c",
-        "stdlib.h": "c"
-    }
+		"exception": "c",
+		"limits": "c",
+		"*.tcc": "c",
+		"stdlib.h": "c",
+		"types.h": "c",
+		"stdint.h": "c"
+	}
 }

@@ -11,13 +11,13 @@
 
 //-------------------------------------------------------------- ANSI MACROS ---
 /**
-	* see https://invisible-island.net/xterm/ctlseqs/ctlseqs.html
-	*
-	* todo
-	*   [] clarify which are ready-made sequences
-	*   [] clarify which are bits to be expanded into sequence
-	*
-	*/
+    * see https://invisible-island.net/xterm/ctlseqs/ctlseqs.html
+    *
+    * todo
+    *   [] clarify which are ready-made sequences
+    *   [] clarify which are bits to be expanded into sequence
+    *
+    */
 #define ESC "\x1b"
 
 #define RESET ESC "[0m"
@@ -43,42 +43,42 @@
 #define DEFAULT "9"
 
 #define FG_BLACK ESC "[" FG   BLACK "m"
-#define FG_RED ESC "[" FG	 RED "m"
+#define FG_RED ESC "[" FG     RED "m"
 #define FG_GREEN ESC "[" FG   GREEN "m"
 #define FG_YELLOW ESC "[" FG  YELLOW "m"
-#define FG_BLUE ESC "[" FG	BLUE "m"
+#define FG_BLUE ESC "[" FG    BLUE "m"
 #define FG_MAGENTA ESC "[" FG MAGENTA "m"
-#define FG_CYAN ESC "[" FG	CYAN "m"
+#define FG_CYAN ESC "[" FG    CYAN "m"
 #define FG_WHITE ESC "[" FG   WHITE "m"
 #define FG_DEFAULT ESC "[" FG DEFAULT "m"
 
 #define BG_BLACK ESC "[" BG   BLACK "m"
-#define BG_RED ESC "[" BG	 RED "m"
+#define BG_RED ESC "[" BG     RED "m"
 #define BG_GREEN ESC "[" BG   GREEN "m"
 #define BG_YELLOW ESC "[" BG  YELLOW "m"
-#define BG_BLUE ESC "[" BG	BLUE "m"
+#define BG_BLUE ESC "[" BG    BLUE "m"
 #define BG_MAGENTA ESC "[" BG MAGENTA "m"
-#define BG_CYAN ESC "[" BG	CYAN "m"
+#define BG_CYAN ESC "[" BG    CYAN "m"
 #define BG_WHITE ESC "[" BG   WHITE "m"
 #define BG_DEFAULT ESC "[" BG DEFAULT "m"
 
 #define FG_BRIGHT_BLACK ESC "[" FG_BRIGHT   BLACK "m"
-#define FG_BRIGHT_RED ESC "[" FG_BRIGHT		RED "m"
+#define FG_BRIGHT_RED ESC "[" FG_BRIGHT     RED "m"
 #define FG_BRIGHT_GREEN ESC "[" FG_BRIGHT   GREEN "m"
 #define FG_BRIGHT_YELLOW ESC "[" FG_BRIGHT  YELLOW "m"
-#define FG_BRIGHT_BLUE ESC "[" FG_BRIGHT	BLUE "m"
+#define FG_BRIGHT_BLUE ESC "[" FG_BRIGHT    BLUE "m"
 #define FG_BRIGHT_MAGENTA ESC "[" FG_BRIGHT MAGENTA "m"
-#define FG_BRIGHT_CYAN ESC "[" FG_BRIGHT	CYAN "m"
+#define FG_BRIGHT_CYAN ESC "[" FG_BRIGHT    CYAN "m"
 #define FG_BRIGHT_WHITE ESC "[" FG_BRIGHT   WHITE "m"
 #define FG_BRIGHT_DEFAULT ESC "[" FG_BRIGHT DEFAULT "m"
 
 #define BG_BRIGHT_BLACK ESC "[" BG_BRIGHT   BLACK "m"
-#define BG_BRIGHT_RED ESC "[" BG_BRIGHT		RED "m"
+#define BG_BRIGHT_RED ESC "[" BG_BRIGHT     RED "m"
 #define BG_BRIGHT_GREEN ESC "[" BG_BRIGHT   GREEN "m"
 #define BG_BRIGHT_YELLOW ESC "[" BG_BRIGHT  YELLOW "m"
-#define BG_BRIGHT_BLUE ESC "[" BG_BRIGHT	BLUE "m"
+#define BG_BRIGHT_BLUE ESC "[" BG_BRIGHT    BLUE "m"
 #define BG_BRIGHT_MAGENTA ESC "[" BG_BRIGHT MAGENTA "m"
-#define BG_BRIGHT_CYAN ESC "[" BG_BRIGHT	CYAN "m"
+#define BG_BRIGHT_CYAN ESC "[" BG_BRIGHT    CYAN "m"
 #define BG_BRIGHT_WHITE ESC "[" BG_BRIGHT   WHITE "m"
 #define BG_BRIGHT_DEFAULT ESC "[" BG_BRIGHT DEFAULT "m"
 
@@ -86,6 +86,20 @@
 
 /* codes in the sequence must be separated by ";" */
 #define ANSI(SEQUENCE) ESC "[" SEQUENCE "m"
+
+//------------------------------------------------------------------- MACROS ---
+/*
+ * I don't find that this particular macro makes things more readable or
+ * noticeably more consise
+ * It's confusing that an exit point is not locally super obvious
+ * Skip for now
+ */
+
+/*#define LASSERT(args, condition, err)                                     \ */
+/*	if (!(condition)) {                                                     \ */
+/*		delete_lispvalue(args);                                             \ */
+/*		return new_lispvalue_error(err);                                    \ */
+/*	} */
 
 //------------------------------------------------------------- DEBUG MACROS ---
 
@@ -100,12 +114,12 @@ enum LispValueType {
 
 //----------------------------------------------------------------- TYPEDEFS ---
 typedef struct LispValue {
-	int	type;
+	int    type;
 	double number;
 	char * error;
 	char * symbol;
 	/* sexpr */
-	int				   count;
+	int                count;
 	struct LispValue **cells;
 } LispValue;
 
@@ -125,7 +139,9 @@ LispValue *take_lispvalue(LispValue *lispvalue, int index);
 
 LispValue *eval_lispvalue_sexpr(LispValue *lispvalue);
 LispValue *eval_lispvalue(LispValue *lispvalue);
-LispValue *eval_lispvalue_operator(LispValue *arguments, char *operator);
+
+LispValue *lookup_builtin(LispValue *arguments, char *symbol);
+LispValue *builtin_operator(LispValue *arguments, char *operator);
 
 void delete_lispvalue(LispValue *lispvalue);
 int are_all_numbers(LispValue *arguments);
@@ -139,19 +155,24 @@ char **completer(const char *text, int start, int end);
 void print_prompt();
 //-------------------------------------------------- STATIC GLOBAL VARIABLES ---
 /* Readline auto-completion configuration */
-static char *vocabulary[] = {"fourchezdzdau",
-							 "monparounaze",
-							 "karl",
-							 "lagerfeld",
-							 "+",
-							 "-",
-							 "*",
-							 "/",
-							 "%",
-							 "^",
-							 ">",
-							 "<",
-							 NULL};
+static char *vocabulary[] = {"list",
+                             "head",
+                             "tail",
+                             "join",
+                             "eval",
+                             "+",
+                             "-",
+                             "*",
+                             "/",
+                             "%",
+                             "^",
+                             ">",
+                             "<",
+                             "{",
+                             "}",
+                             "(",
+                             ")",
+                             NULL};
 
 //----------------------------------------------------------------- Function ---
 /**
@@ -252,7 +273,7 @@ void delete_lispvalue(LispValue *lispvalue)
 		break;
 
 	case LVAL_ERR:
-	
+
 		free(lispvalue->error);
 		break;
 
@@ -285,11 +306,11 @@ void delete_lispvalue(LispValue *lispvalue)
  */
 LispValue *read_lispvalue_number(mpc_ast_t *ast)
 {
-	errno		  = 0;
+	errno         = 0;
 	double number = strtod(ast->contents, NULL);
 
 	return (errno != ERANGE) ? new_lispvalue_number(number)
-							 : new_lispvalue_error("invalid number");
+	                         : new_lispvalue_error("invalid number");
 }
 
 //----------------------------------------------------------------- Function ---
@@ -334,15 +355,15 @@ LispValue *read_lispvalue(mpc_ast_t *ast)
 
 		for (int i = 0; i < ast->children_num; i++) {
 			if (!(strcmp(ast->children[i]->contents, "(")) ||
-				!(strcmp(ast->children[i]->contents, ")")) ||
-				!(strcmp(ast->children[i]->contents, "{")) ||
-				!(strcmp(ast->children[i]->contents, "}")) ||
-				!(strcmp(ast->children[i]->tag, "regex"))) {
+			    !(strcmp(ast->children[i]->contents, ")")) ||
+			    !(strcmp(ast->children[i]->contents, "{")) ||
+			    !(strcmp(ast->children[i]->contents, "}")) ||
+			    !(strcmp(ast->children[i]->tag, "regex"))) {
 				continue;
 			}
 			else {
 				lispvalue =
-					add_lispvalue(lispvalue, read_lispvalue(ast->children[i]));
+				    add_lispvalue(lispvalue, read_lispvalue(ast->children[i]));
 			}
 		}
 
@@ -450,11 +471,11 @@ LispValue *eval_lispvalue_sexpr(LispValue *lispvalue)
 			delete_lispvalue(first_element);
 			delete_lispvalue(lispvalue);
 			return new_lispvalue_error(
-				"S-expression does not start with a symbol !");
+			    "S-expression does not start with a symbol !");
 		}
 		else {
 			LispValue *result =
-				eval_lispvalue_operator(lispvalue, first_element->symbol);
+			    lookup_builtin(lispvalue, first_element->symbol);
 			delete_lispvalue(first_element);
 			return result;
 		}
@@ -493,13 +514,13 @@ LispValue *pop_lispvalue(LispValue *lispvalue, int index)
 	LispValue *extracted_element = lispvalue->cells[index];
 
 	memmove(&lispvalue->cells[index],
-			&lispvalue->cells[index + 1],
-			sizeof(LispValue *) * (lispvalue->count - index - 1));
+	        &lispvalue->cells[index + 1],
+	        sizeof(LispValue *) * (lispvalue->count - index - 1));
 
 	lispvalue->count--;
 
 	lispvalue->cells =
-		realloc(lispvalue->cells, sizeof(LispValue *) * lispvalue->count);
+	    realloc(lispvalue->cells, sizeof(LispValue *) * lispvalue->count);
 
 	return extracted_element;
 }
@@ -545,15 +566,206 @@ int are_all_numbers(LispValue *arguments)
 
 //----------------------------------------------------------------- Function ---
 /**
+ * Returns a Q-Expression with only the first element of given Q-Expression
+ *
+ *   Ensure only a single argument is passed
+ *   Ensure that argument is a Q-Expression
+ *   Ensure that Q-Expression is not empty
+ *   Take first element of that Q-Expression
+ *   Delete all other elements of that Q-Expression
+ *
+ *     -> pointer to a Q-Expression
+ */
+LispValue *builtin_head(LispValue *arguments)
+{
+	if (arguments->count != 1) {
+		delete_lispvalue(arguments);
+		return new_lispvalue_error(
+		    "Function 'head' passed too many arguments !");
+	}
+	else if (arguments->cells[0]->type != LVAL_QEXPR) {
+		delete_lispvalue(arguments);
+		return new_lispvalue_error("Function 'head' passed incorrect types !");
+	}
+	else if (arguments->cells[0]->count == 0) {
+		delete_lispvalue(arguments);
+		return new_lispvalue_error("Function 'head' passed {} !");
+	}
+	else {
+		LispValue *head = take_lispvalue(arguments, 0);
+
+		while (head->count > 1) {
+			delete_lispvalue(pop_lispvalue(head, 1));
+		}
+
+		return head;
+	}
+}
+//----------------------------------------------------------------- Function ---
+/**
+ * Returns a Q-Expression with the first element of given Q-Expression removed
+ *
+ *   Ensure only a single argument is passed
+ *   Ensure that argument is a Q-Expression
+ *   Ensure that Q-Expression is not empty
+ *   Take first element of that Q-Expression
+ *   Delete first element of that Q-Expression
+ *
+ *     -> pointer to a Q-Expression
+ */
+LispValue *builtin_tail(LispValue *arguments)
+{
+	if (arguments->count != 1) {
+		delete_lispvalue(arguments);
+		return new_lispvalue_error(
+		    "Function 'tail' passed too many arguments !");
+	}
+	else if (arguments->cells[0]->type != LVAL_QEXPR) {
+		delete_lispvalue(arguments);
+		return new_lispvalue_error("Function 'tail' passed incorrect types !");
+	}
+	else if (arguments->cells[0]->count == 0) {
+		delete_lispvalue(arguments);
+		return new_lispvalue_error("Function 'tail' passed {} !");
+	}
+	else {
+		LispValue *tail = take_lispvalue(arguments, 0);
+		delete_lispvalue(pop_lispvalue(tail, 0));
+
+		return tail;
+	}
+}
+
+//----------------------------------------------------------------- Function ---
+/**
+ * Returns a Q-Expression containing given arguments
+ *
+ *   Convert input S-Expression to Q-Expression
+ *     -> pointer to a Q-Expression
+ */
+LispValue *builtin_list(LispValue *arguments)
+{
+	arguments->type = LVAL_QEXPR;
+	return arguments;
+}
+
+//----------------------------------------------------------------- Function ---
+/**
+ * Evaluates given Q-Expression
+ *
+ *   Ensure only a single argument is passed
+ *   Ensure that argument is a Q-Expression
+ *   Convert input Q-Expression to S-Expression
+ *   Evaluate converted S-Expression
+ *     -> pointer to result LispValue
+ */
+LispValue *builtin_eval(LispValue *arguments)
+{
+	if (arguments->count != 1) {
+		delete_lispvalue(arguments);
+		return new_lispvalue_error(
+		    "Function 'eval' passed too many arguments !");
+	}
+	else if (arguments->cells[0]->type != LVAL_QEXPR) {
+		delete_lispvalue(arguments);
+		return new_lispvalue_error("Function 'eval' passed incorrect types !");
+	}
+	else {
+		LispValue *expression = take_lispvalue(arguments, 0);
+		expression->type      = LVAL_SEXPR;
+		return eval_lispvalue(expression);
+	}
+}
+//----------------------------------------------------------------- Function ---
+/**
+ * Joins given LispValues together
+ *
+ *  Pop each item from second given LispValue until it's empty and
+ *  Add each item to first given LispValue
+ *  Delete second given LispValue
+ *   -> Return pointer to first given LispValue
+ */
+LispValue *join_lispvalue(LispValue *first, LispValue *second)
+{
+	while (second->count) {
+		first = add_lispvalue(first, pop_lispvalue(second, 0));
+	}
+
+	delete_lispvalue(second);
+	return first;
+}
+
+//----------------------------------------------------------------- Function ---
+/**
+ * Joins one or more Q-Expressions together
+ *
+ *   Ensure that all arguments are Q-Expression
+ *   Join arguments
+ *     -> pointer to joined Q-Expression
+ */
+LispValue *builtin_join(LispValue *arguments)
+{
+	for (int i = 0; i < arguments->count; i++) {
+		if (arguments->cells[i]->type != LVAL_QEXPR) {
+			delete_lispvalue(arguments);
+			return new_lispvalue_error(
+			    "Function 'join' passed incorrect types !");
+		}
+	}
+
+	LispValue *joined = pop_lispvalue(arguments, 0);
+
+	while (arguments->count) {
+		joined = join_lispvalue(joined, pop_lispvalue(arguments, 0));
+	}
+
+	delete_lispvalue(arguments);
+
+	return joined;
+}
+
+
+
+//----------------------------------------------------------------- Function ---
+/**
+ * Calls appropriate builtin function on given LispValue for given Symbol
+ *
+ *   -> Result LispValue
+ */
+LispValue *lookup_builtin(LispValue *arguments, char *symbol)
+{
+	if (!(strcmp("list", symbol))) {
+		return builtin_list(arguments);
+	}
+	else if (!(strcmp("head", symbol))) {
+		return builtin_head(arguments);
+	}
+	else if (!(strcmp("tail", symbol))) {
+		return builtin_tail(arguments);
+	}
+	else if (!(strcmp("join", symbol))) {
+		return builtin_join(arguments);
+	}
+	else if (!(strcmp("eval", symbol))) {
+		return builtin_eval(arguments);
+	}
+	else if ((strstr("+-*/%^><", symbol))) {
+		return builtin_operator(arguments, symbol);
+	}
+	else {
+		delete_lispvalue(arguments);
+		return new_lispvalue_error("Unknown function !");
+	}
+}
+
+//----------------------------------------------------------------- Function ---
+/**
  * Performs operation for given operator and LispValue representing all
- * the
- * arguments to operate on
+ * the arguments to operate on
  *
  *   -> Evaluation result LispValue
- *
- *
  */
-LispValue *eval_lispvalue_operator(LispValue *arguments, char *operator)
+LispValue *builtin_operator(LispValue *arguments, char *operator)
 {
 	if (!(are_all_numbers(arguments))) {
 		delete_lispvalue(arguments);
@@ -596,26 +808,26 @@ LispValue *eval_lispvalue_operator(LispValue *arguments, char *operator)
 
 			case '%':
 				first_argument->number =
-					fmod(first_argument->number, next_argument->number);
+				    fmod(first_argument->number, next_argument->number);
 				break;
 
 			case '^':
 				first_argument->number =
-					pow(first_argument->number, next_argument->number);
+				    pow(first_argument->number, next_argument->number);
 				break;
 
 			case '>':
 				first_argument->number =
-					(first_argument->number > next_argument->number)
-						? first_argument->number
-						: next_argument->number;
+				    (first_argument->number > next_argument->number)
+				        ? first_argument->number
+				        : next_argument->number;
 				break;
 
 			case '<':
 				first_argument->number =
-					(first_argument->number < next_argument->number)
-						? first_argument->number
-						: next_argument->number;
+				    (first_argument->number < next_argument->number)
+				        ? first_argument->number
+				        : next_argument->number;
 				break;
 			default:
 				break;
@@ -641,15 +853,15 @@ LispValue *eval_lispvalue_operator(LispValue *arguments, char *operator)
 char *completion_generator(const char *text, int state)
 {
 	static int match_index, length;
-	char *	 match;
+	char *     match;
 
 	/*
-		* readline calls this function with state = 0 the first time
-		* this initialize once for the completion session
-		*/
+	    * readline calls this function with state = 0 the first time
+	    * this initialize once for the completion session
+	    */
 	if (!state) {
 		match_index = 0;
-		length		= strlen(text);
+		length      = strlen(text);
 	}
 
 	while ((match = vocabulary[match_index++])) {
@@ -710,18 +922,19 @@ int main()
 	mpc_parser_t *lispy_parser  = mpc_new("lispy");
 
 	mpca_lang(MPCA_LANG_DEFAULT,
-			  "number   : /[-]?[0-9]+[.]?[0-9]*([eE][-+]?[0-9]+)?/ ;"
-			  "symbol   : '+' | '-' | '*' | '/' | '%' | '^' | '>' | '<' ;"
-			  "sexpr    : '(' <expr>* ')' ;"
-			  "qexpr    : '{' <expr>* '}' ;"
-			  "expr     : <number> | <symbol> | <sexpr> | <qexpr> ;"
-			  "lispy    : /^/ <expr>* /$/ ;",
-			  number_parser,
-			  symbol_parser,
-			  sexpr_parser,
-			  qexpr_parser,
-			  expr_parser,
-			  lispy_parser);
+	          "number   : /[-]?[0-9]+[.]?[0-9]*([eE][-+]?[0-9]+)?/ ;"
+	          "symbol   : \"list\" | \"head\" | \"tail\" | \"join\" | \"eval\""
+	          "         | '+' | '-' | '*' | '/' | '%' | '^' | '>' | '<' ;"
+	          "sexpr    : '(' <expr>* ')' ;"
+	          "qexpr    : '{' <expr>* '}' ;"
+	          "expr     : <number> | <symbol> | <sexpr> | <qexpr> ;"
+	          "lispy    : /^/ <expr>* /$/ ;",
+	          number_parser,
+	          symbol_parser,
+	          sexpr_parser,
+	          qexpr_parser,
+	          expr_parser,
+	          lispy_parser);
 
 	//------------------------------------------------------------ completer
 	/* register custom completer with readline global variable */
@@ -729,7 +942,7 @@ int main()
 
 	//---------------------------------------------------------------- intro
 	puts(BG_BLUE "Lispy version 0.0.0.0.1 " RESET FG_BRIGHT_CYAN
-				 "to Exit press CTRL + C" RESET);
+	             "to Exit press CTRL + C" RESET);
 
 	//----------------------------------------------------------- input loop
 	for (;;) {
@@ -768,12 +981,12 @@ int main()
 
 	//-------------------------------------------------------------- cleanup
 	mpc_cleanup(6,
-				number_parser,
-				symbol_parser,
-				sexpr_parser,
-				qexpr_parser,
-				expr_parser,
-				lispy_parser);
+	            number_parser,
+	            symbol_parser,
+	            sexpr_parser,
+	            qexpr_parser,
+	            expr_parser,
+	            lispy_parser);
 
 	return 0;
 }

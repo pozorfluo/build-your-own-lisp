@@ -92,7 +92,7 @@ git status
 git add -A
 
 # commit, push
-git commit -m "bonus adventure : hello vectors"
+git commit -m "added q-expression feature, chapter 10 done"
 git push -u origin master
 
 

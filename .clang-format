@@ -3,7 +3,9 @@ Language: Cpp
 BasedOnStyle: LLVM
 AlignConsecutiveAssignments: true
 AlignConsecutiveDeclarations: true
-UseTab: Always
+AlignAfterOpenBracket: AlwaysBreak
+AlignEscapedNewlinesLeft: false
+UseTab: ForIndentation
 IndentWidth: 4
 TabWidth: 4
 ConstructorInitializerIndentWidth: 4
@@ -13,7 +15,7 @@ AlwaysBreakBeforeMultilineStrings : true
 AllowShortIfStatementsOnASingleLine: false
 AllowShortBlocksOnASingleLine: false
 AllowShortCaseLabelsOnASingleLine: false
-AlignEscapedNewlinesLeft: false
+AllowAllParametersOfDeclarationOnNextLine: false
 ColumnLimit: 80
 BinPackArguments: false
 BinPackParameters: false
