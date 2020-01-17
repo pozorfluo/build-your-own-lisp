@@ -92,7 +92,5 @@ git status
 git add -A
 
 # commit, push
-git commit -m "added q-expression feature, chapter 10 done"
+git commit -m "added chapter 10 bonus mark assert macros and some tests helper file"
 git push -u origin master
-
-
