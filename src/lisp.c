@@ -42,44 +42,44 @@
 #define WHITE "7"
 #define DEFAULT "9"
 
-#define FG_BLACK ESC "[" FG   BLACK "m"
-#define FG_RED ESC "[" FG     RED "m"
-#define FG_GREEN ESC "[" FG   GREEN "m"
-#define FG_YELLOW ESC "[" FG  YELLOW "m"
-#define FG_BLUE ESC "[" FG    BLUE "m"
+#define FG_BLACK ESC "[" FG BLACK "m"
+#define FG_RED ESC "[" FG RED "m"
+#define FG_GREEN ESC "[" FG GREEN "m"
+#define FG_YELLOW ESC "[" FG YELLOW "m"
+#define FG_BLUE ESC "[" FG BLUE "m"
 #define FG_MAGENTA ESC "[" FG MAGENTA "m"
-#define FG_CYAN ESC "[" FG    CYAN "m"
-#define FG_WHITE ESC "[" FG   WHITE "m"
+#define FG_CYAN ESC "[" FG CYAN "m"
+#define FG_WHITE ESC "[" FG WHITE "m"
 #define FG_DEFAULT ESC "[" FG DEFAULT "m"
 
-#define BG_BLACK ESC "[" BG   BLACK "m"
-#define BG_RED ESC "[" BG     RED "m"
-#define BG_GREEN ESC "[" BG   GREEN "m"
-#define BG_YELLOW ESC "[" BG  YELLOW "m"
-#define BG_BLUE ESC "[" BG    BLUE "m"
+#define BG_BLACK ESC "[" BG BLACK "m"
+#define BG_RED ESC "[" BG RED "m"
+#define BG_GREEN ESC "[" BG GREEN "m"
+#define BG_YELLOW ESC "[" BG YELLOW "m"
+#define BG_BLUE ESC "[" BG BLUE "m"
 #define BG_MAGENTA ESC "[" BG MAGENTA "m"
-#define BG_CYAN ESC "[" BG    CYAN "m"
-#define BG_WHITE ESC "[" BG   WHITE "m"
+#define BG_CYAN ESC "[" BG CYAN "m"
+#define BG_WHITE ESC "[" BG WHITE "m"
 #define BG_DEFAULT ESC "[" BG DEFAULT "m"
 
-#define FG_BRIGHT_BLACK ESC "[" FG_BRIGHT   BLACK "m"
-#define FG_BRIGHT_RED ESC "[" FG_BRIGHT     RED "m"
-#define FG_BRIGHT_GREEN ESC "[" FG_BRIGHT   GREEN "m"
-#define FG_BRIGHT_YELLOW ESC "[" FG_BRIGHT  YELLOW "m"
-#define FG_BRIGHT_BLUE ESC "[" FG_BRIGHT    BLUE "m"
+#define FG_BRIGHT_BLACK ESC "[" FG_BRIGHT BLACK "m"
+#define FG_BRIGHT_RED ESC "[" FG_BRIGHT RED "m"
+#define FG_BRIGHT_GREEN ESC "[" FG_BRIGHT GREEN "m"
+#define FG_BRIGHT_YELLOW ESC "[" FG_BRIGHT YELLOW "m"
+#define FG_BRIGHT_BLUE ESC "[" FG_BRIGHT BLUE "m"
 #define FG_BRIGHT_MAGENTA ESC "[" FG_BRIGHT MAGENTA "m"
-#define FG_BRIGHT_CYAN ESC "[" FG_BRIGHT    CYAN "m"
-#define FG_BRIGHT_WHITE ESC "[" FG_BRIGHT   WHITE "m"
+#define FG_BRIGHT_CYAN ESC "[" FG_BRIGHT CYAN "m"
+#define FG_BRIGHT_WHITE ESC "[" FG_BRIGHT WHITE "m"
 #define FG_BRIGHT_DEFAULT ESC "[" FG_BRIGHT DEFAULT "m"
 
-#define BG_BRIGHT_BLACK ESC "[" BG_BRIGHT   BLACK "m"
-#define BG_BRIGHT_RED ESC "[" BG_BRIGHT     RED "m"
-#define BG_BRIGHT_GREEN ESC "[" BG_BRIGHT   GREEN "m"
-#define BG_BRIGHT_YELLOW ESC "[" BG_BRIGHT  YELLOW "m"
-#define BG_BRIGHT_BLUE ESC "[" BG_BRIGHT    BLUE "m"
+#define BG_BRIGHT_BLACK ESC "[" BG_BRIGHT BLACK "m"
+#define BG_BRIGHT_RED ESC "[" BG_BRIGHT RED "m"
+#define BG_BRIGHT_GREEN ESC "[" BG_BRIGHT GREEN "m"
+#define BG_BRIGHT_YELLOW ESC "[" BG_BRIGHT YELLOW "m"
+#define BG_BRIGHT_BLUE ESC "[" BG_BRIGHT BLUE "m"
 #define BG_BRIGHT_MAGENTA ESC "[" BG_BRIGHT MAGENTA "m"
-#define BG_BRIGHT_CYAN ESC "[" BG_BRIGHT    CYAN "m"
-#define BG_BRIGHT_WHITE ESC "[" BG_BRIGHT   WHITE "m"
+#define BG_BRIGHT_CYAN ESC "[" BG_BRIGHT CYAN "m"
+#define BG_BRIGHT_WHITE ESC "[" BG_BRIGHT WHITE "m"
 #define BG_BRIGHT_DEFAULT ESC "[" BG_BRIGHT DEFAULT "m"
 
 #define DEFAULT_COLORS ESC "[39;49m"
@@ -121,12 +121,12 @@ enum LispValueType {
 
 //----------------------------------------------------------------- TYPEDEFS ---
 typedef struct LispValue {
-	int    type;
+	int type;
 	double number;
-	char * error;
-	char * symbol;
+	char *error;
+	char *symbol;
 	/* sexpr */
-	int                count;
+	int count;
 	struct LispValue **cells;
 } LispValue;
 
@@ -173,8 +173,21 @@ static char *vocabulary[] = {"list",
                              "/",
                              "%",
                              "^",
-                             ">",
-                             "<",
+                             //  "min",
+                             //  "max",
+                             //  "~",
+                             //  "!",
+                             //  "!=",
+                             //  "√",
+                             //  "Σ",
+                             //  "≥",
+                             //  "≤",
+                             ">", // used as min
+                             "<", // used as max
+                                  //  "=",
+                                  //  ">=",
+                                  //  "<=",
+                                  //  "...",
                              "{",
                              "}",
                              "(",
@@ -290,7 +303,6 @@ void delete_lispvalue(LispValue *lispvalue)
 
 	case LVAL_SEXPR:
 	case LVAL_QEXPR:
-
 		for (int i = 0; i < lispvalue->count; i++) {
 			delete_lispvalue(lispvalue->cells[i]);
 		}
@@ -825,7 +837,7 @@ LispValue *builtin_operator(LispValue *arguments, char *operator)
 char *completion_generator(const char *text, int state)
 {
 	static int match_index, length;
-	char *     match;
+	char *match;
 
 	/*
 	    * readline calls this function with state = 0 the first time

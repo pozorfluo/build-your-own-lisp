@@ -5,6 +5,7 @@
 		"*.tcc": "c",
 		"stdlib.h": "c",
 		"types.h": "c",
-		"stdint.h": "c"
+		"stdint.h": "c",
+		"type_traits": "c"
 	}
 }

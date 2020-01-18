@@ -2,7 +2,7 @@
 Language: Cpp
 BasedOnStyle: LLVM
 AlignConsecutiveAssignments: true
-AlignConsecutiveDeclarations: true
+AlignConsecutiveDeclarations: false
 AlignAfterOpenBracket: AlwaysBreak
 AlignEscapedNewlinesLeft: false
 UseTab: ForIndentation
@@ -34,6 +34,7 @@ BraceWrapping:
   BeforeCatch:     false
   BeforeElse:      true
   IndentBraces:    false
+PointerAlignment: Right
 ...
 
 

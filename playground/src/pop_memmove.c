@@ -31,10 +31,10 @@ char *pop_char(char *string, int index)
 //--------------------------------------------------------------------- MAIN ---
 int main()
 {
-	char        destination[]   = "destination";
-	const char  source[]        = "source";
-	char *      destination_ptr = "destination";
-	const char *source_ptr      = "source";
+	char destination[]     = "destination";
+	const char source[]    = "source";
+	char *destination_ptr  = "destination";
+	const char *source_ptr = "source";
 
 	printf("destination[] : %zu\n",
 	       (sizeof(destination) / sizeof((destination)[0])));
