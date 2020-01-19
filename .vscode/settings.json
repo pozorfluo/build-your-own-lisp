@@ -6,6 +6,7 @@
 		"stdlib.h": "c",
 		"types.h": "c",
 		"stdint.h": "c",
-		"type_traits": "c"
+		"type_traits": "c",
+		"stddef.h": "c"
 	}
 }

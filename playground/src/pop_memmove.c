@@ -29,7 +29,7 @@ char *pop_char(char *string, int index)
 }
 
 //--------------------------------------------------------------------- MAIN ---
-int main()
+int main(void)
 {
 	char destination[]     = "destination";
 	const char source[]    = "source";

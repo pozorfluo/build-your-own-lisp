@@ -1,6 +1,9 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-
+/**
+ * see : http://www.catb.org/esr/structure-packing/
+ */
 //-------------------------------------------------------------- ANSI MACROS ---
 
 // #pragma pack(push)  /* push current alignment to stack */
@@ -18,6 +21,11 @@
 	       sizeof(_var),                                                       \
 	       (void *)&_var,                                                      \
 	       pretty_byte - sizeof(_var));
+
+#define PRINT_PRETTY_OFFSET(_struct, _member)                                  \
+	printf(#_struct "->" #_member "    \t offset by %lu \tbytes\n",            \
+	       __builtin_offsetof(_struct, _member));
+
 //----------------------------------------------------------------- TYPEDEFS ---
 typedef struct LispValue {
 	int type;
@@ -37,6 +45,75 @@ typedef struct LispValueReordered {
 	char *symbol;
 	struct LispValue **cells;
 } LispValueReordered;
+
+typedef struct fooA {
+	char *p;
+	char c;
+	long x;
+} fooA;
+
+typedef struct fooB {
+	char *p;
+	char c;
+} fooB;
+
+typedef struct fooC {
+	char c;
+	struct fooC_inner {
+		char *p;
+		short x;
+	} inner;
+} fooC;
+
+typedef struct foobit {
+	short s;
+	char c;
+	int flip : 1;
+	int nybble : 4;
+	int septet : 7;
+} foobit;
+
+typedef struct fooD {
+	int32_t i;
+	int32_t i2;
+	char octet[8];
+	int32_t i3;
+	int32_t i4;
+	int64_t l;
+	int32_t i5;
+	int32_t i6;
+} fooD;
+
+typedef struct fooE {
+	char c;
+	int64_t l;
+	int32_t i;
+	int32_t i2;
+	char sextet[6];
+	int32_t i3;
+	int32_t i4;
+	int32_t i5;
+	int32_t i6;
+	char c2;
+} fooE;
+
+typedef struct fooF {
+	int64_t l;
+	int32_t i;
+	int32_t i2;
+	int32_t i3;
+	int32_t i4;
+	int32_t i5;
+	int32_t i6;
+	char c;
+	char c2;
+	char c3;
+	char c4;
+	char c5;
+	char c6;
+	char c7;
+	char c8;
+} fooF;
 // } __attribute__((packed)) LispValue;
 
 // #pragma pack(pop) /* resume normal padding */
@@ -182,7 +259,102 @@ int main()
 
 	padding_type = (unsigned long)(&lispvalue_reordered[1].type) -
 	               (unsigned long)(&lispvalue_reordered[0].cells);
-	printf("(LispValue **) cells padded to \t: %lx bytes\n", padding_type);
+	printf("(LispValue **) cells padded to \t: %lx bytes\n\n", padding_type);
+
+	printf("offset of : %lu\n", ((size_t) & (((LispValue *)0)->type)));
+
+	printf("offset of : %lu\n",
+	       ((size_t)((char *)&((LispValue *)0)->type - (char *)0)));
+
+	printf("offset of : %lu\n\n", __builtin_offsetof(LispValue, type));
+
+	PRINT_PRETTY_OFFSET(LispValue, type);
+	PRINT_PRETTY_OFFSET(LispValue, number);
+	PRINT_PRETTY_OFFSET(LispValue, error);
+	PRINT_PRETTY_OFFSET(LispValue, symbol);
+	PRINT_PRETTY_OFFSET(LispValue, count);
+	PRINT_PRETTY_OFFSET(LispValue, cells);
+
+	PRINT_PRETTY_OFFSET(LispValueReordered, type);
+	PRINT_PRETTY_OFFSET(LispValueReordered, count);
+	PRINT_PRETTY_OFFSET(LispValueReordered, number);
+	PRINT_PRETTY_OFFSET(LispValueReordered, error);
+	PRINT_PRETTY_OFFSET(LispValueReordered, symbol);
+	PRINT_PRETTY_OFFSET(LispValueReordered, cells);
+
+	PRINT_PRETTY_OFFSET(fooA, p);
+	PRINT_PRETTY_OFFSET(fooA, c);
+	PRINT_PRETTY_OFFSET(fooA, x);
+
+	puts(
+	    "\nfirst address following struct data has same alignment as the "
+	    "struct\n");
+	PRINT_PRETTY_OFFSET(fooB, p);
+	PRINT_PRETTY_OFFSET(fooB, c);
+	PRINT_PRETTY_SIZE("\nstruct fooB     \t", fooB);
+	PRINT_PRETTY_SIZE("\t->p     \t", char *);
+	PRINT_PRETTY_SIZE("\t->c     \t", char);
+
+	puts("7 bytes of padding after ->c\n");
+
+	PRINT_PRETTY_OFFSET(fooC, c);
+	PRINT_PRETTY_OFFSET(fooC, inner);
+	PRINT_PRETTY_OFFSET(fooC, inner.p);
+	PRINT_PRETTY_OFFSET(fooC, inner.x);
+
+	PRINT_PRETTY_SIZE("\nstruct fooC     \t", fooC);
+	PRINT_PRETTY_SIZE("\t->c       \t", char);
+	PRINT_PRETTY_SIZE("\t->inner   \t", struct fooC_inner);
+	PRINT_PRETTY_SIZE("\t->inner.p \t", char *);
+	PRINT_PRETTY_SIZE("\t->inner.x \t", short);
+
+	PRINT_PRETTY_OFFSET(foobit, s);
+	PRINT_PRETTY_OFFSET(foobit, c);
+	// PRINT_PRETTY_OFFSET(foobit, flip);
+	// PRINT_PRETTY_OFFSET(foobit, nybble);
+	// PRINT_PRETTY_OFFSET(foobit, septet);
+	PRINT_PRETTY_SIZE("\nstruct foobit     \t", foobit);
+	PRINT_PRETTY_SIZE("\t->s       \t", short);
+	PRINT_PRETTY_SIZE("\t->c       \t", char);
+
+	PRINT_PRETTY_SIZE("\nstruct fooD     \t", fooD);
+	PRINT_PRETTY_OFFSET(fooD, i);
+	PRINT_PRETTY_OFFSET(fooD, i2);
+	PRINT_PRETTY_OFFSET(fooD, octet);
+	PRINT_PRETTY_OFFSET(fooD, i3);
+	PRINT_PRETTY_OFFSET(fooD, i4);
+	PRINT_PRETTY_OFFSET(fooD, l);
+	PRINT_PRETTY_OFFSET(fooD, i5);
+	PRINT_PRETTY_OFFSET(fooD, i6);
+
+	PRINT_PRETTY_SIZE("\nstruct fooE     \t", fooE);
+	PRINT_PRETTY_OFFSET(fooE, c);
+	PRINT_PRETTY_OFFSET(fooE, l);
+	PRINT_PRETTY_OFFSET(fooE, i);
+	PRINT_PRETTY_OFFSET(fooE, i2);
+	PRINT_PRETTY_OFFSET(fooE, sextet);
+	PRINT_PRETTY_OFFSET(fooE, i3);
+	PRINT_PRETTY_OFFSET(fooE, i4);
+	PRINT_PRETTY_OFFSET(fooE, i5);
+	PRINT_PRETTY_OFFSET(fooE, i6);
+	PRINT_PRETTY_OFFSET(fooE, c2);
+
+	PRINT_PRETTY_SIZE("\nstruct fooF     \t", fooF);
+	PRINT_PRETTY_OFFSET(fooF, l);
+	PRINT_PRETTY_OFFSET(fooF, i);
+	PRINT_PRETTY_OFFSET(fooF, i2);
+	PRINT_PRETTY_OFFSET(fooF, i3);
+	PRINT_PRETTY_OFFSET(fooF, i4);
+	PRINT_PRETTY_OFFSET(fooF, i5);
+	PRINT_PRETTY_OFFSET(fooF, i6);
+	PRINT_PRETTY_OFFSET(fooF, c);
+	PRINT_PRETTY_OFFSET(fooF, c2);
+	PRINT_PRETTY_OFFSET(fooF, c3);
+	PRINT_PRETTY_OFFSET(fooF, c4);
+	PRINT_PRETTY_OFFSET(fooF, c5);
+	PRINT_PRETTY_OFFSET(fooF, c6);
+	PRINT_PRETTY_OFFSET(fooF, c7);
+	PRINT_PRETTY_OFFSET(fooF, c8);
 
 	return 0;
 }

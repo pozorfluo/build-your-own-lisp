@@ -92,5 +92,5 @@ git status
 git add -A
 
 # commit, push
-git commit -m "added chapter 10 bonus mark assert macros and some tests helper file"
+git commit -m "studied how pop_lispvalue(), **cells work, added bonus mark builtin_cons() : not entirely sure about why uninitialised values fix works"
 git push -u origin master

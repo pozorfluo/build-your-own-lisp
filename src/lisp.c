@@ -166,6 +166,7 @@ static char *vocabulary[] = {"list",
                              "head",
                              "tail",
                              "join",
+                             "cons",
                              "eval",
                              "+",
                              "-",
@@ -335,17 +336,17 @@ LispValue *read_lispvalue_number(mpc_ast_t *ast)
 //----------------------------------------------------------------- Function ---
 /**
  * Adds a given LispValue to the list of expressions of a given LispValue
- * of type sexpr
+ * of type sexpr or qexpr
  *
  *   -> pointer to given LispValue sexpr
  */
-LispValue *add_lispvalue(LispValue *sexpr, LispValue *lispvalue)
+LispValue *add_lispvalue(LispValue *expr, LispValue *lispvalue)
 {
-	sexpr->count++;
-	sexpr->cells = realloc(sexpr->cells, sizeof(LispValue *) * sexpr->count);
-	sexpr->cells[sexpr->count - 1] = lispvalue;
+	expr->count++;
+	expr->cells = realloc(expr->cells, sizeof(LispValue *) * expr->count);
+	expr->cells[expr->count - 1] = lispvalue;
 
-	return sexpr;
+	return expr;
 }
 
 //----------------------------------------------------------------- Function ---
@@ -520,13 +521,10 @@ LispValue *eval_lispvalue(LispValue *lispvalue)
 //----------------------------------------------------------------- Function ---
 /**
  * Extracts single element from given LispValue of type sexpr
- * Shifts the rest of element list backward over extracted element
+ * Shifts the rest of element list pointer backward over extracted element
+ * pointer
  *
  *   -> Extracted LispValue
- *
- * todo
- *   [] make sure you understand why extracted_element still points to
- *      something
  */
 LispValue *pop_lispvalue(LispValue *lispvalue, int index)
 {
@@ -550,10 +548,6 @@ LispValue *pop_lispvalue(LispValue *lispvalue, int index)
  * Deletes the rest
  *
  *   -> Extracted LispValue
- *
- * todo
- *   [] make sure you understand why extracted_element still points to
- *      something
  */
 LispValue *take_lispvalue(LispValue *lispvalue, int index)
 {
@@ -709,7 +703,38 @@ LispValue *builtin_join(LispValue *arguments)
 
 	return joined;
 }
+//----------------------------------------------------------------- Function ---
+/**
+ * Appends given LispValue first argument to the front of given following
+ * Q-Expression
+ *
+ *   Ensure that there are 2 arguments
+ *   Ensure that second argument is a Q-Expression
+ *   Add first argument to a new Q-Expression
+ *   Join arguments
+ *     -> pointer to joined Q-Expression
+ */
+LispValue *builtin_cons(LispValue *arguments)
+{
+	LVAL_ASSERT_ARG(arguments, 2, "'cons'");
+	LVAL_ASSERT_TYPE(arguments, 1, LVAL_QEXPR, "'cons'");
 
+	// LispValue *joined = builtin_list(pop_lispvalue(arguments, 0));
+	LispValue *joined = new_lispvalue_qexpr();
+
+	joined = add_lispvalue(joined, pop_lispvalue(arguments, 0));
+	// joined = add_lispvalue(joined,
+	//                        eval_lispvalue_sexpr(pop_lispvalue(arguments,
+	//                        0)));
+	// joined->type = LVAL_QEXPR;
+
+	joined = join_lispvalue(joined, pop_lispvalue(arguments, 0));
+
+	delete_lispvalue(arguments);
+
+	return joined;
+	// return arguments;
+}
 //----------------------------------------------------------------- Function ---
 /**
  * Calls appropriate builtin function on given LispValue for given Symbol
@@ -729,6 +754,9 @@ LispValue *lookup_builtin(LispValue *arguments, char *symbol)
 	}
 	else if (!(strcmp("join", symbol))) {
 		return builtin_join(arguments);
+	}
+	else if (!(strcmp("cons", symbol))) {
+		return builtin_cons(arguments);
 	}
 	else if (!(strcmp("eval", symbol))) {
 		return builtin_eval(arguments);
@@ -907,7 +935,8 @@ int main()
 
 	mpca_lang(MPCA_LANG_DEFAULT,
 	          "number   : /[-]?[0-9]+[.]?[0-9]*([eE][-+]?[0-9]+)?/ ;"
-	          "symbol   : \"list\" | \"head\" | \"tail\" | \"join\" | \"eval\""
+	          "symbol   : \"list\" | \"head\" | \"tail\" | \"join\" | \"cons\" "
+	          "         | \"eval\""
 	          "         | '+' | '-' | '*' | '/' | '%' | '^' | '>' | '<' ;"
 	          "sexpr    : '(' <expr>* ')' ;"
 	          "qexpr    : '{' <expr>* '}' ;"
