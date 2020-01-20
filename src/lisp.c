@@ -108,6 +108,20 @@
 		                           " passed incorrect types !");               \
 	}
 
+#define LVAL_DUMP(args)                                                        \
+	printf(#args                                                               \
+	       "\n"                                                                \
+	       "\ttype   : %d\n"                                                   \
+	       "\tnumber : %f\n"                                                   \
+	       "\terror  : %s\n"                                                   \
+	       "\tsymbol : %s\n"                                                   \
+	       "\tcount  : %d\n\n",                                                \
+	       args->type,                                                         \
+	       args->number,                                                       \
+	       args->error,                                                        \
+	       args->symbol,                                                       \
+	       args->count);
+
 //------------------------------------------------------------- DEBUG MACROS ---
 
 //-------------------------------------------------------------------- ENUMS ---
@@ -167,6 +181,7 @@ static char *vocabulary[] = {"list",
                              "tail",
                              "join",
                              "cons",
+                             "len",
                              "eval",
                              "+",
                              "-",
@@ -710,31 +725,67 @@ LispValue *builtin_join(LispValue *arguments)
  *
  *   Ensure that there are 2 arguments
  *   Ensure that second argument is a Q-Expression
- *   Add first argument to a new Q-Expression
- *   Join arguments
- *     -> pointer to joined Q-Expression
+ *   Add an empty element to Q-Expression
+ *   Shift all originals elements of Q-Expression forward over empty element
+ *   Make first element of Q-Expression point to first argument
+ *   Delete original arguments
+ *     -> pointer to modified Q-Expression
  */
 LispValue *builtin_cons(LispValue *arguments)
 {
 	LVAL_ASSERT_ARG(arguments, 2, "'cons'");
 	LVAL_ASSERT_TYPE(arguments, 1, LVAL_QEXPR, "'cons'");
 
-	// LispValue *joined = builtin_list(pop_lispvalue(arguments, 0));
-	LispValue *joined = new_lispvalue_qexpr();
+    // * Add first argument to a new Q-Expression
+    // * Join arguments
+	// LispValue *joined = new_lispvalue_qexpr();
+	// joined = add_lispvalue(joined, pop_lispvalue(arguments, 0));
+	// delete_lispvalue(arguments);
+	// joined = join_lispvalue(joined, pop_lispvalue(arguments, 0));
+	// return joined;
+	LispValue *first_argument = pop_lispvalue(arguments, 0);
+	LispValue *qexpr          = pop_lispvalue(arguments, 0);
 
-	joined = add_lispvalue(joined, pop_lispvalue(arguments, 0));
-	// joined = add_lispvalue(joined,
-	//                        eval_lispvalue_sexpr(pop_lispvalue(arguments,
-	//                        0)));
-	// joined->type = LVAL_QEXPR;
+	qexpr->count++;
+	qexpr->cells = realloc(qexpr->cells, sizeof(LispValue *) * qexpr->count);
 
-	joined = join_lispvalue(joined, pop_lispvalue(arguments, 0));
+	memmove(&qexpr->cells[1],
+	        &qexpr->cells[0],
+	        sizeof(LispValue *) * (qexpr->count - 1));
+
+	qexpr->cells[0] = first_argument;
+
+	// todo 
+	//   [] find out why this is necessary after asserting 2 arg and poping twice
+	delete_lispvalue(arguments);
+
+	return qexpr;
+}
+
+//----------------------------------------------------------------- Function ---
+/**
+ * Returns the number of elements in given Q-Expression
+ *
+ *   Ensure only a single argument is passed
+ *   Ensure that argument is a Q-Expression
+ *   Get the length of that Q-Expression
+ *   Delete that Q-Expression
+ *     -> length as new LispValue of type number
+
+ */
+LispValue *builtin_len(LispValue *arguments)
+{
+	LVAL_ASSERT_ARG(arguments, 1, "'len'");
+	LVAL_ASSERT_TYPE(arguments, 0, LVAL_QEXPR, "'len'");
+
+	LispValue *length =
+	    new_lispvalue_number((double)arguments->cells[0]->count);
 
 	delete_lispvalue(arguments);
 
-	return joined;
-	// return arguments;
+	return length;
 }
+
 //----------------------------------------------------------------- Function ---
 /**
  * Calls appropriate builtin function on given LispValue for given Symbol
@@ -757,6 +808,9 @@ LispValue *lookup_builtin(LispValue *arguments, char *symbol)
 	}
 	else if (!(strcmp("cons", symbol))) {
 		return builtin_cons(arguments);
+	}
+	else if (!(strcmp("len", symbol))) {
+		return builtin_len(arguments);
 	}
 	else if (!(strcmp("eval", symbol))) {
 		return builtin_eval(arguments);
@@ -936,7 +990,7 @@ int main()
 	mpca_lang(MPCA_LANG_DEFAULT,
 	          "number   : /[-]?[0-9]+[.]?[0-9]*([eE][-+]?[0-9]+)?/ ;"
 	          "symbol   : \"list\" | \"head\" | \"tail\" | \"join\" | \"cons\" "
-	          "         | \"eval\""
+	          "         | \"len\" | \"eval\""
 	          "         | '+' | '-' | '*' | '/' | '%' | '^' | '>' | '<' ;"
 	          "sexpr    : '(' <expr>* ')' ;"
 	          "qexpr    : '{' <expr>* '}' ;"

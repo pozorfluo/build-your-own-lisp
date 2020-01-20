@@ -84,6 +84,13 @@ git remote add origin https://github.com/${USERNAME}/${NEWPROJECT}.git
 git push -u origin master
 
 
+# vs code settings folder
+cd /mnt/c/Users/porte/AppData/Roaming/Code/User
+
+git remote add origin https://github.com/${USERNAME}/vsc-settings.git
+git remote show origin
+git push -u origin master
+
 # check working directory, staging area
 git status
 
@@ -92,5 +99,6 @@ git status
 git add -A
 
 # commit, push
-git commit -m "studied how pop_lispvalue(), **cells work, added bonus mark builtin_cons() : not entirely sure about why uninitialised values fix works"
+git commit -m "added bonus mark builtin_len(), refactored builtin_cons() to fit in with the spirit of the assignment"
 git push -u origin master
+
