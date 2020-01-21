@@ -145,9 +145,9 @@ typedef struct LispValue {
 } LispValue;
 
 //--------------------------------------------------------------- PROTOTYPES ---
-LispValue *new_lispvalue_number(double number);
-LispValue *new_lispvalue_error(char *message);
-LispValue *new_lispvalue_symbol(char *symbol);
+LispValue *new_lispvalue_number(const double number);
+LispValue *new_lispvalue_error(const char *message);
+LispValue *new_lispvalue_symbol(const char *symbol);
 LispValue *new_lispvalue_sexpr(void);
 LispValue *new_lispvalue_qexpr(void);
 
@@ -161,8 +161,8 @@ LispValue *take_lispvalue(LispValue *lispvalue, int index);
 LispValue *eval_lispvalue_sexpr(LispValue *lispvalue);
 LispValue *eval_lispvalue(LispValue *lispvalue);
 
-LispValue *lookup_builtin(LispValue *arguments, char *symbol);
-LispValue *builtin_operator(LispValue *arguments, char *operator);
+LispValue *lookup_builtin(LispValue *arguments, const char *symbol);
+LispValue *builtin_operator(LispValue *arguments, const char *operator);
 
 void delete_lispvalue(LispValue *lispvalue);
 int are_all_numbers(LispValue *arguments);
@@ -216,7 +216,7 @@ static char *vocabulary[] = {"list",
  * Creates a new LispValue of type number for a given a number
  *   -> pointer to new LispValue number
  */
-LispValue *new_lispvalue_number(double number)
+LispValue *new_lispvalue_number(const double number)
 {
 	LispValue *new_value = malloc(sizeof(LispValue));
 
@@ -231,7 +231,7 @@ LispValue *new_lispvalue_number(double number)
  * Creates a new LispValue of type error for a given a error message
  *   -> pointer to new LispValue error
  */
-LispValue *new_lispvalue_error(char *message)
+LispValue *new_lispvalue_error(const char *message)
 {
 	LispValue *new_value = malloc(sizeof(LispValue));
 
@@ -247,7 +247,7 @@ LispValue *new_lispvalue_error(char *message)
  * Creates a new LispValue of type symbol for a given a symbol
  *   -> pointer to new LispValue symbol
  */
-LispValue *new_lispvalue_symbol(char *symbol)
+LispValue *new_lispvalue_symbol(const char *symbol)
 {
 	LispValue *new_value = malloc(sizeof(LispValue));
 
@@ -263,8 +263,10 @@ LispValue *new_lispvalue_symbol(char *symbol)
  * Creates a new empty LispValue of type sexpr
  *   -> pointer to new LispValue sexpr
  *
- * // TODO init unused field to dummy value to avoid undefined behaviour
+ * todo
+ * - [ ] init unused field to dummy value to avoid undefined behaviour
  */
+
 LispValue *new_lispvalue_sexpr(void)
 {
 	LispValue *new_value = malloc(sizeof(LispValue));
@@ -403,7 +405,9 @@ LispValue *read_lispvalue(mpc_ast_t *ast)
  * Pretty prints given LispValue of type sexpr
  *   -> Nothing
  */
-void print_lispvalue_expr(LispValue *lispvalue, char open, char close)
+void print_lispvalue_expr(LispValue *lispvalue,
+                          const char open,
+                          const char close)
 {
 	putchar(open);
 
@@ -527,7 +531,7 @@ LispValue *eval_lispvalue(LispValue *lispvalue)
  * pointer
  *   -> Extracted LispValue
  */
-LispValue *pop_lispvalue(LispValue *lispvalue, int index)
+LispValue *pop_lispvalue(LispValue *lispvalue, const int index)
 {
 	LispValue *extracted_element = lispvalue->cells[index];
 
@@ -549,7 +553,7 @@ LispValue *pop_lispvalue(LispValue *lispvalue, int index)
  * Deletes the rest
  *   -> Extracted LispValue
  */
-LispValue *take_lispvalue(LispValue *lispvalue, int index)
+LispValue *take_lispvalue(LispValue *lispvalue, const int index)
 {
 	LispValue *extracted_element = pop_lispvalue(lispvalue, index);
 	delete_lispvalue(lispvalue);
@@ -652,11 +656,8 @@ LispValue *builtin_init(LispValue *arguments)
 	LVAL_ASSERT_TYPE(arguments, 0, LVAL_QEXPR, "'init'");
 	LVAL_ASSERT_NONEMPTY(arguments, "'init'");
 
-	// LispValue *init = arguments->cells[0];
 	LispValue *init = take_lispvalue(arguments, 0);
 
-	// LispValue *last = init->cells[init->count - 1];
-	// delete_lispvalue(last);
 	delete_lispvalue(init->cells[init->count - 1]);
 	init->count--;
 	init->cells = realloc(init->cells, sizeof(LispValue *) * init->count);
@@ -793,7 +794,7 @@ LispValue *builtin_len(LispValue *arguments)
  * Calls appropriate builtin function on given LispValue for given Symbol
  *   -> Result LispValue
  */
-LispValue *lookup_builtin(LispValue *arguments, char *symbol)
+LispValue *lookup_builtin(LispValue *arguments, const char *symbol)
 {
 	if (!(strcmp("list", symbol))) {
 		return builtin_list(arguments);
@@ -834,7 +835,7 @@ LispValue *lookup_builtin(LispValue *arguments, char *symbol)
  * the arguments to operate on
  *   -> Evaluation result LispValue
  */
-LispValue *builtin_operator(LispValue *arguments, char *operator)
+LispValue *builtin_operator(LispValue *arguments, const char *operator)
 {
 	if (!(are_all_numbers(arguments))) {
 		delete_lispvalue(arguments);
@@ -917,7 +918,7 @@ LispValue *builtin_operator(LispValue *arguments, char *operator)
  *
  * see https://thoughtbot.com/blog/tab-completion-in-gnu-readline
  */
-char *completion_generator(const char *text, int state)
+char *completion_generator(const char *text, const int state)
 {
 	static int match_index, length;
 	char *match;
@@ -945,8 +946,11 @@ char *completion_generator(const char *text, int state)
 /**
  * Handles custom completion registered to readline global variable
  *   -> Completion matches
+ *
+ * todo
+ * - [ ] fix workaround compiler warning for expected **completer prototype
  */
-char **completer(const char *text, int start, int end)
+char **completer(const char *text, const int start, const int end)
 {
 	/* not doing filename completion even if 0 matches */
 	// rl_attempted_completion_over = 1;
@@ -974,18 +978,21 @@ void print_prompt() { fputs(BOLD FG_GREEN "lispy> " RESET, stdout); }
  * Take and Process user input
  * Cleanup parsers
  *   -> Error code
+ *
+ * todo
+ * - [ ] have a go at const correctness
  */
 int main()
 {
 	//----------------------------------------------------------- playground
 
 	//--------------------------------------------------------------- parser
-	mpc_parser_t *number_parser = mpc_new("number");
-	mpc_parser_t *symbol_parser = mpc_new("symbol");
-	mpc_parser_t *sexpr_parser  = mpc_new("sexpr");
-	mpc_parser_t *qexpr_parser  = mpc_new("qexpr");
-	mpc_parser_t *expr_parser   = mpc_new("expr");
-	mpc_parser_t *lispy_parser  = mpc_new("lispy");
+	const mpc_parser_t *number_parser = mpc_new("number");
+	const mpc_parser_t *symbol_parser = mpc_new("symbol");
+	const mpc_parser_t *sexpr_parser  = mpc_new("sexpr");
+	const mpc_parser_t *qexpr_parser  = mpc_new("qexpr");
+	const mpc_parser_t *expr_parser   = mpc_new("expr");
+	mpc_parser_t *lispy_parser        = mpc_new("lispy");
 
 	mpca_lang(MPCA_LANG_DEFAULT,
 	          "number   : /[-]?[0-9]+[.]?[0-9]*([eE][-+]?[0-9]+)?/ ;"

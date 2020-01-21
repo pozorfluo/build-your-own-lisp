@@ -1,9 +1,9 @@
 # SNAIC
 ![alt text][nvrstap]
- - to do iz slow, to dunt is fastr
- - nuthin last, best is fast  
- - nevr fullow, best is first
- - wurst case scenario : long stories get short
+- to do iz slow, to dunt is fastr
+- nuthin last, best is fast  
+- nevr fullow, best is first
+- wurst case scenario : long stories get short
 
 ---
 

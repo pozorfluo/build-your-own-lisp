@@ -99,7 +99,7 @@ git status
 git add -A
 
 # commit, push
-git commit -m "added bonus mark builtin_len(), refactored builtin_cons() to fit in with the spirit of the assignment"
+git commit -m "made data const where obvious"
 git push -u origin master
 
 #------------------------------------------------------------------ Section ---
