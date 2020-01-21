@@ -182,6 +182,7 @@ static char *vocabulary[] = {"list",
                              "join",
                              "cons",
                              "len",
+                             "init",
                              "eval",
                              "+",
                              "-",
@@ -212,9 +213,8 @@ static char *vocabulary[] = {"list",
 
 //----------------------------------------------------------------- Function ---
 /**
- * creates a new LispValue of type number for a given a number
- *
- *   -> pointer to a LispValue number
+ * Creates a new LispValue of type number for a given a number
+ *   -> pointer to new LispValue number
  */
 LispValue *new_lispvalue_number(double number)
 {
@@ -228,9 +228,8 @@ LispValue *new_lispvalue_number(double number)
 
 //----------------------------------------------------------------- Function ---
 /**
- * creates a new LispValue of type error for a given a error message
- *
- *   -> pointer to a LispValue error
+ * Creates a new LispValue of type error for a given a error message
+ *   -> pointer to new LispValue error
  */
 LispValue *new_lispvalue_error(char *message)
 {
@@ -245,18 +244,15 @@ LispValue *new_lispvalue_error(char *message)
 
 //----------------------------------------------------------------- Function ---
 /**
- * creates a new LispValue of type symbol for a given a symbol
- *
- *   -> pointer to a LispValue symbol
+ * Creates a new LispValue of type symbol for a given a symbol
+ *   -> pointer to new LispValue symbol
  */
 LispValue *new_lispvalue_symbol(char *symbol)
 {
 	LispValue *new_value = malloc(sizeof(LispValue));
 
-	new_value->type = LVAL_SYMBOL;
-	// printf(FG_BRIGHT_RED "\n%s\n" RESET, symbol);
+	new_value->type   = LVAL_SYMBOL;
 	new_value->symbol = malloc(strlen(symbol) + 1);
-
 	strcpy(new_value->symbol, symbol);
 
 	return new_value;
@@ -265,8 +261,9 @@ LispValue *new_lispvalue_symbol(char *symbol)
 //----------------------------------------------------------------- Function ---
 /**
  * Creates a new empty LispValue of type sexpr
+ *   -> pointer to new LispValue sexpr
  *
- *   -> pointer to a LispValue sexpr
+ * // TODO init unused field to dummy value to avoid undefined behaviour
  */
 LispValue *new_lispvalue_sexpr(void)
 {
@@ -282,8 +279,7 @@ LispValue *new_lispvalue_sexpr(void)
 //----------------------------------------------------------------- Function ---
 /**
  * Creates a new empty LispValue of type qexpr
- *
- *   -> pointer to a LispValue qexpr
+ *   -> pointer to new LispValue qexpr
  */
 LispValue *new_lispvalue_qexpr(void)
 {
@@ -299,7 +295,6 @@ LispValue *new_lispvalue_qexpr(void)
 //----------------------------------------------------------------- Function ---
 /**
  * Frees given LispValue ressources according to its type
- *
  *   -> nothing
  */
 void delete_lispvalue(LispValue *lispvalue)
@@ -336,7 +331,6 @@ void delete_lispvalue(LispValue *lispvalue)
 //----------------------------------------------------------------- Function ---
 /**
  * Evaluates given AST node of type number
- *
  *   -> pointer to a LispValue number
  */
 LispValue *read_lispvalue_number(mpc_ast_t *ast)
@@ -352,7 +346,6 @@ LispValue *read_lispvalue_number(mpc_ast_t *ast)
 /**
  * Adds a given LispValue to the list of expressions of a given LispValue
  * of type sexpr or qexpr
- *
  *   -> pointer to given LispValue sexpr
  */
 LispValue *add_lispvalue(LispValue *expr, LispValue *lispvalue)
@@ -367,7 +360,6 @@ LispValue *add_lispvalue(LispValue *expr, LispValue *lispvalue)
 //----------------------------------------------------------------- Function ---
 /**
  * Traverses given AST and evaluates the expression
- *
  *   -> pointer to a LispValue
  */
 LispValue *read_lispvalue(mpc_ast_t *ast)
@@ -409,7 +401,6 @@ LispValue *read_lispvalue(mpc_ast_t *ast)
 //----------------------------------------------------------------- Function ---
 /**
  * Pretty prints given LispValue of type sexpr
- *
  *   -> Nothing
  */
 void print_lispvalue_expr(LispValue *lispvalue, char open, char close)
@@ -427,7 +418,6 @@ void print_lispvalue_expr(LispValue *lispvalue, char open, char close)
 //----------------------------------------------------------------- Function ---
 /**
  * Pretty prints given LispValue according to its type
- *
  *   -> Nothing
  */
 void print_lispvalue(LispValue *lispvalue)
@@ -461,7 +451,6 @@ void print_lispvalue(LispValue *lispvalue)
 //----------------------------------------------------------------- Function ---
 /**
  * Pretty prints given LispValue followed by newline
- *
  *   -> Nothing
  */
 void print_lispvalue_newline(LispValue *lispvalue)
@@ -473,7 +462,6 @@ void print_lispvalue_newline(LispValue *lispvalue)
 //----------------------------------------------------------------- Function ---
 /**
  * Evaluates given LispValue of type sexpr
- *
  *   -> pointer to result LispValue
  */
 LispValue *eval_lispvalue_sexpr(LispValue *lispvalue)
@@ -520,7 +508,6 @@ LispValue *eval_lispvalue_sexpr(LispValue *lispvalue)
 //----------------------------------------------------------------- Function ---
 /**
  * Evaluates given LispValue
- *
  *   -> pointer to result LispValue
  */
 LispValue *eval_lispvalue(LispValue *lispvalue)
@@ -538,7 +525,6 @@ LispValue *eval_lispvalue(LispValue *lispvalue)
  * Extracts single element from given LispValue of type sexpr
  * Shifts the rest of element list pointer backward over extracted element
  * pointer
- *
  *   -> Extracted LispValue
  */
 LispValue *pop_lispvalue(LispValue *lispvalue, int index)
@@ -561,7 +547,6 @@ LispValue *pop_lispvalue(LispValue *lispvalue, int index)
 /**
  * Extracts single element from given LispValue of type sexpr
  * Deletes the rest
- *
  *   -> Extracted LispValue
  */
 LispValue *take_lispvalue(LispValue *lispvalue, int index)
@@ -576,7 +561,6 @@ LispValue *take_lispvalue(LispValue *lispvalue, int index)
 /**
  * Goes over all elements of given LispValue
  * Checks that they are all of type number
- *
  *   -> Truth value of predicate
  *
  */
@@ -601,8 +585,7 @@ int are_all_numbers(LispValue *arguments)
  *   Ensure that Q-Expression is not empty
  *   Take first element of that Q-Expression
  *   Delete all other elements of that Q-Expression
- *
- *     -> pointer to a Q-Expression
+ *     -> pointer to modified Q-Expression
  */
 LispValue *builtin_head(LispValue *arguments)
 {
@@ -627,8 +610,7 @@ LispValue *builtin_head(LispValue *arguments)
  *   Ensure that Q-Expression is not empty
  *   Take first element of that Q-Expression
  *   Delete first element of that Q-Expression
- *
- *     -> pointer to a Q-Expression
+ *     -> pointer to modified Q-Expression
  */
 LispValue *builtin_tail(LispValue *arguments)
 {
@@ -641,7 +623,6 @@ LispValue *builtin_tail(LispValue *arguments)
 
 	return tail;
 }
-
 //----------------------------------------------------------------- Function ---
 /**
  * Returns a Q-Expression containing given arguments
@@ -653,6 +634,34 @@ LispValue *builtin_list(LispValue *arguments)
 {
 	arguments->type = LVAL_QEXPR;
 	return arguments;
+}
+//----------------------------------------------------------------- Function ---
+/**
+ * Returns a Q-Expression with the last element of given Q-Expression removed
+ *
+ *   Ensure only a single argument is passed
+ *   Ensure that argument is a Q-Expression
+ *   Ensure that Q-Expression is not empty
+ *   Delete last element of that Q-Expression
+ *   Update Q-Expression size
+ *     -> pointer to modified Q-Expression
+ */
+LispValue *builtin_init(LispValue *arguments)
+{
+	LVAL_ASSERT_ARG(arguments, 1, "'init'");
+	LVAL_ASSERT_TYPE(arguments, 0, LVAL_QEXPR, "'init'");
+	LVAL_ASSERT_NONEMPTY(arguments, "'init'");
+
+	// LispValue *init = arguments->cells[0];
+	LispValue *init = take_lispvalue(arguments, 0);
+
+	// LispValue *last = init->cells[init->count - 1];
+	// delete_lispvalue(last);
+	delete_lispvalue(init->cells[init->count - 1]);
+	init->count--;
+	init->cells = realloc(init->cells, sizeof(LispValue *) * init->count);
+
+	return init;
 }
 
 //----------------------------------------------------------------- Function ---
@@ -736,13 +745,6 @@ LispValue *builtin_cons(LispValue *arguments)
 	LVAL_ASSERT_ARG(arguments, 2, "'cons'");
 	LVAL_ASSERT_TYPE(arguments, 1, LVAL_QEXPR, "'cons'");
 
-    // * Add first argument to a new Q-Expression
-    // * Join arguments
-	// LispValue *joined = new_lispvalue_qexpr();
-	// joined = add_lispvalue(joined, pop_lispvalue(arguments, 0));
-	// delete_lispvalue(arguments);
-	// joined = join_lispvalue(joined, pop_lispvalue(arguments, 0));
-	// return joined;
 	LispValue *first_argument = pop_lispvalue(arguments, 0);
 	LispValue *qexpr          = pop_lispvalue(arguments, 0);
 
@@ -755,8 +757,8 @@ LispValue *builtin_cons(LispValue *arguments)
 
 	qexpr->cells[0] = first_argument;
 
-	// todo 
-	//   [] find out why this is necessary after asserting 2 arg and poping twice
+	// todo
+	//   [] find out why this is necessary after asserting 2 arg and poping
 	delete_lispvalue(arguments);
 
 	return qexpr;
@@ -789,7 +791,6 @@ LispValue *builtin_len(LispValue *arguments)
 //----------------------------------------------------------------- Function ---
 /**
  * Calls appropriate builtin function on given LispValue for given Symbol
- *
  *   -> Result LispValue
  */
 LispValue *lookup_builtin(LispValue *arguments, char *symbol)
@@ -812,6 +813,9 @@ LispValue *lookup_builtin(LispValue *arguments, char *symbol)
 	else if (!(strcmp("len", symbol))) {
 		return builtin_len(arguments);
 	}
+	else if (!(strcmp("init", symbol))) {
+		return builtin_init(arguments);
+	}
 	else if (!(strcmp("eval", symbol))) {
 		return builtin_eval(arguments);
 	}
@@ -828,7 +832,6 @@ LispValue *lookup_builtin(LispValue *arguments, char *symbol)
 /**
  * Performs operation for given operator and LispValue representing all
  * the arguments to operate on
- *
  *   -> Evaluation result LispValue
  */
 LispValue *builtin_operator(LispValue *arguments, char *operator)
@@ -910,9 +913,7 @@ LispValue *builtin_operator(LispValue *arguments, char *operator)
 //----------------------------------------------------------------- Function ---
 /**
  * Generates auto-completes matches from global word vocabulary
- *
  *   -> Returns matches from vocabulary
- *
  *
  * see https://thoughtbot.com/blog/tab-completion-in-gnu-readline
  */
@@ -943,9 +944,7 @@ char *completion_generator(const char *text, int state)
 //----------------------------------------------------------------- Function ---
 /**
  * Handles custom completion registered to readline global variable
- *
  *   -> Completion matches
- *
  */
 char **completer(const char *text, int start, int end)
 {
@@ -963,17 +962,18 @@ char **completer(const char *text, int start, int end)
 //----------------------------------------------------------------- Function ---
 /**
  * pretty prints a prompt
- *
  *   -> Nothing
- *
  */
 void print_prompt() { fputs(BOLD FG_GREEN "lispy> " RESET, stdout); }
 
 //--------------------------------------------------------------------- MAIN ---
 /**
- *
+ * Setup parsers
+ * Setup completer
+ * Print intro
+ * Take and Process user input
+ * Cleanup parsers
  *   -> Error code
- *
  */
 int main()
 {
@@ -990,7 +990,7 @@ int main()
 	mpca_lang(MPCA_LANG_DEFAULT,
 	          "number   : /[-]?[0-9]+[.]?[0-9]*([eE][-+]?[0-9]+)?/ ;"
 	          "symbol   : \"list\" | \"head\" | \"tail\" | \"join\" | \"cons\" "
-	          "         | \"len\" | \"eval\""
+	          "         | \"len\" | \"init\" | \"eval\""
 	          "         | '+' | '-' | '*' | '/' | '%' | '^' | '>' | '<' ;"
 	          "sexpr    : '(' <expr>* ')' ;"
 	          "qexpr    : '{' <expr>* '}' ;"

@@ -55,23 +55,27 @@
 
 ;; bonus mark : cons
 ;; valgrind --track-origins=yes ./bin/lisp
-	list 1
-	list 1 {4 5 5}
 	cons 1
 	cons 1 {4 5 5} 5
 	cons 1 {4 5 5} 5 67 {4 6 7}
 	cons {455 5 } 1
+	;; passing
+	list
+	list 1
+	list 1 {4 5 5}
 	cons 1 {4 5 5}
 	cons (+ 1 5.55) {4e44 5 5}
 	cons (1) {4 5 5}
 	cons {1} {4 5 5}
+	cons 5 (list 1 { 45 54 54 })
 
 ;; bonus mark : len
-	len 
 	len 0 4
-	len 1
 	len (255)
+	len 1
 	len {54 4} {54 4}
+	;; passing
+	len 
 	len {54 4}
 	len ({54 4})
 	len {}
@@ -79,3 +83,25 @@
 	len {1 (+ 45  54 ) {5454 54 56e64 -534.44e-7 }}
 	+ 4 (len {1 (+ 45  54 ) {5454 54 56e64 -534.44e-7 }})
 	+ 4 (len {1 (+ 45  54 ) {5454 54 56e64 -534.44e-7 }}) (eval{len { 7 4 5}})
+	len (cons 5 (list 1 { 45 54 54 }))
+
+;; bonus mark : init
+;; valgrind --track-origins=yes --leak-check=full --show-leak-kinds=all ./bin/lisp
+	init 0
+	init 0 1 4
+	init (+ 0 1 4)
+	init {} (+ 0 1 4)
+	init {5 5} (* 0 1 4)
+	init {}
+	init {5 5} {0 1 4}
+	;; passing
+	init
+	init {5 5}
+	init {5}
+	init {5 (- 5 4 3 5)}
+	init {5 (- 5 4 3 5) 5}
+	init {{5 7 52.5e5} (- 5 4 3 5) 5}
+	init {(eval{len {* 7 4 5}}) {5 7 52.5e5} {(- 5 4 3 5) 5}}
+	init {{5 7 52.5e5} {(- 5 4 3 5) 5} (eval{len { 7 4 5}})}
+	+ 4 (len {1 (+ 45  54 ) {5454 54 56e64 -534.44e-7 }}) (eval{len { 7 4 5}}) 
+	eval {+ (len {eval(init{* 7 4 5})}) 5}
