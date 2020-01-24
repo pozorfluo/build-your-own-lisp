@@ -11,13 +11,12 @@
 
 //-------------------------------------------------------------- ANSI MACROS ---
 /**
-    * see https://invisible-island.net/xterm/ctlseqs/ctlseqs.html
-    *
-    * todo
-    *   [] clarify which are ready-made sequences
-    *   [] clarify which are bits to be expanded into sequence
-    *
-    */
+ * see https://invisible-island.net/xterm/ctlseqs/ctlseqs.html
+ *
+ * todo
+ *   [] clarify which are ready-made sequences
+ *   [] clarify which are bits to be expanded into sequence
+ */
 #define ESC "\x1b"
 
 #define RESET ESC "[0m"
@@ -122,58 +121,64 @@
 	       args->symbol,                                                       \
 	       args->count);
 
+/**
+ * Suppresses compiler warning about unused parameters needed in
+ * function signatures
+ *
+ * Debating whether to use gcc specific __attribute__((unused)) or this
+ */
+#define UNUSED(_parameter) (void)(_parameter)
+
 //------------------------------------------------------------- DEBUG MACROS ---
 
-//-------------------------------------------------------------------- ENUMS ---
+//----------------------------------------------------- FORWARD DECLARATIONS ---
+struct LispValue;
+struct LispEnv;
+typedef struct LispValue LispValue;
+typedef struct LispEnv LispEnv;
+//------------------------------------------------------------- DECLARATIONS ---
+
 enum LispValueType {
 	LVAL_ERR,
 	LVAL_NUMBER,
 	LVAL_SYMBOL,
+	LVAL_FUNCTION,
 	LVAL_SEXPR,
 	LVAL_QEXPR
 };
 
-//----------------------------------------------------------------- TYPEDEFS ---
-typedef struct LispValue {
+typedef LispValue *(*LispBuiltin)(LispEnv *, LispValue *);
+
+struct LispValue {
 	int type;
+
 	double number;
 	char *error;
 	char *symbol;
-	/* sexpr */
+	LispBuiltin function;
+
 	int count;
 	struct LispValue **cells;
-} LispValue;
+};
+
+struct LispEnv {
+	/* entries in each list match their corresponding */
+	/* entry in the other list by index */
+	int count;
+	char **symbols;
+	LispValue **values;
+};
 
 //--------------------------------------------------------------- PROTOTYPES ---
-LispValue *new_lispvalue_number(const double number);
-LispValue *new_lispvalue_error(const char *message);
-LispValue *new_lispvalue_symbol(const char *symbol);
-LispValue *new_lispvalue_sexpr(void);
-LispValue *new_lispvalue_qexpr(void);
-
-LispValue *read_lispvalue_number(mpc_ast_t *ast);
-LispValue *add_lispvalue(LispValue *sexpr, LispValue *lispvalue);
-LispValue *read_lispvalue(mpc_ast_t *ast);
-
-LispValue *pop_lispvalue(LispValue *lispvalue, int index);
-LispValue *take_lispvalue(LispValue *lispvalue, int index);
-
-LispValue *eval_lispvalue_sexpr(LispValue *lispvalue);
-LispValue *eval_lispvalue(LispValue *lispvalue);
-
+LispValue *
+builtin_operator(LispEnv *lispenv, LispValue *arguments, const char *operator);
 LispValue *lookup_builtin(LispValue *arguments, const char *symbol);
-LispValue *builtin_operator(LispValue *arguments, const char *operator);
-
-void delete_lispvalue(LispValue *lispvalue);
-int are_all_numbers(LispValue *arguments);
-
-void print_lispvalue_expr(LispValue *lispvalue, char open, char close);
+LispValue *take_lispvalue(LispValue *lispvalue, int index);
+LispValue *pop_lispvalue(LispValue *lispvalue, int index);
+LispValue *eval_lispvalue(LispEnv *lispenv, LispValue *lispvalue);
+LispValue *copy_lispvalue(LispValue *lispvalue);
 void print_lispvalue(LispValue *lispvalue);
-void print_lispvalue_newline(LispValue *lispvalue);
 
-char *completion_generator(const char *text, int state);
-char **completer(const char *text, int start, int end);
-void print_prompt();
 //-------------------------------------------------- STATIC GLOBAL VARIABLES ---
 /* Readline auto-completion configuration */
 static char *vocabulary[] = {"list",
@@ -260,6 +265,36 @@ LispValue *new_lispvalue_symbol(const char *symbol)
 
 //----------------------------------------------------------------- Function ---
 /**
+ * Creates a new empty LispValue of type function
+ *   -> pointer to new LispValue function
+ */
+LispValue *new_lispvalue_function(LispBuiltin function)
+{
+	LispValue *new_value = malloc(sizeof(LispValue));
+
+	new_value->type     = LVAL_FUNCTION;
+	new_value->function = function;
+
+	return new_value;
+}
+
+//----------------------------------------------------------------- Function ---
+/**
+ * Creaes a new empty LispEnvironment
+ *
+ *   -> pointer to new LispEnvironment
+ */
+LispEnv *new_lispenv(void)
+{
+	LispEnv *new_env = malloc(sizeof(LispEnv));
+	new_env->count   = 0;
+	new_env->symbols = NULL;
+	new_env->values  = NULL;
+	return new_env;
+}
+
+//----------------------------------------------------------------- Function ---
+/**
  * Creates a new empty LispValue of type sexpr
  *   -> pointer to new LispValue sexpr
  *
@@ -314,6 +349,9 @@ void delete_lispvalue(LispValue *lispvalue)
 		free(lispvalue->symbol);
 		break;
 
+	case LVAL_FUNCTION:
+		break;
+
 	case LVAL_SEXPR:
 	case LVAL_QEXPR:
 		for (int i = 0; i < lispvalue->count; i++) {
@@ -332,6 +370,78 @@ void delete_lispvalue(LispValue *lispvalue)
 
 //----------------------------------------------------------------- Function ---
 /**
+ * Frees given LispEnv ressources
+ *   -> nothing
+ */
+void delete_lispenv(LispEnv *env)
+{
+	for (int i = 0; i < env->count; i++) {
+		free(env->symbols[i]);
+		delete_lispvalue(env->values[i]);
+	}
+	free(env->symbols);
+	free(env->values);
+	free(env);
+}
+
+//----------------------------------------------------------------- Function ---
+/**
+ * Gets LispValue associated with given LispValue symbol if any
+ *   -> pointer to new copy of associated LispValue
+ *
+ * Iterate over all items in environment
+ *   If stored symbol match given Lispvalue symbol
+ *     -> a copy of associated value in environment
+ *   -> an error if no symbol match found
+ */
+LispValue *get_lispenv(LispEnv *env, LispValue *value)
+{
+	for (int i = 0; i < env->count; i++) {
+		if (strcmp(env->symbols[i], value->symbol) == 0) {
+			return copy_lispvalue(env->values[i]);
+		}
+	}
+	return new_lispvalue_error("unbound symbol !");
+}
+
+//----------------------------------------------------------------- Function ---
+/**
+ * Creates a new entry in given LispEnvironment for given symbol, value pair
+ * or replaces value associated with existing symbol in given LispEnvironment
+ * with given value
+ *   -> nothing
+ *
+ * Iterate over all items in environment
+ *   If symbol is found
+ *     Delete value at that position
+ *     Replace with copy of given value
+ * 	     -> nothing
+ * Update entry count
+ * Update lists size
+ * Copy contents of given value and symbol into new entry
+ *   -> nothing
+ */
+void put_lispenv(LispEnv *env, LispValue *symbol, LispValue *value)
+{
+	for (int i = 0; i < env->count; i++) {
+		if (strcmp(env->symbols[i], symbol->symbol) == 0) {
+			delete_lispvalue(env->values[i]);
+			env->values[i] = copy_lispvalue(value);
+			return;
+		}
+	}
+
+	env->count++;
+	env->symbols = realloc(env->symbols, sizeof(char *) * env->count);
+	env->values  = realloc(env->values, sizeof(LispValue *) * env->count);
+
+	env->symbols[env->count - 1] = malloc(strlen(symbol->symbol) + 1);
+	strcpy(env->symbols[env->count - 1], symbol->symbol);
+	env->values[env->count - 1] = copy_lispvalue(value);
+}
+
+//----------------------------------------------------------------- Function ---
+/**
  * Evaluates given AST node of type number
  *   -> pointer to a LispValue number
  */
@@ -341,7 +451,7 @@ LispValue *read_lispvalue_number(mpc_ast_t *ast)
 	double number = strtod(ast->contents, NULL);
 
 	return (errno != ERANGE) ? new_lispvalue_number(number)
-	                         : new_lispvalue_error("invalid number");
+	                         : new_lispvalue_error("invalid number !");
 }
 
 //----------------------------------------------------------------- Function ---
@@ -402,6 +512,51 @@ LispValue *read_lispvalue(mpc_ast_t *ast)
 
 //----------------------------------------------------------------- Function ---
 /**
+ * Creates a copy of given LispValue
+ *
+ *   -> pointer to new LispValue
+ */
+LispValue *copy_lispvalue(LispValue *lispvalue)
+{
+	LispValue *copy = malloc(sizeof(LispValue));
+	copy->type      = lispvalue->type;
+
+	switch (lispvalue->type) {
+	case LVAL_NUMBER:
+		copy->number = lispvalue->number;
+		break;
+
+	case LVAL_FUNCTION:
+		copy->function = lispvalue->function;
+		break;
+
+	case LVAL_ERR:
+		copy->error = malloc(strlen(lispvalue->error) + 1);
+		strcpy(copy->error, lispvalue->error);
+		break;
+
+	case LVAL_SYMBOL:
+		copy->symbol = malloc(strlen(lispvalue->symbol) + 1);
+		strcpy(copy->symbol, lispvalue->symbol);
+		break;
+
+	case LVAL_SEXPR:
+	case LVAL_QEXPR:
+		copy->count = lispvalue->count;
+		copy->cells = malloc(sizeof(LispValue *) * copy->count);
+		for (int i = 0; i < copy->count; i++) {
+			copy->cells[i] = copy_lispvalue(lispvalue->cells[i]);
+		}
+
+	default:
+		break;
+	}
+
+	return copy;
+}
+
+//----------------------------------------------------------------- Function ---
+/**
  * Pretty prints given LispValue of type sexpr
  *   -> Nothing
  */
@@ -439,6 +594,10 @@ void print_lispvalue(LispValue *lispvalue)
 		printf(FG_CYAN "%s" RESET, lispvalue->symbol);
 		break;
 
+	case LVAL_FUNCTION:
+		printf(FG_GREEN "<function>" RESET);
+		break;
+
 	case LVAL_SEXPR:
 		print_lispvalue_expr(lispvalue, '(', ')');
 		break;
@@ -468,15 +627,14 @@ void print_lispvalue_newline(LispValue *lispvalue)
  * Evaluates given LispValue of type sexpr
  *   -> pointer to result LispValue
  */
-LispValue *eval_lispvalue_sexpr(LispValue *lispvalue)
+LispValue *eval_lispvalue_sexpr(LispEnv *lispenv, LispValue *lispvalue)
 {
 	/* evaluate children */
 	for (int i = 0; i < lispvalue->count; i++) {
-		lispvalue->cells[i] = eval_lispvalue(lispvalue->cells[i]);
+		lispvalue->cells[i] = eval_lispvalue(lispenv, lispvalue->cells[i]);
 	}
 
 	/* check for errors */
-	/* ? can we abort sooner on error as we evaluate children ? */
 	for (int i = 0; i < lispvalue->count; i++) {
 		if (lispvalue->cells[i]->type == LVAL_ERR) {
 			return take_lispvalue(lispvalue, i);
@@ -492,17 +650,15 @@ LispValue *eval_lispvalue_sexpr(LispValue *lispvalue)
 		return take_lispvalue(lispvalue, 0);
 	}
 	else {
-		/* make sure first element is a symbol */
+		/* make sure first element is a function */
 		LispValue *first_element = pop_lispvalue(lispvalue, 0);
-		if (first_element->type != LVAL_SYMBOL) {
+		if (first_element->type != LVAL_FUNCTION) {
 			delete_lispvalue(first_element);
 			delete_lispvalue(lispvalue);
-			return new_lispvalue_error(
-			    "S-expression does not start with a symbol !");
+			return new_lispvalue_error("first element is not a function !");
 		}
 		else {
-			LispValue *result =
-			    lookup_builtin(lispvalue, first_element->symbol);
+			LispValue *result = first_element->function(lispenv, lispvalue);
 			delete_lispvalue(first_element);
 			return result;
 		}
@@ -514,10 +670,15 @@ LispValue *eval_lispvalue_sexpr(LispValue *lispvalue)
  * Evaluates given LispValue
  *   -> pointer to result LispValue
  */
-LispValue *eval_lispvalue(LispValue *lispvalue)
+LispValue *eval_lispvalue(LispEnv *lispenv, LispValue *lispvalue)
 {
-	if (lispvalue->type == LVAL_SEXPR) {
-		return eval_lispvalue_sexpr(lispvalue);
+	if (lispvalue->type == LVAL_SYMBOL) {
+		LispValue *retrieved_lispvalue = get_lispenv(lispenv, lispvalue);
+		delete_lispvalue(lispvalue);
+		return retrieved_lispvalue;
+	}
+	else if (lispvalue->type == LVAL_SEXPR) {
+		return eval_lispvalue_sexpr(lispenv, lispvalue);
 	}
 	else {
 		return lispvalue;
@@ -582,6 +743,53 @@ int are_all_numbers(LispValue *arguments)
 
 //----------------------------------------------------------------- Function ---
 /**
+ * Calls builtin_operator with appropriate symbol characters for basic math
+ * operations
+ * Used to register function with given LispEnv
+ *  -> Evaluation result LispValue
+ */
+LispValue *builtin_add(LispEnv *env, LispValue *value)
+{
+	return builtin_operator(env, value, "+");
+}
+
+LispValue *builtin_sub(LispEnv *env, LispValue *value)
+{
+	return builtin_operator(env, value, "-");
+}
+
+LispValue *builtin_mul(LispEnv *env, LispValue *value)
+{
+	return builtin_operator(env, value, "*");
+}
+
+LispValue *builtin_div(LispEnv *env, LispValue *value)
+{
+	return builtin_operator(env, value, "/");
+}
+
+LispValue *builtin_mod(LispEnv *env, LispValue *value)
+{
+	return builtin_operator(env, value, "%");
+}
+
+LispValue *builtin_pow(LispEnv *env, LispValue *value)
+{
+	return builtin_operator(env, value, "^");
+}
+
+LispValue *builtin_max(LispEnv *env, LispValue *value)
+{
+	return builtin_operator(env, value, ">");
+}
+
+LispValue *builtin_min(LispEnv *env, LispValue *value)
+{
+	return builtin_operator(env, value, "<");
+}
+
+//----------------------------------------------------------------- Function ---
+/**
  * Returns a Q-Expression with only the first element of given Q-Expression
  *
  *   Ensure only a single argument is passed
@@ -591,8 +799,10 @@ int are_all_numbers(LispValue *arguments)
  *   Delete all other elements of that Q-Expression
  *     -> pointer to modified Q-Expression
  */
-LispValue *builtin_head(LispValue *arguments)
+LispValue *builtin_head(LispEnv *env, LispValue *arguments)
 {
+	UNUSED(env);
+
 	LVAL_ASSERT_ARG(arguments, 1, "'head'");
 	LVAL_ASSERT_TYPE(arguments, 0, LVAL_QEXPR, "'head'");
 	LVAL_ASSERT_NONEMPTY(arguments, "'head'");
@@ -616,8 +826,10 @@ LispValue *builtin_head(LispValue *arguments)
  *   Delete first element of that Q-Expression
  *     -> pointer to modified Q-Expression
  */
-LispValue *builtin_tail(LispValue *arguments)
+LispValue *builtin_tail(LispEnv *env, LispValue *arguments)
 {
+	UNUSED(env);
+
 	LVAL_ASSERT_ARG(arguments, 1, "'tail'");
 	LVAL_ASSERT_TYPE(arguments, 0, LVAL_QEXPR, "'tail'");
 	LVAL_ASSERT_NONEMPTY(arguments, "'tail'");
@@ -634,8 +846,10 @@ LispValue *builtin_tail(LispValue *arguments)
  *   Convert input S-Expression to Q-Expression
  *     -> pointer to a Q-Expression
  */
-LispValue *builtin_list(LispValue *arguments)
+LispValue *builtin_list(LispEnv *env, LispValue *arguments)
 {
+	UNUSED(env);
+
 	arguments->type = LVAL_QEXPR;
 	return arguments;
 }
@@ -650,8 +864,10 @@ LispValue *builtin_list(LispValue *arguments)
  *   Update Q-Expression size
  *     -> pointer to modified Q-Expression
  */
-LispValue *builtin_init(LispValue *arguments)
+LispValue *builtin_init(LispEnv *env, LispValue *arguments)
 {
+	UNUSED(env);
+
 	LVAL_ASSERT_ARG(arguments, 1, "'init'");
 	LVAL_ASSERT_TYPE(arguments, 0, LVAL_QEXPR, "'init'");
 	LVAL_ASSERT_NONEMPTY(arguments, "'init'");
@@ -675,15 +891,17 @@ LispValue *builtin_init(LispValue *arguments)
  *   Evaluate converted S-Expression
  *     -> pointer to result LispValue
  */
-LispValue *builtin_eval(LispValue *arguments)
+LispValue *builtin_eval(LispEnv *env, LispValue *arguments)
 {
+	UNUSED(env);
+
 	LVAL_ASSERT_ARG(arguments, 1, "'eval'");
 	LVAL_ASSERT_TYPE(arguments, 0, LVAL_QEXPR, "'eval'");
 
 	LispValue *expression = take_lispvalue(arguments, 0);
 	expression->type      = LVAL_SEXPR;
 
-	return eval_lispvalue(expression);
+	return eval_lispvalue(env, expression);
 }
 //----------------------------------------------------------------- Function ---
 /**
@@ -712,8 +930,10 @@ LispValue *join_lispvalue(LispValue *first, LispValue *second)
  *   Join arguments
  *     -> pointer to joined Q-Expression
  */
-LispValue *builtin_join(LispValue *arguments)
+LispValue *builtin_join(LispEnv *env, LispValue *arguments)
 {
+	UNUSED(env);
+
 	for (int i = 0; i < arguments->count; i++) {
 		LVAL_ASSERT_TYPE(arguments, i, LVAL_QEXPR, "'join'");
 	}
@@ -741,8 +961,10 @@ LispValue *builtin_join(LispValue *arguments)
  *   Delete original arguments
  *     -> pointer to modified Q-Expression
  */
-LispValue *builtin_cons(LispValue *arguments)
+LispValue *builtin_cons(LispEnv *env, LispValue *arguments)
 {
+	UNUSED(env);
+
 	LVAL_ASSERT_ARG(arguments, 2, "'cons'");
 	LVAL_ASSERT_TYPE(arguments, 1, LVAL_QEXPR, "'cons'");
 
@@ -776,8 +998,10 @@ LispValue *builtin_cons(LispValue *arguments)
  *     -> length as new LispValue of type number
 
  */
-LispValue *builtin_len(LispValue *arguments)
+LispValue *builtin_len(LispEnv *env, LispValue *arguments)
 {
+	UNUSED(env);
+
 	LVAL_ASSERT_ARG(arguments, 1, "'len'");
 	LVAL_ASSERT_TYPE(arguments, 0, LVAL_QEXPR, "'len'");
 
@@ -794,39 +1018,83 @@ LispValue *builtin_len(LispValue *arguments)
  * Calls appropriate builtin function on given LispValue for given Symbol
  *   -> Result LispValue
  */
-LispValue *lookup_builtin(LispValue *arguments, const char *symbol)
+// LispValue *lookup_builtin(LispValue *arguments, const char *symbol)
+// {
+// 	if (!(strcmp("list", symbol))) {
+// 		return builtin_list(arguments);
+// 	}
+// 	else if (!(strcmp("head", symbol))) {
+// 		return builtin_head(arguments);
+// 	}
+// 	else if (!(strcmp("tail", symbol))) {
+// 		return builtin_tail(arguments);
+// 	}
+// 	else if (!(strcmp("join", symbol))) {
+// 		return builtin_join(arguments);
+// 	}
+// 	else if (!(strcmp("cons", symbol))) {
+// 		return builtin_cons(arguments);
+// 	}
+// 	else if (!(strcmp("len", symbol))) {
+// 		return builtin_len(arguments);
+// 	}
+// 	else if (!(strcmp("init", symbol))) {
+// 		return builtin_init(arguments);
+// 	}
+// 	else if (!(strcmp("eval", symbol))) {
+// 		return builtin_eval(arguments);
+// 	}
+// 	else if ((strstr("+-*/%^><", symbol))) {
+// 		return builtin_operator(arguments, symbol);
+// 	}
+// 	else {
+// 		delete_lispvalue(arguments);
+// 		return new_lispvalue_error("Unknown function !");
+// 	}
+// }
+
+//----------------------------------------------------------------- Function ---
+/**
+ * Registers given builtin function and  given name as symbol with given LispEnv
+ *   -> Nothing
+ */
+void add_builtin_lispenv(LispEnv *env, char *name, LispBuiltin function)
 {
-	if (!(strcmp("list", symbol))) {
-		return builtin_list(arguments);
-	}
-	else if (!(strcmp("head", symbol))) {
-		return builtin_head(arguments);
-	}
-	else if (!(strcmp("tail", symbol))) {
-		return builtin_tail(arguments);
-	}
-	else if (!(strcmp("join", symbol))) {
-		return builtin_join(arguments);
-	}
-	else if (!(strcmp("cons", symbol))) {
-		return builtin_cons(arguments);
-	}
-	else if (!(strcmp("len", symbol))) {
-		return builtin_len(arguments);
-	}
-	else if (!(strcmp("init", symbol))) {
-		return builtin_init(arguments);
-	}
-	else if (!(strcmp("eval", symbol))) {
-		return builtin_eval(arguments);
-	}
-	else if ((strstr("+-*/%^><", symbol))) {
-		return builtin_operator(arguments, symbol);
-	}
-	else {
-		delete_lispvalue(arguments);
-		return new_lispvalue_error("Unknown function !");
-	}
+	LispValue *symbol = new_lispvalue_symbol(name);
+	LispValue *value  = new_lispvalue_function(function);
+
+	put_lispenv(env, symbol, value);
+	delete_lispvalue(symbol);
+	delete_lispvalue(value);
+}
+
+void add_basicbuiltins_lispenv(LispEnv *env)
+{
+	add_builtin_lispenv(env, "add", builtin_add);
+	add_builtin_lispenv(env, "sub", builtin_sub);
+	add_builtin_lispenv(env, "mul", builtin_mul);
+	add_builtin_lispenv(env, "div", builtin_div);
+	add_builtin_lispenv(env, "mod", builtin_mod);
+	add_builtin_lispenv(env, "pow", builtin_pow);
+	add_builtin_lispenv(env, "max", builtin_max);
+	add_builtin_lispenv(env, "min", builtin_min);
+	add_builtin_lispenv(env, "+", builtin_add);
+	add_builtin_lispenv(env, "-", builtin_sub);
+	add_builtin_lispenv(env, "*", builtin_mul);
+	add_builtin_lispenv(env, "/", builtin_div);
+	add_builtin_lispenv(env, "%", builtin_mod);
+	add_builtin_lispenv(env, "^", builtin_pow);
+	add_builtin_lispenv(env, ">", builtin_max);
+	add_builtin_lispenv(env, "<", builtin_min);
+
+	add_builtin_lispenv(env, "head", builtin_head);
+	add_builtin_lispenv(env, "tail", builtin_tail);
+	add_builtin_lispenv(env, "list", builtin_list);
+	add_builtin_lispenv(env, "init", builtin_init);
+	add_builtin_lispenv(env, "eval", builtin_eval);
+	add_builtin_lispenv(env, "join", builtin_join);
+	add_builtin_lispenv(env, "cons", builtin_cons);
+	add_builtin_lispenv(env, "len", builtin_len);
 }
 
 //----------------------------------------------------------------- Function ---
@@ -835,8 +1103,11 @@ LispValue *lookup_builtin(LispValue *arguments, const char *symbol)
  * the arguments to operate on
  *   -> Evaluation result LispValue
  */
-LispValue *builtin_operator(LispValue *arguments, const char *operator)
+LispValue *
+builtin_operator(LispEnv *env, LispValue *arguments, const char *operator)
 {
+	UNUSED(env);
+
 	if (!(are_all_numbers(arguments))) {
 		delete_lispvalue(arguments);
 		return new_lispvalue_error("Cannot operate on non-number !");
@@ -957,8 +1228,8 @@ char **completer(const char *text, const int start, const int end)
 
 	/* readline expects char** fn(char*, int, int) */
 	/* temp workaround compiler warnings for unused-parameters */
-	int unused = start + end;
-	unused++;
+	UNUSED(start);
+	UNUSED(end);
 
 	return rl_completion_matches(text, &completion_generator);
 }
@@ -996,9 +1267,7 @@ int main()
 
 	mpca_lang(MPCA_LANG_DEFAULT,
 	          "number   : /[-]?[0-9]+[.]?[0-9]*([eE][-+]?[0-9]+)?/ ;"
-	          "symbol   : \"list\" | \"head\" | \"tail\" | \"join\" | \"cons\" "
-	          "         | \"len\" | \"init\" | \"eval\""
-	          "         | '+' | '-' | '*' | '/' | '%' | '^' | '>' | '<' ;"
+	          "symbol   : /[a-zA-Z0-9_+\\-*%^\\/\\\\=<>!&]+/ ;"
 	          "sexpr    : '(' <expr>* ')' ;"
 	          "qexpr    : '{' <expr>* '}' ;"
 	          "expr     : <number> | <symbol> | <sexpr> | <qexpr> ;"
@@ -1017,6 +1286,10 @@ int main()
 	//---------------------------------------------------------------- intro
 	puts(BG_BLUE "Lispy version 0.0.0.0.1 " RESET FG_BRIGHT_CYAN
 	             "to Exit press CTRL + C" RESET);
+
+	//----------------------------------------------------- lisp environment
+	LispEnv * lispenv = new_lispenv();
+	add_basicbuiltins_lispenv(lispenv);
 
 	//----------------------------------------------------------- input loop
 	for (;;) {
@@ -1037,7 +1310,7 @@ int main()
 				LispValue *lispvalue_result = read_lispvalue(mpc_result.output);
 				print_lispvalue_newline(lispvalue_result);
 
-				lispvalue_result = eval_lispvalue(lispvalue_result);
+				lispvalue_result = eval_lispvalue(lispenv, lispvalue_result);
 				print_lispvalue_newline(lispvalue_result);
 				delete_lispvalue(lispvalue_result);
 

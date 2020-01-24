@@ -5,6 +5,7 @@ AlignConsecutiveAssignments: true
 AlignConsecutiveDeclarations: false
 AlignAfterOpenBracket: AlwaysBreak
 AlignEscapedNewlinesLeft: false
+AlignOperands: true
 UseTab: ForIndentation
 IndentWidth: 4
 TabWidth: 4

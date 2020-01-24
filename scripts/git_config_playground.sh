@@ -99,7 +99,7 @@ git status
 git add -A
 
 # commit, push
-git commit -m "made data const where obvious"
+git commit -m "chapter 11 : added env and variables"
 git push -u origin master
 
 #------------------------------------------------------------------ Section ---
