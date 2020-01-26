@@ -145,3 +145,37 @@
 	join {+ 5 654 542 2.212 6.3e4} { 5 654 542 2.212 6.3e4}
 	cons {+ 5 654 542 2.212 6.3e4} { 5 654 542 2.212 6.3e4}
 	len  {+ 5 654 542 2.212 6.3e4}
+
+;; chapter 11 : def
+	def 5
+	def 3 5
+	def {5 4} 4 5
+	def {5 x} 4 5
+	def {x 5} 4 5
+	def {x y} 4
+	def {x } 4 5
+	;; passing
+	def
+	;; <function>
+	def {x} 100
+	;; ()
+	def {y} 200
+	;; ()
+	x
+	;; 100
+	y
+	;; 200
+	+ x y
+	;; 300
+	def {a b} 5 6
+	;; ()
+	+ a b
+	;; 11
+	def {arglist} {a b x y}
+	;; ()
+	arglist
+	;; {a b x y}
+	def arglist 1 2 3 4
+	;; ()
+	list a b x y
+	;; {1 2 3 4}

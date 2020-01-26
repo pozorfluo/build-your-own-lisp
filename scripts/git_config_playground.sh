@@ -99,7 +99,7 @@ git status
 git add -A
 
 # commit, push
-git commit -m "chapter 11 : added env and variables"
+git commit -m "chapter 11 : added define function"
 git push -u origin master
 
 #------------------------------------------------------------------ Section ---

@@ -87,6 +87,12 @@
 #define ANSI(SEQUENCE) ESC "[" SEQUENCE "m"
 
 //------------------------------------------------------------------- MACROS ---
+#define LVAL_ASSERT_CONDITION(args, condition, symbol, message)                \
+	if (!(condition)) {                                                        \
+		delete_lispvalue(args);                                                \
+		return new_lispvalue_error("Function " symbol message);                 \
+	}
+
 #define LVAL_ASSERT_ARG(args, expected_count, symbol)                          \
 	if (args->count != expected_count) {                                       \
 		delete_lispvalue(args);                                                \
@@ -170,6 +176,11 @@ struct LispEnv {
 };
 
 //--------------------------------------------------------------- PROTOTYPES ---
+/*
+ * todo
+ * - [ ] rename parameters to be more consistent overall but still locally
+ * unambiguously relevant
+ */
 LispValue *
 builtin_operator(LispEnv *lispenv, LispValue *arguments, const char *operator);
 LispValue *lookup_builtin(LispValue *arguments, const char *symbol);
@@ -1015,86 +1026,41 @@ LispValue *builtin_len(LispEnv *env, LispValue *arguments)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Calls appropriate builtin function on given LispValue for given Symbol
- *   -> Result LispValue
+ * Adds symbol, value pairs from a given Q-Expression list of symbols
+ * and given list of LispValue to given LispEnv
+ *
+ *   Ensure first argument passed is a Q-Expression
+ *   Ensure all elements listed in first argument are symbols
+ *   Ensure passed list of LispValue count match symbols list count
+ *   Add each symbol, value pair to given LispEnv
+ *     -> pointer to LispValue error or empty S-Expression
  */
-// LispValue *lookup_builtin(LispValue *arguments, const char *symbol)
-// {
-// 	if (!(strcmp("list", symbol))) {
-// 		return builtin_list(arguments);
-// 	}
-// 	else if (!(strcmp("head", symbol))) {
-// 		return builtin_head(arguments);
-// 	}
-// 	else if (!(strcmp("tail", symbol))) {
-// 		return builtin_tail(arguments);
-// 	}
-// 	else if (!(strcmp("join", symbol))) {
-// 		return builtin_join(arguments);
-// 	}
-// 	else if (!(strcmp("cons", symbol))) {
-// 		return builtin_cons(arguments);
-// 	}
-// 	else if (!(strcmp("len", symbol))) {
-// 		return builtin_len(arguments);
-// 	}
-// 	else if (!(strcmp("init", symbol))) {
-// 		return builtin_init(arguments);
-// 	}
-// 	else if (!(strcmp("eval", symbol))) {
-// 		return builtin_eval(arguments);
-// 	}
-// 	else if ((strstr("+-*/%^><", symbol))) {
-// 		return builtin_operator(arguments, symbol);
-// 	}
-// 	else {
-// 		delete_lispvalue(arguments);
-// 		return new_lispvalue_error("Unknown function !");
-// 	}
-// }
-
-//----------------------------------------------------------------- Function ---
-/**
- * Registers given builtin function and  given name as symbol with given LispEnv
- *   -> Nothing
- */
-void add_builtin_lispenv(LispEnv *env, char *name, LispBuiltin function)
+LispValue *builtin_def(LispEnv *env, LispValue *arguments)
 {
-	LispValue *symbol = new_lispvalue_symbol(name);
-	LispValue *value  = new_lispvalue_function(function);
+	LVAL_ASSERT_TYPE(arguments, 0, LVAL_QEXPR, "'def'");
 
-	put_lispenv(env, symbol, value);
-	delete_lispvalue(symbol);
-	delete_lispvalue(value);
-}
+	LispValue *symbols = arguments->cells[0];
 
-void add_basicbuiltins_lispenv(LispEnv *env)
-{
-	add_builtin_lispenv(env, "add", builtin_add);
-	add_builtin_lispenv(env, "sub", builtin_sub);
-	add_builtin_lispenv(env, "mul", builtin_mul);
-	add_builtin_lispenv(env, "div", builtin_div);
-	add_builtin_lispenv(env, "mod", builtin_mod);
-	add_builtin_lispenv(env, "pow", builtin_pow);
-	add_builtin_lispenv(env, "max", builtin_max);
-	add_builtin_lispenv(env, "min", builtin_min);
-	add_builtin_lispenv(env, "+", builtin_add);
-	add_builtin_lispenv(env, "-", builtin_sub);
-	add_builtin_lispenv(env, "*", builtin_mul);
-	add_builtin_lispenv(env, "/", builtin_div);
-	add_builtin_lispenv(env, "%", builtin_mod);
-	add_builtin_lispenv(env, "^", builtin_pow);
-	add_builtin_lispenv(env, ">", builtin_max);
-	add_builtin_lispenv(env, "<", builtin_min);
+	for (int i = 0; i < symbols->count; i++) {
+		// if we use this macro we never delete_lispvalue(arguments)
+		// LVAL_ASSERT_TYPE(symbols, i, LVAL_SYMBOL, "'def'");
+		LVAL_ASSERT_CONDITION(arguments,
+		                      symbols->cells[i]->type == LVAL_SYMBOL,
+		                      "'def'",
+		                      " cannot define non-symbol !");
+	}
 
-	add_builtin_lispenv(env, "head", builtin_head);
-	add_builtin_lispenv(env, "tail", builtin_tail);
-	add_builtin_lispenv(env, "list", builtin_list);
-	add_builtin_lispenv(env, "init", builtin_init);
-	add_builtin_lispenv(env, "eval", builtin_eval);
-	add_builtin_lispenv(env, "join", builtin_join);
-	add_builtin_lispenv(env, "cons", builtin_cons);
-	add_builtin_lispenv(env, "len", builtin_len);
+	LVAL_ASSERT_CONDITION(arguments,
+	                      symbols->count == arguments->count - 1,
+	                      "'def'",
+	                      " passed non-matching number of values and symbols");
+
+	for (int i = 0; i < symbols->count; i++) {
+		put_lispenv(env, symbols->cells[i], arguments->cells[i + 1]);
+	}
+
+	delete_lispvalue(arguments);
+	return new_lispvalue_sexpr();
 }
 
 //----------------------------------------------------------------- Function ---
@@ -1180,6 +1146,51 @@ builtin_operator(LispEnv *env, LispValue *arguments, const char *operator)
 		delete_lispvalue(arguments);
 		return first_argument;
 	}
+}
+
+//----------------------------------------------------------------- Function ---
+/**
+ * Registers given builtin function and  given name as symbol with given LispEnv
+ *   -> Nothing
+ */
+void add_builtin_lispenv(LispEnv *env, char *name, LispBuiltin function)
+{
+	LispValue *symbol = new_lispvalue_symbol(name);
+	LispValue *value  = new_lispvalue_function(function);
+
+	put_lispenv(env, symbol, value);
+	delete_lispvalue(symbol);
+	delete_lispvalue(value);
+}
+
+void add_basicbuiltins_lispenv(LispEnv *env)
+{
+	add_builtin_lispenv(env, "add", builtin_add);
+	add_builtin_lispenv(env, "sub", builtin_sub);
+	add_builtin_lispenv(env, "mul", builtin_mul);
+	add_builtin_lispenv(env, "div", builtin_div);
+	add_builtin_lispenv(env, "mod", builtin_mod);
+	add_builtin_lispenv(env, "pow", builtin_pow);
+	add_builtin_lispenv(env, "max", builtin_max);
+	add_builtin_lispenv(env, "min", builtin_min);
+	add_builtin_lispenv(env, "+", builtin_add);
+	add_builtin_lispenv(env, "-", builtin_sub);
+	add_builtin_lispenv(env, "*", builtin_mul);
+	add_builtin_lispenv(env, "/", builtin_div);
+	add_builtin_lispenv(env, "%", builtin_mod);
+	add_builtin_lispenv(env, "^", builtin_pow);
+	add_builtin_lispenv(env, ">", builtin_max);
+	add_builtin_lispenv(env, "<", builtin_min);
+
+	add_builtin_lispenv(env, "head", builtin_head);
+	add_builtin_lispenv(env, "tail", builtin_tail);
+	add_builtin_lispenv(env, "list", builtin_list);
+	add_builtin_lispenv(env, "init", builtin_init);
+	add_builtin_lispenv(env, "eval", builtin_eval);
+	add_builtin_lispenv(env, "join", builtin_join);
+	add_builtin_lispenv(env, "cons", builtin_cons);
+	add_builtin_lispenv(env, "len", builtin_len);
+	add_builtin_lispenv(env, "def", builtin_def);
 }
 
 //----------------------------------------------------------------- Function ---
@@ -1288,7 +1299,7 @@ int main()
 	             "to Exit press CTRL + C" RESET);
 
 	//----------------------------------------------------- lisp environment
-	LispEnv * lispenv = new_lispenv();
+	LispEnv *lispenv = new_lispenv();
 	add_basicbuiltins_lispenv(lispenv);
 
 	//----------------------------------------------------------- input loop
