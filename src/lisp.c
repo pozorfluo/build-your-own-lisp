@@ -1,3 +1,29 @@
+/**
+ * todo
+ * - [ ] study ways to replace LVAL_ASSERT_... macros with something as
+ *       convenient but that doesn't hide the clean up bits and allows
+ *       building error message on the spot without superfluous string
+ *       manipulations
+ * - [ ] see this construct :
+ * 	   			do A
+ *	   			if (error)
+ *	   				goto out_a;
+ *	   			do B
+ *	   			if (error)
+ *	   				goto out_b;
+ *	   			do C
+ *	   			if (error)
+ *	   				goto out_c;
+ *	   			goto out;
+ *	        out_c:
+ *	        	undo C
+ *	        out_b:
+ *	        	undo B
+ *	        out_a:
+ *	        	undo A
+ *	        out:
+ *	        	return ret;
+ */
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -87,32 +113,6 @@
 #define ANSI(SEQUENCE) ESC "[" SEQUENCE "m"
 
 //------------------------------------------------------------------- MACROS ---
-#define LVAL_ASSERT_CONDITION(args, condition, symbol, message)                \
-	if (!(condition)) {                                                        \
-		delete_lispvalue(args);                                                \
-		return new_lispvalue_error("Function " symbol message);                 \
-	}
-
-#define LVAL_ASSERT_ARG(args, expected_count, symbol)                          \
-	if (args->count != expected_count) {                                       \
-		delete_lispvalue(args);                                                \
-		return new_lispvalue_error("Function " symbol                          \
-		                           " passed incorrect number of arguments !"); \
-	}
-
-#define LVAL_ASSERT_NONEMPTY(args, symbol)                                     \
-	if (args->cells[0]->count == 0) {                                          \
-		delete_lispvalue(args);                                                \
-		return new_lispvalue_error("Function " symbol " passed {} !");         \
-	}
-
-#define LVAL_ASSERT_TYPE(args, arg_index, expected_type, symbol)               \
-	if (args->cells[arg_index]->type != expected_type) {                       \
-		delete_lispvalue(args);                                                \
-		return new_lispvalue_error("Function " symbol                          \
-		                           " passed incorrect types !");               \
-	}
-
 #define LVAL_DUMP(args)                                                        \
 	printf(#args                                                               \
 	       "\n"                                                                \
@@ -192,20 +192,31 @@ void print_lispvalue(LispValue *lispvalue);
 
 //-------------------------------------------------- STATIC GLOBAL VARIABLES ---
 /* Readline auto-completion configuration */
-static char *vocabulary[] = {"list",
-                             "head",
+static char *vocabulary[] = {"head",
                              "tail",
+                             "list",
+                             "init",
+                             "eval",
                              "join",
                              "cons",
                              "len",
-                             "init",
-                             "eval",
+                             "def",
+                             "add",
+                             "sub",
+                             "mul",
+                             "div",
+                             "mod",
+                             "pow",
+                             "max",
+                             "min",
                              "+",
                              "-",
                              "*",
                              "/",
                              "%",
                              "^",
+                             ">", // used as min
+                             "<", // used as max
                              //  "min",
                              //  "max",
                              //  "~",
@@ -215,12 +226,10 @@ static char *vocabulary[] = {"list",
                              //  "Σ",
                              //  "≥",
                              //  "≤",
-                             ">", // used as min
-                             "<", // used as max
-                                  //  "=",
-                                  //  ">=",
-                                  //  "<=",
-                                  //  "...",
+                             //  "=",
+                             //  ">=",
+                             //  "<=",
+                             //  "...",
                              "{",
                              "}",
                              "(",
@@ -813,10 +822,21 @@ LispValue *builtin_min(LispEnv *env, LispValue *value)
 LispValue *builtin_head(LispEnv *env, LispValue *arguments)
 {
 	UNUSED(env);
+	char *error_message = "";
 
-	LVAL_ASSERT_ARG(arguments, 1, "'head'");
-	LVAL_ASSERT_TYPE(arguments, 0, LVAL_QEXPR, "'head'");
-	LVAL_ASSERT_NONEMPTY(arguments, "'head'");
+	if (arguments->count != 1) {
+		error_message =
+		    "Function 'head' passed incorrect number of arguments !";
+		goto exit_error;
+	}
+	if (arguments->cells[0]->type != LVAL_QEXPR) {
+		error_message = "Function 'head' passed incorrect types !";
+		goto exit_error;
+	}
+	if (arguments->cells[0]->count == 0) {
+		error_message = "Function 'head' passed {} !";
+		goto exit_error;
+	}
 
 	LispValue *head = take_lispvalue(arguments, 0);
 
@@ -824,7 +844,11 @@ LispValue *builtin_head(LispEnv *env, LispValue *arguments)
 		delete_lispvalue(pop_lispvalue(head, 1));
 	}
 
+	// exit_success:
 	return head;
+exit_error:
+	delete_lispvalue(arguments);
+	return new_lispvalue_error(error_message);
 }
 //----------------------------------------------------------------- Function ---
 /**
@@ -840,15 +864,30 @@ LispValue *builtin_head(LispEnv *env, LispValue *arguments)
 LispValue *builtin_tail(LispEnv *env, LispValue *arguments)
 {
 	UNUSED(env);
+	char *error_message = "";
 
-	LVAL_ASSERT_ARG(arguments, 1, "'tail'");
-	LVAL_ASSERT_TYPE(arguments, 0, LVAL_QEXPR, "'tail'");
-	LVAL_ASSERT_NONEMPTY(arguments, "'tail'");
+	if (arguments->count != 1) {
+		error_message =
+		    "Function 'tail' passed incorrect number of arguments !";
+		goto exit_error;
+	}
+	if (arguments->cells[0]->type != LVAL_QEXPR) {
+		error_message = "Function 'tail' passed incorrect types !";
+		goto exit_error;
+	}
+	if (arguments->cells[0]->count == 0) {
+		error_message = "Function 'tail' passed {} !";
+		goto exit_error;
+	}
 
 	LispValue *tail = take_lispvalue(arguments, 0);
 	delete_lispvalue(pop_lispvalue(tail, 0));
 
+	// exit_success:
 	return tail;
+exit_error:
+	delete_lispvalue(arguments);
+	return new_lispvalue_error(error_message);
 }
 //----------------------------------------------------------------- Function ---
 /**
@@ -878,10 +917,21 @@ LispValue *builtin_list(LispEnv *env, LispValue *arguments)
 LispValue *builtin_init(LispEnv *env, LispValue *arguments)
 {
 	UNUSED(env);
+	char *error_message = "";
 
-	LVAL_ASSERT_ARG(arguments, 1, "'init'");
-	LVAL_ASSERT_TYPE(arguments, 0, LVAL_QEXPR, "'init'");
-	LVAL_ASSERT_NONEMPTY(arguments, "'init'");
+	if (arguments->count != 1) {
+		error_message =
+		    "Function 'init' passed incorrect number of arguments !";
+		goto exit_error;
+	}
+	if (arguments->cells[0]->type != LVAL_QEXPR) {
+		error_message = "Function 'init' passed incorrect types !";
+		goto exit_error;
+	}
+	if (arguments->cells[0]->count == 0) {
+		error_message = "Function 'init' passed {} !";
+		goto exit_error;
+	}
 
 	LispValue *init = take_lispvalue(arguments, 0);
 
@@ -889,7 +939,11 @@ LispValue *builtin_init(LispEnv *env, LispValue *arguments)
 	init->count--;
 	init->cells = realloc(init->cells, sizeof(LispValue *) * init->count);
 
+	// exit_success:
 	return init;
+exit_error:
+	delete_lispvalue(arguments);
+	return new_lispvalue_error(error_message);
 }
 
 //----------------------------------------------------------------- Function ---
@@ -905,14 +959,26 @@ LispValue *builtin_init(LispEnv *env, LispValue *arguments)
 LispValue *builtin_eval(LispEnv *env, LispValue *arguments)
 {
 	UNUSED(env);
+	char *error_message = "";
 
-	LVAL_ASSERT_ARG(arguments, 1, "'eval'");
-	LVAL_ASSERT_TYPE(arguments, 0, LVAL_QEXPR, "'eval'");
+	if (arguments->count != 1) {
+		error_message =
+		    "Function 'eval' passed incorrect number of arguments !";
+		goto exit_error;
+	}
+	if (arguments->cells[0]->type != LVAL_QEXPR) {
+		error_message = "Function 'eval' passed incorrect types !";
+		goto exit_error;
+	}
 
 	LispValue *expression = take_lispvalue(arguments, 0);
 	expression->type      = LVAL_SEXPR;
 
+	// exit_success:
 	return eval_lispvalue(env, expression);
+exit_error:
+	delete_lispvalue(arguments);
+	return new_lispvalue_error(error_message);
 }
 //----------------------------------------------------------------- Function ---
 /**
@@ -944,9 +1010,13 @@ LispValue *join_lispvalue(LispValue *first, LispValue *second)
 LispValue *builtin_join(LispEnv *env, LispValue *arguments)
 {
 	UNUSED(env);
+	char *error_message = "";
 
 	for (int i = 0; i < arguments->count; i++) {
-		LVAL_ASSERT_TYPE(arguments, i, LVAL_QEXPR, "'join'");
+		if (arguments->cells[i]->type != LVAL_QEXPR) {
+			error_message = "Function 'join' passed incorrect types !";
+			goto exit_error;
+		}
 	}
 
 	LispValue *joined = pop_lispvalue(arguments, 0);
@@ -955,9 +1025,12 @@ LispValue *builtin_join(LispEnv *env, LispValue *arguments)
 		joined = join_lispvalue(joined, pop_lispvalue(arguments, 0));
 	}
 
+	// exit_success:
 	delete_lispvalue(arguments);
-
 	return joined;
+exit_error:
+	delete_lispvalue(arguments);
+	return new_lispvalue_error(error_message);
 }
 //----------------------------------------------------------------- Function ---
 /**
@@ -975,9 +1048,17 @@ LispValue *builtin_join(LispEnv *env, LispValue *arguments)
 LispValue *builtin_cons(LispEnv *env, LispValue *arguments)
 {
 	UNUSED(env);
+	char *error_message = "";
 
-	LVAL_ASSERT_ARG(arguments, 2, "'cons'");
-	LVAL_ASSERT_TYPE(arguments, 1, LVAL_QEXPR, "'cons'");
+	if (arguments->count != 2) {
+		error_message =
+		    "Function 'cons' passed incorrect number of arguments !";
+		goto exit_error;
+	}
+	if (arguments->cells[1]->type != LVAL_QEXPR) {
+		error_message = "Function 'cons' passed incorrect types !";
+		goto exit_error;
+	}
 
 	LispValue *first_argument = pop_lispvalue(arguments, 0);
 	LispValue *qexpr          = pop_lispvalue(arguments, 0);
@@ -991,11 +1072,12 @@ LispValue *builtin_cons(LispEnv *env, LispValue *arguments)
 
 	qexpr->cells[0] = first_argument;
 
-	// todo
-	//   [] find out why this is necessary after asserting 2 arg and poping
+	// exit_success:
 	delete_lispvalue(arguments);
-
 	return qexpr;
+exit_error:
+	delete_lispvalue(arguments);
+	return new_lispvalue_error(error_message);
 }
 
 //----------------------------------------------------------------- Function ---
@@ -1012,16 +1094,26 @@ LispValue *builtin_cons(LispEnv *env, LispValue *arguments)
 LispValue *builtin_len(LispEnv *env, LispValue *arguments)
 {
 	UNUSED(env);
+	char *error_message = "";
 
-	LVAL_ASSERT_ARG(arguments, 1, "'len'");
-	LVAL_ASSERT_TYPE(arguments, 0, LVAL_QEXPR, "'len'");
+	if (arguments->count != 1) {
+		error_message = "Function 'len' passed incorrect number of arguments !";
+		goto exit_error;
+	}
+	if (arguments->cells[0]->type != LVAL_QEXPR) {
+		error_message = "Function 'len' passed incorrect types !";
+		goto exit_error;
+	}
 
 	LispValue *length =
 	    new_lispvalue_number((double)arguments->cells[0]->count);
 
+	// exit_success:
 	delete_lispvalue(arguments);
-
 	return length;
+exit_error:
+	delete_lispvalue(arguments);
+	return new_lispvalue_error(error_message);
 }
 
 //----------------------------------------------------------------- Function ---
@@ -1037,30 +1129,38 @@ LispValue *builtin_len(LispEnv *env, LispValue *arguments)
  */
 LispValue *builtin_def(LispEnv *env, LispValue *arguments)
 {
-	LVAL_ASSERT_TYPE(arguments, 0, LVAL_QEXPR, "'def'");
+	char *error_message = "";
+
+	if (arguments->cells[0]->type != LVAL_QEXPR) {
+		error_message = "Function 'def' passed incorrect types !";
+		goto exit_error;
+	}
 
 	LispValue *symbols = arguments->cells[0];
 
 	for (int i = 0; i < symbols->count; i++) {
-		// if we use this macro we never delete_lispvalue(arguments)
-		// LVAL_ASSERT_TYPE(symbols, i, LVAL_SYMBOL, "'def'");
-		LVAL_ASSERT_CONDITION(arguments,
-		                      symbols->cells[i]->type == LVAL_SYMBOL,
-		                      "'def'",
-		                      " cannot define non-symbol !");
+		if (!(symbols->cells[i]->type == LVAL_SYMBOL)) {
+			error_message = "Function 'def' cannot define non-symbol !";
+			goto exit_error;
+		}
 	}
 
-	LVAL_ASSERT_CONDITION(arguments,
-	                      symbols->count == arguments->count - 1,
-	                      "'def'",
-	                      " passed non-matching number of values and symbols");
+	if (!(symbols->count == arguments->count - 1)) {
+		error_message =
+		    "Function 'def' passed non-matching number of values and symbols";
+		goto exit_error;
+	}
 
 	for (int i = 0; i < symbols->count; i++) {
 		put_lispenv(env, symbols->cells[i], arguments->cells[i + 1]);
 	}
 
+	// exit_success:
 	delete_lispvalue(arguments);
 	return new_lispvalue_sexpr();
+exit_error:
+	delete_lispvalue(arguments);
+	return new_lispvalue_error(error_message);
 }
 
 //----------------------------------------------------------------- Function ---
@@ -1073,79 +1173,83 @@ LispValue *
 builtin_operator(LispEnv *env, LispValue *arguments, const char *operator)
 {
 	UNUSED(env);
+	char *error_message = "";
 
 	if (!(are_all_numbers(arguments))) {
-		delete_lispvalue(arguments);
-		return new_lispvalue_error("Cannot operate on non-number !");
+		error_message = "Cannot operate on non-number !";
+		goto exit_error;
 	}
-	else {
-		LispValue *first_argument = pop_lispvalue(arguments, 0);
 
-		/* unary negation */
-		if (!(strcmp(operator, "-")) && arguments->count == 0) {
-			first_argument->number = -(first_argument->number);
-		}
+	LispValue *first_argument = pop_lispvalue(arguments, 0);
 
-		while (arguments->count > 0) {
-			LispValue *next_argument = pop_lispvalue(arguments, 0);
+	/* unary negation */
+	if (!(strcmp(operator, "-")) && arguments->count == 0) {
+		first_argument->number = -(first_argument->number);
+	}
 
-			switch (*operator) {
-			case '+':
-				first_argument->number += next_argument->number;
-				break;
+	while (arguments->count > 0) {
+		LispValue *next_argument = pop_lispvalue(arguments, 0);
 
-			case '-':
-				first_argument->number -= next_argument->number;
-				break;
+		switch (*operator) {
+		case '+':
+			first_argument->number += next_argument->number;
+			break;
 
-			case '*':
-				first_argument->number *= next_argument->number;
-				break;
+		case '-':
+			first_argument->number -= next_argument->number;
+			break;
 
-			case '/':
-				if (next_argument->number == 0) {
-					delete_lispvalue(first_argument);
-					// delete_lispvalue(next_argument);
-					first_argument = new_lispvalue_error("Division by Zero !");
-				}
-				else {
-					first_argument->number /= next_argument->number;
-				}
-				break;
+		case '*':
+			first_argument->number *= next_argument->number;
+			break;
 
-			case '%':
-				first_argument->number =
-				    fmod(first_argument->number, next_argument->number);
-				break;
-
-			case '^':
-				first_argument->number =
-				    pow(first_argument->number, next_argument->number);
-				break;
-
-			case '>':
-				first_argument->number =
-				    (first_argument->number > next_argument->number)
-				        ? first_argument->number
-				        : next_argument->number;
-				break;
-
-			case '<':
-				first_argument->number =
-				    (first_argument->number < next_argument->number)
-				        ? first_argument->number
-				        : next_argument->number;
-				break;
-			default:
-				break;
+		case '/':
+			if (next_argument->number == 0) {
+				delete_lispvalue(first_argument);
+				// delete_lispvalue(next_argument);
+				first_argument = new_lispvalue_error("Division by Zero !");
 			}
+			else {
+				first_argument->number /= next_argument->number;
+			}
+			break;
 
-			delete_lispvalue(next_argument);
+		case '%':
+			first_argument->number =
+			    fmod(first_argument->number, next_argument->number);
+			break;
+
+		case '^':
+			first_argument->number =
+			    pow(first_argument->number, next_argument->number);
+			break;
+
+		case '>':
+			first_argument->number =
+			    (first_argument->number > next_argument->number)
+			        ? first_argument->number
+			        : next_argument->number;
+			break;
+
+		case '<':
+			first_argument->number =
+			    (first_argument->number < next_argument->number)
+			        ? first_argument->number
+			        : next_argument->number;
+			break;
+		default:
+			break;
 		}
 
-		delete_lispvalue(arguments);
-		return first_argument;
+		delete_lispvalue(next_argument);
 	}
+
+	// exit_success:
+	delete_lispvalue(arguments);
+	return first_argument;
+exit_error:
+	delete_lispvalue(arguments);
+	return new_lispvalue_error(error_message);
 }
 
 //----------------------------------------------------------------- Function ---

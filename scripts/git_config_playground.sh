@@ -99,9 +99,5 @@ git status
 git add -A
 
 # commit, push
-git commit -m "chapter 11 : added define function"
+git commit -m "builtins refactor : less macros, less exits, attempt at more readable"
 git push -u origin master
-
-#------------------------------------------------------------------ Section ---
-
-/- 
