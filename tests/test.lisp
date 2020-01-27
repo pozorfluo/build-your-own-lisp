@@ -8,7 +8,7 @@
 	
 	;; ()
 	/
-	;; /
+	;; <function>
 	(/ ())
 	;; Error: Cannot operate on non-number!
 
@@ -154,6 +154,9 @@
 	def {x 5} 4 5
 	def {x y} 4
 	def {x } 4 5
+	x
+	x y 
+	y z
 	;; passing
 	def
 	;; <function>

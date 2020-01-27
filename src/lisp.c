@@ -1,29 +1,3 @@
-/**
- * todo
- * - [ ] study ways to replace LVAL_ASSERT_... macros with something as
- *       convenient but that doesn't hide the clean up bits and allows
- *       building error message on the spot without superfluous string
- *       manipulations
- * - [ ] see this construct :
- * 	   			do A
- *	   			if (error)
- *	   				goto out_a;
- *	   			do B
- *	   			if (error)
- *	   				goto out_b;
- *	   			do C
- *	   			if (error)
- *	   				goto out_c;
- *	   			goto out;
- *	        out_c:
- *	        	undo C
- *	        out_b:
- *	        	undo B
- *	        out_a:
- *	        	undo A
- *	        out:
- *	        	return ret;
- */
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -253,16 +227,30 @@ LispValue *new_lispvalue_number(const double number)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Creates a new LispValue of type error for a given a error message
- *   -> pointer to new LispValue error
+ * Creates a new LispValue of type error for a given a error format and given
+ * variable number of messages
+ *
+ *   Create and init a variadic argument list
+ *   Allocate max intended space to new LispValue error message
+ *   Print formated to error message with max allocated - 1 for terminating \0
+ *   Reallocate error message to size actually used
+ *   Cleanup variadic argument list
+ *     -> pointer to new LispValue error
  */
-LispValue *new_lispvalue_error(const char *message)
+LispValue *new_lispvalue_error(const char *format, ...)
 {
-	LispValue *new_value = malloc(sizeof(LispValue));
+	va_list va_messages;
+	va_start(va_messages, format);
 
-	new_value->type  = LVAL_ERR;
-	new_value->error = malloc(strlen(message) + 1);
-	strcpy(new_value->error, message);
+	LispValue *new_value = malloc(sizeof(LispValue));
+	new_value->type      = LVAL_ERR;
+	new_value->error     = malloc(512);
+
+	vsnprintf(new_value->error, 511, format, va_messages);
+
+	new_value->error = realloc(new_value->error, strlen(new_value->error) + 1);
+
+	va_end(va_messages);
 
 	return new_value;
 }
@@ -421,7 +409,7 @@ LispValue *get_lispenv(LispEnv *env, LispValue *value)
 			return copy_lispvalue(env->values[i]);
 		}
 	}
-	return new_lispvalue_error("unbound symbol !");
+	return new_lispvalue_error("unbound symbol '%s' !", value->symbol);
 }
 
 //----------------------------------------------------------------- Function ---
@@ -533,7 +521,6 @@ LispValue *read_lispvalue(mpc_ast_t *ast)
 //----------------------------------------------------------------- Function ---
 /**
  * Creates a copy of given LispValue
- *
  *   -> pointer to new LispValue
  */
 LispValue *copy_lispvalue(LispValue *lispvalue)
@@ -692,15 +679,17 @@ LispValue *eval_lispvalue_sexpr(LispEnv *lispenv, LispValue *lispvalue)
  */
 LispValue *eval_lispvalue(LispEnv *lispenv, LispValue *lispvalue)
 {
-	if (lispvalue->type == LVAL_SYMBOL) {
+	switch (lispvalue->type) {
+	case LVAL_SYMBOL: {
 		LispValue *retrieved_lispvalue = get_lispenv(lispenv, lispvalue);
 		delete_lispvalue(lispvalue);
 		return retrieved_lispvalue;
 	}
-	else if (lispvalue->type == LVAL_SEXPR) {
+
+	case LVAL_SEXPR:
 		return eval_lispvalue_sexpr(lispenv, lispvalue);
-	}
-	else {
+
+	default:
 		return lispvalue;
 	}
 }

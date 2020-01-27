@@ -99,5 +99,5 @@ git status
 git add -A
 
 # commit, push
-git commit -m "builtins refactor : less macros, less exits, attempt at more readable"
+git commit -m "chapter 11 : added support for formated error reporting"
 git push -u origin master
