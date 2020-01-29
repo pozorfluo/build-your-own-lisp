@@ -52,13 +52,15 @@
 	/ (+ 1554 1939 1529 1474 (- (- (* 2300 6) 6000) (+ 1554 1939 1529 1474)) 6000) 6
 
     - (- (* 2300 6) 6000) (+ 1554 1939 1529 2140 356)
-
+	
 ;; bonus mark : cons
 ;; valgrind --track-origins=yes ./bin/lisp
 	cons 1
 	cons 1 {4 5 5} 5
 	cons 1 {4 5 5} 5 67 {4 6 7}
 	cons {455 5 } 1
+	cons {455 5 } tail
+	cons {455 5 } ()
 	;; passing
 	list
 	list 1
@@ -135,16 +137,16 @@
 	^ 9 -4
 	max 546 5
 	> 546 5
-	min 546 5
-	< 546 5
+	min² 546 5
+	< 54²6 5
 	head {+ 5 654 542 2.212 6.3e4}
 	tail {+ 5 654 542 2.212 6.3e4}
 	list 5 654 542 2.212 6.3e4
 	init {+ 5 654 542 2.212 6.3e4}
 	eval {+ 5 654 542 2.212 6.3e4}
-	join {+ 5 654 542 2.212 6.3e4} { 5 654 542 2.212 6.3e4}
-	cons {+ 5 654 542 2.212 6.3e4} { 5 654 542 2.212 6.3e4}
-	len  {+ 5 654 542 2.212 6.3e4}
+	join ²{+ 5 654 542 2.212 6.3e4} { 5 654 542 2.212 6.3e4}
+	cons {²+ 5 654 542 2.212 6.3e4} { 5 654 542 2.212 6.3e4}
+	len  {+² 5 654 542 2.212 6.3e4}
 
 ;; chapter 11 : def
 	def 5
@@ -154,6 +156,9 @@
 	def {x 5} 4 5
 	def {x y} 4
 	def {x } 4 5
+	def {x x dz len fg g} 4 5
+	def {x } 4 5 len 3 {+ 5 len (4)}
+	def {x } (4 5)
 	x
 	x y 
 	y z
@@ -182,3 +187,50 @@
 	;; ()
 	list a b x y
 	;; {1 2 3 4}
+	def {x } (+ 4 5)
+
+;; kcal
+   days
+   def {days} {1638 1515 2236 6000 1378 2504 2440 2349 2346 2210 2028}
+   len days
+   def {current} {/ (eval (cons + days)) (len days)}
+   def {target} {2300}
+   target
+   * (eval target) (len days)
+   eval current
+   + (* (eval target) (+ (len days) 1)) (-(eval (cons + days)))
+   + (* (eval target) 12) (-(eval (cons + days)))
+
+;; chapter 11 : error reporting
+	head 4
+	head 4 5 4 {45 6}
+	head len {45 5}
+	head (len {45 5})
+	head {}
+
+;; chapter 11 : bonus mark builtin functionq printing own name
+	head
+	tail
+	list
+	init
+	eval
+	join
+	cons
+	len
+	def
+	add
+	sub
+	mul
+	div
+	mod
+	pow
+	max
+	min
+	+
+	-
+	*
+	/
+	%
+	^
+	> 
+	<

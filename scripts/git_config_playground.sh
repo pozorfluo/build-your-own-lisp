@@ -99,5 +99,17 @@ git status
 git add -A
 
 # commit, push
-git commit -m "chapter 11 : added support for formated error reporting"
+git commit -m 'chapter 11 : Added formated error reporting
+
+	Updated error messages to use previously added formated
+	error reporting style
+
+	Added bonus mark : printing a builtin function own name
+
+	Reverted to using macros that clean up and exit for error
+	reporting to be able to follow along next chapter.
+	The way it is done now allows testing something and 
+	freeing	something else. This was not possible with my
+	original attempt and led to error buried in the macros.'	
+
 git push -u origin master

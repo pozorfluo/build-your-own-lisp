@@ -87,19 +87,39 @@
 #define ANSI(SEQUENCE) ESC "[" SEQUENCE "m"
 
 //------------------------------------------------------------------- MACROS ---
-#define LVAL_DUMP(args)                                                        \
-	printf(#args                                                               \
-	       "\n"                                                                \
-	       "\ttype   : %d\n"                                                   \
-	       "\tnumber : %f\n"                                                   \
-	       "\terror  : %s\n"                                                   \
-	       "\tsymbol : %s\n"                                                   \
-	       "\tcount  : %d\n\n",                                                \
-	       args->type,                                                         \
-	       args->number,                                                       \
-	       args->error,                                                        \
-	       args->symbol,                                                       \
-	       args->count);
+#define LVAL_ASSERT(_arguments, _condition, _format, ...)                      \
+	if (!(_condition)) {                                                       \
+		LispValue *error = new_lispvalue_error(_format, ##__VA_ARGS__);        \
+		delete_lispvalue(_arguments);                                          \
+		return error;                                                          \
+	}
+
+#define LVAL_ASSERT_TYPE(_function, _arguments, _element_index, _expected)     \
+	LVAL_ASSERT(                                                               \
+	    _arguments,                                                            \
+	    _arguments->cells[_element_index]->type == _expected,                  \
+	    "Function '%s' passed incorrect type for element %d !\n"               \
+	    "\texpected %s, got %s.",                                              \
+	    _function,                                                             \
+	    _element_index,                                                        \
+	    lispvalue_type_tostring(_expected),                                    \
+	    lispvalue_type_tostring(_arguments->cells[_element_index]->type))
+
+#define LVAL_ASSERT_COUNT(_function, _arguments, _expected)                    \
+	LVAL_ASSERT(_arguments,                                                    \
+	            _arguments->count == _expected,                                \
+	            "Function '%s' passed incorrect number of arguments !\n"       \
+	            "\texpected %d, got %d.",                                      \
+	            _function,                                                     \
+	            _expected,                                                     \
+	            _arguments->count)
+
+#define LVAL_ASSERT_NOT_EMPTY(_function, _arguments, _element_index)           \
+	LVAL_ASSERT(_arguments,                                                    \
+	            _arguments->cells[_element_index]->count != 0,                 \
+	            "Function '%s' passed {} for element %d!\n",                   \
+	            _function,                                                     \
+	            _element_index)
 
 /**
  * Suppresses compiler warning about unused parameters needed in
@@ -153,16 +173,15 @@ struct LispEnv {
 /*
  * todo
  * - [ ] rename parameters to be more consistent overall but still locally
- * unambiguously relevant
+ *       unambiguously relevant
  */
 LispValue *
-builtin_operator(LispEnv *lispenv, LispValue *arguments, const char *operator);
-LispValue *lookup_builtin(LispValue *arguments, const char *symbol);
-LispValue *take_lispvalue(LispValue *lispvalue, int index);
-LispValue *pop_lispvalue(LispValue *lispvalue, int index);
-LispValue *eval_lispvalue(LispEnv *lispenv, LispValue *lispvalue);
-LispValue *copy_lispvalue(LispValue *lispvalue);
-void print_lispvalue(LispValue *lispvalue);
+builtin_operator(LispEnv *env, LispValue *arguments, const char *operator);
+LispValue *take_lispvalue(LispValue *value, int index);
+LispValue *pop_lispvalue(LispValue *value, int index);
+LispValue *eval_lispvalue(LispEnv *env, LispValue *value);
+LispValue *copy_lispvalue(LispValue *value);
+void print_lispvalue(LispEnv *env, LispValue *value);
 
 //-------------------------------------------------- STATIC GLOBAL VARIABLES ---
 /* Readline auto-completion configuration */
@@ -209,7 +228,30 @@ static char *vocabulary[] = {"head",
                              "(",
                              ")",
                              NULL};
-
+//----------------------------------------------------------------- Function ---
+/**
+ * Gets a readable name for a given LispValueType
+ *   -> pointer to string
+ */
+char *lispvalue_type_tostring(int type)
+{
+	switch (type) {
+	case LVAL_ERR:
+		return "Error";
+	case LVAL_NUMBER:
+		return "Number";
+	case LVAL_SYMBOL:
+		return "Symbol";
+	case LVAL_FUNCTION:
+		return "Function";
+	case LVAL_SEXPR:
+		return "S-Expression";
+	case LVAL_QEXPR:
+		return "Q-Expression";
+	default:
+		return "Unknown";
+	}
+}
 //----------------------------------------------------------------- Function ---
 /**
  * Creates a new LispValue of type number for a given a number
@@ -305,9 +347,6 @@ LispEnv *new_lispenv(void)
 /**
  * Creates a new empty LispValue of type sexpr
  *   -> pointer to new LispValue sexpr
- *
- * todo
- * - [ ] init unused field to dummy value to avoid undefined behaviour
  */
 
 LispValue *new_lispvalue_sexpr(void)
@@ -342,19 +381,18 @@ LispValue *new_lispvalue_qexpr(void)
  * Frees given LispValue ressources according to its type
  *   -> nothing
  */
-void delete_lispvalue(LispValue *lispvalue)
+void delete_lispvalue(LispValue *value)
 {
-	switch (lispvalue->type) {
+	switch (value->type) {
 	case LVAL_NUMBER:
 		break;
 
 	case LVAL_ERR:
-
-		free(lispvalue->error);
+		free(value->error);
 		break;
 
 	case LVAL_SYMBOL:
-		free(lispvalue->symbol);
+		free(value->symbol);
 		break;
 
 	case LVAL_FUNCTION:
@@ -362,18 +400,18 @@ void delete_lispvalue(LispValue *lispvalue)
 
 	case LVAL_SEXPR:
 	case LVAL_QEXPR:
-		for (int i = 0; i < lispvalue->count; i++) {
-			delete_lispvalue(lispvalue->cells[i]);
+		for (int i = 0; i < value->count; i++) {
+			delete_lispvalue(value->cells[i]);
 		}
 
-		free(lispvalue->cells);
+		free(value->cells);
 		break;
 
 	default:
 		break;
 	}
 
-	free(lispvalue);
+	free(value);
 }
 
 //----------------------------------------------------------------- Function ---
@@ -398,9 +436,9 @@ void delete_lispenv(LispEnv *env)
  *   -> pointer to new copy of associated LispValue
  *
  * Iterate over all items in environment
- *   If stored symbol match given Lispvalue symbol
- *     -> a copy of associated value in environment
- *   -> an error if no symbol match found
+ *   If stored symbol matches given Lispvalue symbol
+ *     -> copy of associated value in environment
+ *   -> error if no symbol match found
  */
 LispValue *get_lispenv(LispEnv *env, LispValue *value)
 {
@@ -410,6 +448,26 @@ LispValue *get_lispenv(LispEnv *env, LispValue *value)
 		}
 	}
 	return new_lispvalue_error("unbound symbol '%s' !", value->symbol);
+}
+//----------------------------------------------------------------- Function ---
+/**
+ * Gets symbol associated with given LispBuiltin function if any
+ *   -> pointer to symbol string
+ *
+ * Iterate over all value in environment
+ *   If stored function pointer matches given LispBuiltin function
+ *     -> pointer to associated symbol string
+ *   -> pointer to error message string if no match found
+ */
+char *get_symbol_lispenv(LispEnv *env, LispBuiltin function)
+{
+	for (int i = 0; i < env->count; i++) {
+		if (env->values[i]->function == function) {
+			return env->symbols[i];
+		}
+	}
+
+	return "error : unknown function";
 }
 
 //----------------------------------------------------------------- Function ---
@@ -468,11 +526,11 @@ LispValue *read_lispvalue_number(mpc_ast_t *ast)
  * of type sexpr or qexpr
  *   -> pointer to given LispValue sexpr
  */
-LispValue *add_lispvalue(LispValue *expr, LispValue *lispvalue)
+LispValue *add_lispvalue(LispValue *expr, LispValue *value)
 {
 	expr->count++;
 	expr->cells = realloc(expr->cells, sizeof(LispValue *) * expr->count);
-	expr->cells[expr->count - 1] = lispvalue;
+	expr->cells[expr->count - 1] = value;
 
 	return expr;
 }
@@ -523,36 +581,36 @@ LispValue *read_lispvalue(mpc_ast_t *ast)
  * Creates a copy of given LispValue
  *   -> pointer to new LispValue
  */
-LispValue *copy_lispvalue(LispValue *lispvalue)
+LispValue *copy_lispvalue(LispValue *value)
 {
 	LispValue *copy = malloc(sizeof(LispValue));
-	copy->type      = lispvalue->type;
+	copy->type      = value->type;
 
-	switch (lispvalue->type) {
+	switch (value->type) {
 	case LVAL_NUMBER:
-		copy->number = lispvalue->number;
+		copy->number = value->number;
 		break;
 
 	case LVAL_FUNCTION:
-		copy->function = lispvalue->function;
+		copy->function = value->function;
 		break;
 
 	case LVAL_ERR:
-		copy->error = malloc(strlen(lispvalue->error) + 1);
-		strcpy(copy->error, lispvalue->error);
+		copy->error = malloc(strlen(value->error) + 1);
+		strcpy(copy->error, value->error);
 		break;
 
 	case LVAL_SYMBOL:
-		copy->symbol = malloc(strlen(lispvalue->symbol) + 1);
-		strcpy(copy->symbol, lispvalue->symbol);
+		copy->symbol = malloc(strlen(value->symbol) + 1);
+		strcpy(copy->symbol, value->symbol);
 		break;
 
 	case LVAL_SEXPR:
 	case LVAL_QEXPR:
-		copy->count = lispvalue->count;
+		copy->count = value->count;
 		copy->cells = malloc(sizeof(LispValue *) * copy->count);
 		for (int i = 0; i < copy->count; i++) {
-			copy->cells[i] = copy_lispvalue(lispvalue->cells[i]);
+			copy->cells[i] = copy_lispvalue(value->cells[i]);
 		}
 
 	default:
@@ -567,14 +625,15 @@ LispValue *copy_lispvalue(LispValue *lispvalue)
  * Pretty prints given LispValue of type sexpr
  *   -> Nothing
  */
-void print_lispvalue_expr(LispValue *lispvalue,
+void print_lispvalue_expr(LispEnv *env,
+                          LispValue *value,
                           const char open,
                           const char close)
 {
 	putchar(open);
 
-	for (int i = 0; i < lispvalue->count; i++) {
-		print_lispvalue(lispvalue->cells[i]);
+	for (int i = 0; i < value->count; i++) {
+		print_lispvalue(env, value->cells[i]);
 		putchar(' ');
 	}
 
@@ -586,31 +645,31 @@ void print_lispvalue_expr(LispValue *lispvalue,
  * Pretty prints given LispValue according to its type
  *   -> Nothing
  */
-void print_lispvalue(LispValue *lispvalue)
+void print_lispvalue(LispEnv *env, LispValue *value)
 {
-	switch (lispvalue->type) {
+	switch (value->type) {
 	case LVAL_NUMBER:
-		printf(FG_YELLOW "%f" RESET, lispvalue->number);
+		printf(FG_YELLOW "%f" RESET, value->number);
 		break;
 
 	case LVAL_ERR:
-		printf(FG_RED "Error : %s" RESET, lispvalue->error);
+		printf(FG_RED "Error : %s" RESET, value->error);
 		break;
 
 	case LVAL_SYMBOL:
-		printf(FG_CYAN "%s" RESET, lispvalue->symbol);
+		printf(FG_CYAN "%s" RESET, value->symbol);
 		break;
 
 	case LVAL_FUNCTION:
-		printf(FG_GREEN "<function>" RESET);
+		printf(FG_GREEN "<%s>" RESET, get_symbol_lispenv(env, value->function));
 		break;
 
 	case LVAL_SEXPR:
-		print_lispvalue_expr(lispvalue, '(', ')');
+		print_lispvalue_expr(env, value, '(', ')');
 		break;
 
 	case LVAL_QEXPR:
-		print_lispvalue_expr(lispvalue, '{', '}');
+		print_lispvalue_expr(env, value, '{', '}');
 		break;
 
 	default:
@@ -623,9 +682,9 @@ void print_lispvalue(LispValue *lispvalue)
  * Pretty prints given LispValue followed by newline
  *   -> Nothing
  */
-void print_lispvalue_newline(LispValue *lispvalue)
+void print_lispvalue_newline(LispEnv *env, LispValue *value)
 {
-	print_lispvalue(lispvalue);
+	print_lispvalue(env, value);
 	putchar('\n');
 }
 
@@ -634,38 +693,45 @@ void print_lispvalue_newline(LispValue *lispvalue)
  * Evaluates given LispValue of type sexpr
  *   -> pointer to result LispValue
  */
-LispValue *eval_lispvalue_sexpr(LispEnv *lispenv, LispValue *lispvalue)
+LispValue *eval_lispvalue_sexpr(LispEnv *env, LispValue *value)
 {
 	/* evaluate children */
-	for (int i = 0; i < lispvalue->count; i++) {
-		lispvalue->cells[i] = eval_lispvalue(lispenv, lispvalue->cells[i]);
+	for (int i = 0; i < value->count; i++) {
+		value->cells[i] = eval_lispvalue(env, value->cells[i]);
 	}
 
 	/* check for errors */
-	for (int i = 0; i < lispvalue->count; i++) {
-		if (lispvalue->cells[i]->type == LVAL_ERR) {
-			return take_lispvalue(lispvalue, i);
+	for (int i = 0; i < value->count; i++) {
+		if (value->cells[i]->type == LVAL_ERR) {
+			return take_lispvalue(value, i);
 		}
 	}
 
 	/* empty expression */
-	if (lispvalue->count == 0) {
-		return lispvalue;
+	if (value->count == 0) {
+		return value;
 	}
 	/* single expression */
-	else if (lispvalue->count == 1) {
-		return take_lispvalue(lispvalue, 0);
+	else if (value->count == 1) {
+		return take_lispvalue(value, 0);
 	}
 	else {
 		/* make sure first element is a function */
-		LispValue *first_element = pop_lispvalue(lispvalue, 0);
+		LispValue *first_element = pop_lispvalue(value, 0);
+		
 		if (first_element->type != LVAL_FUNCTION) {
+			LispValue *error = new_lispvalue_error(
+			    "S-Expressions invalid first element type !\n"
+			    "\texpected %s, got %s.",
+			    lispvalue_type_tostring(LVAL_FUNCTION),
+			    lispvalue_type_tostring(first_element->type));
+				
 			delete_lispvalue(first_element);
-			delete_lispvalue(lispvalue);
-			return new_lispvalue_error("first element is not a function !");
+			delete_lispvalue(value);
+			return error;
 		}
 		else {
-			LispValue *result = first_element->function(lispenv, lispvalue);
+			LispValue *result = first_element->function(env, value);
 			delete_lispvalue(first_element);
 			return result;
 		}
@@ -677,20 +743,20 @@ LispValue *eval_lispvalue_sexpr(LispEnv *lispenv, LispValue *lispvalue)
  * Evaluates given LispValue
  *   -> pointer to result LispValue
  */
-LispValue *eval_lispvalue(LispEnv *lispenv, LispValue *lispvalue)
+LispValue *eval_lispvalue(LispEnv *env, LispValue *value)
 {
-	switch (lispvalue->type) {
+	switch (value->type) {
 	case LVAL_SYMBOL: {
-		LispValue *retrieved_lispvalue = get_lispenv(lispenv, lispvalue);
-		delete_lispvalue(lispvalue);
+		LispValue *retrieved_lispvalue = get_lispenv(env, value);
+		delete_lispvalue(value);
 		return retrieved_lispvalue;
 	}
 
 	case LVAL_SEXPR:
-		return eval_lispvalue_sexpr(lispenv, lispvalue);
+		return eval_lispvalue_sexpr(env, value);
 
 	default:
-		return lispvalue;
+		return value;
 	}
 }
 
@@ -701,18 +767,17 @@ LispValue *eval_lispvalue(LispEnv *lispenv, LispValue *lispvalue)
  * pointer
  *   -> Extracted LispValue
  */
-LispValue *pop_lispvalue(LispValue *lispvalue, const int index)
+LispValue *pop_lispvalue(LispValue *value, const int index)
 {
-	LispValue *extracted_element = lispvalue->cells[index];
+	LispValue *extracted_element = value->cells[index];
 
-	memmove(&lispvalue->cells[index],
-	        &lispvalue->cells[index + 1],
-	        sizeof(LispValue *) * (lispvalue->count - index - 1));
+	memmove(&value->cells[index],
+	        &value->cells[index + 1],
+	        sizeof(LispValue *) * (value->count - index - 1));
 
-	lispvalue->count--;
+	value->count--;
 
-	lispvalue->cells =
-	    realloc(lispvalue->cells, sizeof(LispValue *) * lispvalue->count);
+	value->cells = realloc(value->cells, sizeof(LispValue *) * value->count);
 
 	return extracted_element;
 }
@@ -722,11 +787,14 @@ LispValue *pop_lispvalue(LispValue *lispvalue, const int index)
  * Extracts single element from given LispValue of type sexpr
  * Deletes the rest
  *   -> Extracted LispValue
+ *
+ * todo
+ * - [ ] check your understanding of the logic behind delete_lispvalue(value)
  */
-LispValue *take_lispvalue(LispValue *lispvalue, const int index)
+LispValue *take_lispvalue(LispValue *value, const int index)
 {
-	LispValue *extracted_element = pop_lispvalue(lispvalue, index);
-	delete_lispvalue(lispvalue);
+	LispValue *extracted_element = pop_lispvalue(value, index);
+	delete_lispvalue(value);
 
 	return extracted_element;
 }
@@ -811,33 +879,17 @@ LispValue *builtin_min(LispEnv *env, LispValue *value)
 LispValue *builtin_head(LispEnv *env, LispValue *arguments)
 {
 	UNUSED(env);
-	char *error_message = "";
 
-	if (arguments->count != 1) {
-		error_message =
-		    "Function 'head' passed incorrect number of arguments !";
-		goto exit_error;
-	}
-	if (arguments->cells[0]->type != LVAL_QEXPR) {
-		error_message = "Function 'head' passed incorrect types !";
-		goto exit_error;
-	}
-	if (arguments->cells[0]->count == 0) {
-		error_message = "Function 'head' passed {} !";
-		goto exit_error;
-	}
+	LVAL_ASSERT_COUNT("head", arguments, 1);
+	LVAL_ASSERT_TYPE("head", arguments, 0, LVAL_QEXPR);
+	LVAL_ASSERT_NOT_EMPTY("head", arguments, 0);
 
 	LispValue *head = take_lispvalue(arguments, 0);
-
 	while (head->count > 1) {
 		delete_lispvalue(pop_lispvalue(head, 1));
 	}
 
-	// exit_success:
 	return head;
-exit_error:
-	delete_lispvalue(arguments);
-	return new_lispvalue_error(error_message);
 }
 //----------------------------------------------------------------- Function ---
 /**
@@ -853,30 +905,15 @@ exit_error:
 LispValue *builtin_tail(LispEnv *env, LispValue *arguments)
 {
 	UNUSED(env);
-	char *error_message = "";
 
-	if (arguments->count != 1) {
-		error_message =
-		    "Function 'tail' passed incorrect number of arguments !";
-		goto exit_error;
-	}
-	if (arguments->cells[0]->type != LVAL_QEXPR) {
-		error_message = "Function 'tail' passed incorrect types !";
-		goto exit_error;
-	}
-	if (arguments->cells[0]->count == 0) {
-		error_message = "Function 'tail' passed {} !";
-		goto exit_error;
-	}
+	LVAL_ASSERT_COUNT("tail", arguments, 1);
+	LVAL_ASSERT_TYPE("tail", arguments, 0, LVAL_QEXPR);
+	LVAL_ASSERT_NOT_EMPTY("tail", arguments, 0);
 
 	LispValue *tail = take_lispvalue(arguments, 0);
 	delete_lispvalue(pop_lispvalue(tail, 0));
 
-	// exit_success:
 	return tail;
-exit_error:
-	delete_lispvalue(arguments);
-	return new_lispvalue_error(error_message);
 }
 //----------------------------------------------------------------- Function ---
 /**
@@ -906,21 +943,10 @@ LispValue *builtin_list(LispEnv *env, LispValue *arguments)
 LispValue *builtin_init(LispEnv *env, LispValue *arguments)
 {
 	UNUSED(env);
-	char *error_message = "";
 
-	if (arguments->count != 1) {
-		error_message =
-		    "Function 'init' passed incorrect number of arguments !";
-		goto exit_error;
-	}
-	if (arguments->cells[0]->type != LVAL_QEXPR) {
-		error_message = "Function 'init' passed incorrect types !";
-		goto exit_error;
-	}
-	if (arguments->cells[0]->count == 0) {
-		error_message = "Function 'init' passed {} !";
-		goto exit_error;
-	}
+	LVAL_ASSERT_COUNT("init", arguments, 1);
+	LVAL_ASSERT_TYPE("init", arguments, 0, LVAL_QEXPR);
+	LVAL_ASSERT_NOT_EMPTY("init", arguments, 0);
 
 	LispValue *init = take_lispvalue(arguments, 0);
 
@@ -928,11 +954,7 @@ LispValue *builtin_init(LispEnv *env, LispValue *arguments)
 	init->count--;
 	init->cells = realloc(init->cells, sizeof(LispValue *) * init->count);
 
-	// exit_success:
 	return init;
-exit_error:
-	delete_lispvalue(arguments);
-	return new_lispvalue_error(error_message);
 }
 
 //----------------------------------------------------------------- Function ---
@@ -948,26 +970,14 @@ exit_error:
 LispValue *builtin_eval(LispEnv *env, LispValue *arguments)
 {
 	UNUSED(env);
-	char *error_message = "";
 
-	if (arguments->count != 1) {
-		error_message =
-		    "Function 'eval' passed incorrect number of arguments !";
-		goto exit_error;
-	}
-	if (arguments->cells[0]->type != LVAL_QEXPR) {
-		error_message = "Function 'eval' passed incorrect types !";
-		goto exit_error;
-	}
+	LVAL_ASSERT_COUNT("eval", arguments, 1);
+	LVAL_ASSERT_TYPE("eval", arguments, 0, LVAL_QEXPR);
 
 	LispValue *expression = take_lispvalue(arguments, 0);
 	expression->type      = LVAL_SEXPR;
 
-	// exit_success:
 	return eval_lispvalue(env, expression);
-exit_error:
-	delete_lispvalue(arguments);
-	return new_lispvalue_error(error_message);
 }
 //----------------------------------------------------------------- Function ---
 /**
@@ -999,13 +1009,9 @@ LispValue *join_lispvalue(LispValue *first, LispValue *second)
 LispValue *builtin_join(LispEnv *env, LispValue *arguments)
 {
 	UNUSED(env);
-	char *error_message = "";
 
 	for (int i = 0; i < arguments->count; i++) {
-		if (arguments->cells[i]->type != LVAL_QEXPR) {
-			error_message = "Function 'join' passed incorrect types !";
-			goto exit_error;
-		}
+		LVAL_ASSERT_TYPE("join", arguments, i, LVAL_QEXPR);
 	}
 
 	LispValue *joined = pop_lispvalue(arguments, 0);
@@ -1014,12 +1020,8 @@ LispValue *builtin_join(LispEnv *env, LispValue *arguments)
 		joined = join_lispvalue(joined, pop_lispvalue(arguments, 0));
 	}
 
-	// exit_success:
 	delete_lispvalue(arguments);
 	return joined;
-exit_error:
-	delete_lispvalue(arguments);
-	return new_lispvalue_error(error_message);
 }
 //----------------------------------------------------------------- Function ---
 /**
@@ -1037,17 +1039,9 @@ exit_error:
 LispValue *builtin_cons(LispEnv *env, LispValue *arguments)
 {
 	UNUSED(env);
-	char *error_message = "";
 
-	if (arguments->count != 2) {
-		error_message =
-		    "Function 'cons' passed incorrect number of arguments !";
-		goto exit_error;
-	}
-	if (arguments->cells[1]->type != LVAL_QEXPR) {
-		error_message = "Function 'cons' passed incorrect types !";
-		goto exit_error;
-	}
+	LVAL_ASSERT_COUNT("cons", arguments, 2);
+	LVAL_ASSERT_TYPE("cons", arguments, 1, LVAL_QEXPR);
 
 	LispValue *first_argument = pop_lispvalue(arguments, 0);
 	LispValue *qexpr          = pop_lispvalue(arguments, 0);
@@ -1061,12 +1055,8 @@ LispValue *builtin_cons(LispEnv *env, LispValue *arguments)
 
 	qexpr->cells[0] = first_argument;
 
-	// exit_success:
 	delete_lispvalue(arguments);
 	return qexpr;
-exit_error:
-	delete_lispvalue(arguments);
-	return new_lispvalue_error(error_message);
 }
 
 //----------------------------------------------------------------- Function ---
@@ -1083,26 +1073,15 @@ exit_error:
 LispValue *builtin_len(LispEnv *env, LispValue *arguments)
 {
 	UNUSED(env);
-	char *error_message = "";
 
-	if (arguments->count != 1) {
-		error_message = "Function 'len' passed incorrect number of arguments !";
-		goto exit_error;
-	}
-	if (arguments->cells[0]->type != LVAL_QEXPR) {
-		error_message = "Function 'len' passed incorrect types !";
-		goto exit_error;
-	}
+	LVAL_ASSERT_COUNT("len", arguments, 1);
+	LVAL_ASSERT_TYPE("len", arguments, 0, LVAL_QEXPR);
 
 	LispValue *length =
 	    new_lispvalue_number((double)arguments->cells[0]->count);
 
-	// exit_success:
 	delete_lispvalue(arguments);
 	return length;
-exit_error:
-	delete_lispvalue(arguments);
-	return new_lispvalue_error(error_message);
 }
 
 //----------------------------------------------------------------- Function ---
@@ -1118,45 +1097,41 @@ exit_error:
  */
 LispValue *builtin_def(LispEnv *env, LispValue *arguments)
 {
-	char *error_message = "";
-
-	if (arguments->cells[0]->type != LVAL_QEXPR) {
-		error_message = "Function 'def' passed incorrect types !";
-		goto exit_error;
-	}
+	LVAL_ASSERT_TYPE("def", arguments, 0, LVAL_QEXPR);
 
 	LispValue *symbols = arguments->cells[0];
 
 	for (int i = 0; i < symbols->count; i++) {
-		if (!(symbols->cells[i]->type == LVAL_SYMBOL)) {
-			error_message = "Function 'def' cannot define non-symbol !";
-			goto exit_error;
-		}
+		LVAL_ASSERT(arguments,
+		            (symbols->cells[i]->type == LVAL_SYMBOL),
+		            "Function 'def' passed incorrect type for element %d !\n"
+		            "\texpected %s, got %s.",
+		            i,
+		            lispvalue_type_tostring(LVAL_SYMBOL),
+		            lispvalue_type_tostring(symbols->cells[i]->type));
 	}
 
-	if (!(symbols->count == arguments->count - 1)) {
-		error_message =
-		    "Function 'def' passed non-matching number of values and symbols";
-		goto exit_error;
-	}
+	LVAL_ASSERT(
+	    arguments,
+	    (symbols->count == arguments->count - 1),
+	    "Function 'def' passed non-matching number of values and symbols !\n"
+	    "\tgot %d values and %d symbols.",
+	    arguments->count - 1,
+	    symbols->count);
 
 	for (int i = 0; i < symbols->count; i++) {
 		put_lispenv(env, symbols->cells[i], arguments->cells[i + 1]);
 	}
 
-	// exit_success:
 	delete_lispvalue(arguments);
 	return new_lispvalue_sexpr();
-exit_error:
-	delete_lispvalue(arguments);
-	return new_lispvalue_error(error_message);
 }
 
 //----------------------------------------------------------------- Function ---
 /**
  * Performs operation for given operator and LispValue representing all
  * the arguments to operate on
- *   -> Evaluation result LispValue
+ *   -> pointer to Evaluation result LispValue
  */
 LispValue *
 builtin_operator(LispEnv *env, LispValue *arguments, const char *operator)
@@ -1321,9 +1296,6 @@ char *completion_generator(const char *text, const int state)
 /**
  * Handles custom completion registered to readline global variable
  *   -> Completion matches
- *
- * todo
- * - [ ] fix workaround compiler warning for expected **completer prototype
  */
 char **completer(const char *text, const int start, const int end)
 {
@@ -1331,7 +1303,7 @@ char **completer(const char *text, const int start, const int end)
 	// rl_attempted_completion_over = 1;
 
 	/* readline expects char** fn(char*, int, int) */
-	/* temp workaround compiler warnings for unused-parameters */
+	/* workaround compiler warnings for unused-parameters */
 	UNUSED(start);
 	UNUSED(end);
 
@@ -1412,10 +1384,10 @@ int main()
 				mpc_ast_print(mpc_result.output);
 
 				LispValue *lispvalue_result = read_lispvalue(mpc_result.output);
-				print_lispvalue_newline(lispvalue_result);
+				print_lispvalue_newline(lispenv, lispvalue_result);
 
 				lispvalue_result = eval_lispvalue(lispenv, lispvalue_result);
-				print_lispvalue_newline(lispvalue_result);
+				print_lispvalue_newline(lispenv, lispvalue_result);
 				delete_lispvalue(lispvalue_result);
 
 				mpc_ast_delete(mpc_result.output);
