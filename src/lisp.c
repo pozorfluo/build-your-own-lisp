@@ -1,13 +1,63 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <editline/history.h>
+// #include <editline/history.h>
 #include <editline/readline.h>
 #include <string.h>
 
 #include "../include/mpc.h"
 
 //---------------------------------------------------------- PLATFORM MACROS ---
+//------------------------------------------------------------- DEBUG MACROS ---
+/**
+ * Helps me follow malloc / free where needed
+ */
+#ifdef DEBUG_MALLOC
+
+#include <malloc.h>
+
+void *xmalloc(size_t size, const char *origin, const char *destination)
+{
+	void *return_pointer = malloc(size);
+	if ((return_pointer == NULL) && !size) {
+		return_pointer = malloc(1);
+	}
+	if ((return_pointer == NULL)) {
+		printf(
+		    "malloc failed, Out of memory I guess\n"
+		    "\tcalled inside      : %s()\n"
+		    "\ttried to allocate  : %lu bytes\n"
+		    "\tfor                : %s\n",
+		    origin,
+		    size,
+		    destination);
+		exit(EXIT_FAILURE);
+	}
+
+	printf("\tmallocing %s %lu bytes inside %s()\n", destination, size, origin);
+	memset(return_pointer, 0xFB, size);
+	return return_pointer;
+}
+
+void xfree(void *pointer, const char *pointer_name, const char *origin)
+{
+	size_t bytes_in_malloced_block = malloc_usable_size(pointer);
+	printf("\tfreeing %s %lu bytes inside %s()\n",
+	       pointer_name,
+	       bytes_in_malloced_block,
+	       origin);
+	free(pointer);
+}
+
+#define XMALLOC(_size, _origin, _destination)                                  \
+	xmalloc(_size, _origin, _destination)
+
+#define XFREE(_pointer, _origin) xfree(_pointer, #_pointer, _origin)
+
+#else
+#define XMALLOC(_size, _origin, _destination) malloc(_size)
+#define XFREE(_pointer, _origin) free(_pointer)
+#endif
 
 //-------------------------------------------------------------- ANSI MACROS ---
 /**
@@ -99,7 +149,7 @@
 	    _arguments,                                                            \
 	    _arguments->cells[_element_index]->type == _expected,                  \
 	    "Function '%s' passed incorrect type for element %d !\n"               \
-	    "\texpected %s, got %s.",                                              \
+	    "\t expected %s, got %s.",                                             \
 	    _function,                                                             \
 	    _element_index,                                                        \
 	    lispvalue_type_tostring(_expected),                                    \
@@ -109,7 +159,7 @@
 	LVAL_ASSERT(_arguments,                                                    \
 	            _arguments->count == _expected,                                \
 	            "Function '%s' passed incorrect number of arguments !\n"       \
-	            "\texpected %d, got %d.",                                      \
+	            "\t expected %d, got %d.",                                     \
 	            _function,                                                     \
 	            _expected,                                                     \
 	            _arguments->count)
@@ -128,8 +178,6 @@
  * Debating whether to use gcc specific __attribute__((unused)) or this
  */
 #define UNUSED(_parameter) (void)(_parameter)
-
-//------------------------------------------------------------- DEBUG MACROS ---
 
 //----------------------------------------------------- FORWARD DECLARATIONS ---
 struct LispValue;
@@ -170,7 +218,7 @@ struct LispEnv {
 };
 
 //--------------------------------------------------------------- PROTOTYPES ---
-/*
+/**
  * todo
  * - [ ] rename parameters to be more consistent overall but still locally
  *       unambiguously relevant
@@ -184,7 +232,12 @@ LispValue *copy_lispvalue(LispValue *value);
 void print_lispvalue(LispEnv *env, LispValue *value);
 
 //-------------------------------------------------- STATIC GLOBAL VARIABLES ---
-/* Readline auto-completion configuration */
+/** Readline auto-completion configuration
+ *
+ * todo
+ * - [ ] use current LispEnv symbols directly or to supplement readline
+ *       auto-completion vocabulary
+ */
 static char *vocabulary[] = {"head",
                              "tail",
                              "list",
@@ -259,7 +312,8 @@ char *lispvalue_type_tostring(int type)
  */
 LispValue *new_lispvalue_number(const double number)
 {
-	LispValue *new_value = malloc(sizeof(LispValue));
+	LispValue *new_value =
+	    XMALLOC(sizeof(LispValue), "new_lispvalue_number", "new_value");
 
 	new_value->type   = LVAL_NUMBER;
 	new_value->number = number;
@@ -284,9 +338,10 @@ LispValue *new_lispvalue_error(const char *format, ...)
 	va_list va_messages;
 	va_start(va_messages, format);
 
-	LispValue *new_value = malloc(sizeof(LispValue));
-	new_value->type      = LVAL_ERR;
-	new_value->error     = malloc(512);
+	LispValue *new_value =
+	    XMALLOC(sizeof(LispValue), "new_lispvalue_error", "new_value");
+	new_value->type  = LVAL_ERR;
+	new_value->error = malloc(512);
 
 	vsnprintf(new_value->error, 511, format, va_messages);
 
@@ -653,7 +708,8 @@ void print_lispvalue(LispEnv *env, LispValue *value)
 		break;
 
 	case LVAL_ERR:
-		printf(FG_RED "Error : %s" RESET, value->error);
+		printf(FG_RED REVERSE "Error : " RESET FG_RED " %s" RESET,
+		       value->error);
 		break;
 
 	case LVAL_SYMBOL:
@@ -718,14 +774,14 @@ LispValue *eval_lispvalue_sexpr(LispEnv *env, LispValue *value)
 	else {
 		/* make sure first element is a function */
 		LispValue *first_element = pop_lispvalue(value, 0);
-		
+
 		if (first_element->type != LVAL_FUNCTION) {
 			LispValue *error = new_lispvalue_error(
 			    "S-Expressions invalid first element type !\n"
-			    "\texpected %s, got %s.",
+			    "\t expected %s, got %s.",
 			    lispvalue_type_tostring(LVAL_FUNCTION),
 			    lispvalue_type_tostring(first_element->type));
-				
+
 			delete_lispvalue(first_element);
 			delete_lispvalue(value);
 			return error;
@@ -1105,7 +1161,7 @@ LispValue *builtin_def(LispEnv *env, LispValue *arguments)
 		LVAL_ASSERT(arguments,
 		            (symbols->cells[i]->type == LVAL_SYMBOL),
 		            "Function 'def' passed incorrect type for element %d !\n"
-		            "\texpected %s, got %s.",
+		            "\t expected %s, got %s.",
 		            i,
 		            lispvalue_type_tostring(LVAL_SYMBOL),
 		            lispvalue_type_tostring(symbols->cells[i]->type));
@@ -1115,7 +1171,7 @@ LispValue *builtin_def(LispEnv *env, LispValue *arguments)
 	    arguments,
 	    (symbols->count == arguments->count - 1),
 	    "Function 'def' passed non-matching number of values and symbols !\n"
-	    "\tgot %d values and %d symbols.",
+	    "\t got %d values and %d symbols.",
 	    arguments->count - 1,
 	    symbols->count);
 
@@ -1297,25 +1353,28 @@ char *completion_generator(const char *text, const int state)
  * Handles custom completion registered to readline global variable
  *   -> Completion matches
  */
-char **completer(const char *text, const int start, const int end)
-{
-	/* not doing filename completion even if 0 matches */
-	// rl_attempted_completion_over = 1;
+// char **completer(const char *text, const int start, const int end)
+// {
+// 	/* not doing filename completion even if 0 matches */
+// 	// rl_attempted_completion_over = 1;
 
-	/* readline expects char** fn(char*, int, int) */
-	/* workaround compiler warnings for unused-parameters */
-	UNUSED(start);
-	UNUSED(end);
+// 	/* readline expects char** fn(char*, int, int) */
+// 	/* workaround compiler warnings for unused-parameters */
+// 	UNUSED(start);
+// 	UNUSED(end);
 
-	return rl_completion_matches(text, &completion_generator);
-}
+// 	return rl_completion_matches(text, &completion_generator);
+// }
 
 //----------------------------------------------------------------- Function ---
 /**
  * pretty prints a prompt
  *   -> Nothing
  */
-void print_prompt() { fputs(BOLD FG_GREEN "lispy> " RESET, stdout); }
+void print_prompt()
+{
+	fputs(BG_BRIGHT_GREEN FG_GREEN "lispy " FG_BLACK "> " RESET, stdout);
+}
 
 //--------------------------------------------------------------------- MAIN ---
 /**
@@ -1327,6 +1386,7 @@ void print_prompt() { fputs(BOLD FG_GREEN "lispy> " RESET, stdout); }
  *   -> Error code
  *
  * todo
+ * - [ ] hunt down leak
  * - [ ] have a go at const correctness
  */
 int main()
@@ -1357,25 +1417,34 @@ int main()
 
 	//------------------------------------------------------------ completer
 	/* register custom completer with readline global variable */
-	rl_attempted_completion_function = &completer;
+	// rl_attempted_completion_function = &completer;
+
+	// By default readline does filename completion
+	// disable by asking readline to just insert the TAB character itself
+	// rl_bind_key('\t', rl_insert);
 
 	//---------------------------------------------------------------- intro
-	puts(BG_BLUE "Lispy version 0.0.0.0.1 " RESET FG_BRIGHT_CYAN
-	             "to Exit press CTRL + C" RESET);
+	puts(FG_BRIGHT_BLUE REVERSE "Lispy version 0.11.5 " RESET FG_BRIGHT_BLUE
+	                            " to Exit press CTRL + C" RESET);
 
 	//----------------------------------------------------- lisp environment
 	LispEnv *lispenv = new_lispenv();
 	add_basicbuiltins_lispenv(lispenv);
-
 	//----------------------------------------------------------- input loop
+	// for (int i = 0; i < 20; i++) {
 	for (;;) {
 		print_prompt();
-
-		/* readline doesn't like escape codes :/ */
-		char *input = readline("");
+		char *input = readline(" ");
+		// char *input = "init {(eval{len {* 7 4 5}}) {5 7 52.5e5} {(- 5 4 3 5)
+		// 5}}";
 
 		if (input != NULL) {
-			add_history(input);
+			if ((strcmp(input, "exit")) == 0) {
+				XFREE(input, "main input loop");
+				break;
+			}
+
+			// add_history(input);
 
 			/* try to parse input */
 			mpc_result_t mpc_result;
@@ -1398,11 +1467,12 @@ int main()
 			}
 
 			/* readline malloc'd input*/
-			free(input);
+			XFREE(input, "main input loop");
 		}
 	}
 
 	//-------------------------------------------------------------- cleanup
+	delete_lispenv(lispenv);
 	mpc_cleanup(6,
 	            number_parser,
 	            symbol_parser,

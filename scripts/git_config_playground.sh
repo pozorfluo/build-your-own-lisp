@@ -99,17 +99,20 @@ git status
 git add -A
 
 # commit, push
-git commit -m 'chapter 11 : Added formated error reporting
+git commit -m 'chapter 11 : Added bonus mark exit command, hunting memory leaks
 
-	Updated error messages to use previously added formated
-	error reporting style
+	Typing exit at the prompt now exits the program.
+	It is not a builtin function as requested per the 
+	bonus mark assignment.
+	It allows to exit the program cleanly and helps me
+	tracking the "still reachable" memory blocks reported
+	by valgrind.
 
-	Added bonus mark : printing a builtin function own name
-
-	Reverted to using macros that clean up and exit for error
-	reporting to be able to follow along next chapter.
-	The way it is done now allows testing something and 
-	freeing	something else. This was not possible with my
-	original attempt and led to error buried in the macros.'	
+	Added XMALLOC, XFREE debug macros to wrap malloc/free 
+	and make them verbose if compiled with -DDEBUG_MALLOC.
+	They behaves like regular malloc/free otherwise.
+	
+	Unplugged readline history to reduce number of 
+	things to track.'
 
 git push -u origin master

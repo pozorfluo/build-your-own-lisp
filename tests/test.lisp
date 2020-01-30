@@ -208,7 +208,7 @@
 	head (len {45 5})
 	head {}
 
-;; chapter 11 : bonus mark builtin functionq printing own name
+;; chapter 11 : bonus mark builtin functions printing own name
 	head
 	tail
 	list
@@ -218,9 +218,9 @@
 	cons
 	len
 	def
-	add
 	sub
 	mul
+	add
 	div
 	mod
 	pow
@@ -234,3 +234,5 @@
 	^
 	> 
 	<
+
+;; valgrind --track-origins=yes --leak-check=full --show-reachable=yes ./bin/lisp
