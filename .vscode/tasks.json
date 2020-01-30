@@ -11,13 +11,14 @@
                 "-Werror",
                 "-pedantic",
 				"-g",
-				"-DDEBUG_MALLOC",
+				// "-DDEBUG_MALLOC",
+				// "-DDEBUG_MPC",
                 "-O0",
                 // "-O3",
                 // "-ftree-vectorize",
                 // "-msse2",
-                // "-fopt-info-vec-all",
                 // "-fopt-info-vec-optimized",
+                // // "-fopt-info-vec-all",
                 "${file}",
                 "${workspaceRoot}/src/mpc.c", // link mpc lib
                 "-ledit", // editline lib

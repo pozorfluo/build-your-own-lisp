@@ -99,20 +99,18 @@ git status
 git add -A
 
 # commit, push
-git commit -m 'chapter 11 : Added bonus mark exit command, hunting memory leaks
+git commit -m 'chapter 11 : hunting memory leaks
 
-	Typing exit at the prompt now exits the program.
-	It is not a builtin function as requested per the 
-	bonus mark assignment.
-	It allows to exit the program cleanly and helps me
-	tracking the "still reachable" memory blocks reported
-	by valgrind.
+	Replaced malloc, free with XMALLOC, XFREE debug 
+	macros.
 
-	Added XMALLOC, XFREE debug macros to wrap malloc/free 
-	and make them verbose if compiled with -DDEBUG_MALLOC.
-	They behaves like regular malloc/free otherwise.
+	Pinned down "still reachable" blocks to readline.
+		
+	Unplugged readline.
 	
-	Unplugged readline history to reduce number of 
-	things to track.'
+	Made printing out the mpc_ast tree every command
+	optionnal and available when compiled with 
+	-DDEBUG_MPC
+	'
 
 git push -u origin master

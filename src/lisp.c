@@ -8,56 +8,6 @@
 #include "../include/mpc.h"
 
 //---------------------------------------------------------- PLATFORM MACROS ---
-//------------------------------------------------------------- DEBUG MACROS ---
-/**
- * Helps me follow malloc / free where needed
- */
-#ifdef DEBUG_MALLOC
-
-#include <malloc.h>
-
-void *xmalloc(size_t size, const char *origin, const char *destination)
-{
-	void *return_pointer = malloc(size);
-	if ((return_pointer == NULL) && !size) {
-		return_pointer = malloc(1);
-	}
-	if ((return_pointer == NULL)) {
-		printf(
-		    "malloc failed, Out of memory I guess\n"
-		    "\tcalled inside      : %s()\n"
-		    "\ttried to allocate  : %lu bytes\n"
-		    "\tfor                : %s\n",
-		    origin,
-		    size,
-		    destination);
-		exit(EXIT_FAILURE);
-	}
-
-	printf("\tmallocing %s %lu bytes inside %s()\n", destination, size, origin);
-	memset(return_pointer, 0xFB, size);
-	return return_pointer;
-}
-
-void xfree(void *pointer, const char *pointer_name, const char *origin)
-{
-	size_t bytes_in_malloced_block = malloc_usable_size(pointer);
-	printf("\tfreeing %s %lu bytes inside %s()\n",
-	       pointer_name,
-	       bytes_in_malloced_block,
-	       origin);
-	free(pointer);
-}
-
-#define XMALLOC(_size, _origin, _destination)                                  \
-	xmalloc(_size, _origin, _destination)
-
-#define XFREE(_pointer, _origin) xfree(_pointer, #_pointer, _origin)
-
-#else
-#define XMALLOC(_size, _origin, _destination) malloc(_size)
-#define XFREE(_pointer, _origin) free(_pointer)
-#endif
 
 //-------------------------------------------------------------- ANSI MACROS ---
 /**
@@ -135,6 +85,60 @@ void xfree(void *pointer, const char *pointer_name, const char *origin)
 
 /* codes in the sequence must be separated by ";" */
 #define ANSI(SEQUENCE) ESC "[" SEQUENCE "m"
+
+//------------------------------------------------------------- DEBUG MACROS ---
+/**
+ * Helps me follow malloc / free where needed
+ */
+#ifdef DEBUG_MALLOC
+
+#include <malloc.h>
+
+void *xmalloc(size_t size, const char *origin, const char *destination)
+{
+	void *return_pointer = malloc(size);
+	if ((return_pointer == NULL) && !size) {
+		return_pointer = malloc(1);
+	}
+	if ((return_pointer == NULL)) {
+		printf(FG_RED REVERSE
+		       "malloc failed, Out of memory I guess\n"
+		       "\tcalled inside      : %s()\n"
+		       "\ttried to allocate  : %lu bytes\n"
+		       "\tfor                : %s\n" RESET,
+		       origin,
+		       size,
+		       destination);
+		exit(EXIT_FAILURE);
+	}
+
+	printf(FG_CYAN "\tmallocing %s %lu bytes inside %s()\n" RESET,
+	       destination,
+	       size,
+	       origin);
+	memset(return_pointer, 0xFB, size);
+	return return_pointer;
+}
+
+void xfree(void *pointer, const char *pointer_name, const char *origin)
+{
+	size_t bytes_in_malloced_block = malloc_usable_size(pointer);
+	printf(FG_BLUE "\tfreeing %s %lu bytes inside %s()\n" RESET,
+	       pointer_name,
+	       bytes_in_malloced_block,
+	       origin);
+	free(pointer);
+}
+
+#define XMALLOC(_size, _origin, _destination)                                  \
+	xmalloc(_size, _origin, _destination)
+
+#define XFREE(_pointer, _origin) xfree(_pointer, #_pointer, _origin)
+
+#else
+#define XMALLOC(_size, _origin, _destination) malloc(_size)
+#define XFREE(_pointer, _origin) free(_pointer)
+#endif
 
 //------------------------------------------------------------------- MACROS ---
 #define LVAL_ASSERT(_arguments, _condition, _format, ...)                      \
@@ -341,7 +345,7 @@ LispValue *new_lispvalue_error(const char *format, ...)
 	LispValue *new_value =
 	    XMALLOC(sizeof(LispValue), "new_lispvalue_error", "new_value");
 	new_value->type  = LVAL_ERR;
-	new_value->error = malloc(512);
+	new_value->error = XMALLOC(512, "new_lispvalue_error", "new_value->error");
 
 	vsnprintf(new_value->error, 511, format, va_messages);
 
@@ -359,10 +363,12 @@ LispValue *new_lispvalue_error(const char *format, ...)
  */
 LispValue *new_lispvalue_symbol(const char *symbol)
 {
-	LispValue *new_value = malloc(sizeof(LispValue));
+	LispValue *new_value =
+	    XMALLOC(sizeof(LispValue), "new_lispvalue_symbol", "new_value");
 
 	new_value->type   = LVAL_SYMBOL;
-	new_value->symbol = malloc(strlen(symbol) + 1);
+	new_value->symbol = XMALLOC(
+	    strlen(symbol) + 1, "new_lispvalue_symbol", "new_value->symbol");
 	strcpy(new_value->symbol, symbol);
 
 	return new_value;
@@ -375,7 +381,8 @@ LispValue *new_lispvalue_symbol(const char *symbol)
  */
 LispValue *new_lispvalue_function(LispBuiltin function)
 {
-	LispValue *new_value = malloc(sizeof(LispValue));
+	LispValue *new_value =
+	    XMALLOC(sizeof(LispValue), "new_lispvalue_function", "new_value");
 
 	new_value->type     = LVAL_FUNCTION;
 	new_value->function = function;
@@ -391,7 +398,7 @@ LispValue *new_lispvalue_function(LispBuiltin function)
  */
 LispEnv *new_lispenv(void)
 {
-	LispEnv *new_env = malloc(sizeof(LispEnv));
+	LispEnv *new_env = XMALLOC(sizeof(LispEnv), "new_lispenv", "new_env");
 	new_env->count   = 0;
 	new_env->symbols = NULL;
 	new_env->values  = NULL;
@@ -406,7 +413,8 @@ LispEnv *new_lispenv(void)
 
 LispValue *new_lispvalue_sexpr(void)
 {
-	LispValue *new_value = malloc(sizeof(LispValue));
+	LispValue *new_value =
+	    XMALLOC(sizeof(LispValue), "new_lispvalue_sexpr", "new_value");
 
 	new_value->type  = LVAL_SEXPR;
 	new_value->count = 0;
@@ -422,7 +430,8 @@ LispValue *new_lispvalue_sexpr(void)
  */
 LispValue *new_lispvalue_qexpr(void)
 {
-	LispValue *new_value = malloc(sizeof(LispValue));
+	LispValue *new_value =
+	    XMALLOC(sizeof(LispValue), "new_lispvalue_qexpr", "new_value");
 
 	new_value->type  = LVAL_QEXPR;
 	new_value->count = 0;
@@ -443,11 +452,11 @@ void delete_lispvalue(LispValue *value)
 		break;
 
 	case LVAL_ERR:
-		free(value->error);
+		XFREE(value->error, "delete_lispvalue");
 		break;
 
 	case LVAL_SYMBOL:
-		free(value->symbol);
+		XFREE(value->symbol, "delete_lispvalue");
 		break;
 
 	case LVAL_FUNCTION:
@@ -459,14 +468,14 @@ void delete_lispvalue(LispValue *value)
 			delete_lispvalue(value->cells[i]);
 		}
 
-		free(value->cells);
+		XFREE(value->cells, "delete_lispvalue");
 		break;
 
 	default:
 		break;
 	}
 
-	free(value);
+	XFREE(value, "delete_lispvalue");
 }
 
 //----------------------------------------------------------------- Function ---
@@ -477,12 +486,12 @@ void delete_lispvalue(LispValue *value)
 void delete_lispenv(LispEnv *env)
 {
 	for (int i = 0; i < env->count; i++) {
-		free(env->symbols[i]);
+		XFREE(env->symbols[i], "delete_lispenv");
 		delete_lispvalue(env->values[i]);
 	}
-	free(env->symbols);
-	free(env->values);
-	free(env);
+	XFREE(env->symbols, "delete_lispenv");
+	XFREE(env->values, "delete_lispenv");
+	XFREE(env, "delete_lispenv");
 }
 
 //----------------------------------------------------------------- Function ---
@@ -556,7 +565,9 @@ void put_lispenv(LispEnv *env, LispValue *symbol, LispValue *value)
 	env->symbols = realloc(env->symbols, sizeof(char *) * env->count);
 	env->values  = realloc(env->values, sizeof(LispValue *) * env->count);
 
-	env->symbols[env->count - 1] = malloc(strlen(symbol->symbol) + 1);
+	env->symbols[env->count - 1] = XMALLOC(strlen(symbol->symbol) + 1,
+	                                       "put_lispenv",
+	                                       "env->symbols[env->count - 1]");
 	strcpy(env->symbols[env->count - 1], symbol->symbol);
 	env->values[env->count - 1] = copy_lispvalue(value);
 }
@@ -638,7 +649,7 @@ LispValue *read_lispvalue(mpc_ast_t *ast)
  */
 LispValue *copy_lispvalue(LispValue *value)
 {
-	LispValue *copy = malloc(sizeof(LispValue));
+	LispValue *copy = XMALLOC(sizeof(LispValue), "copy_lispvalue", "copy");
 	copy->type      = value->type;
 
 	switch (value->type) {
@@ -651,19 +662,22 @@ LispValue *copy_lispvalue(LispValue *value)
 		break;
 
 	case LVAL_ERR:
-		copy->error = malloc(strlen(value->error) + 1);
+		copy->error =
+		    XMALLOC(strlen(value->error) + 1, "copy_lispvalue", "copy->error");
 		strcpy(copy->error, value->error);
 		break;
 
 	case LVAL_SYMBOL:
-		copy->symbol = malloc(strlen(value->symbol) + 1);
+		copy->symbol = XMALLOC(
+		    strlen(value->symbol) + 1, "copy_lispvalue", "copy->symbol");
 		strcpy(copy->symbol, value->symbol);
 		break;
 
 	case LVAL_SEXPR:
 	case LVAL_QEXPR:
 		copy->count = value->count;
-		copy->cells = malloc(sizeof(LispValue *) * copy->count);
+		copy->cells = XMALLOC(
+		    sizeof(LispValue *) * copy->count, "copy_lispvalue", "copy->cells");
 		for (int i = 0; i < copy->count; i++) {
 			copy->cells[i] = copy_lispvalue(value->cells[i]);
 		}
@@ -1389,6 +1403,8 @@ void print_prompt()
  * - [ ] hunt down leak
  * - [ ] have a go at const correctness
  */
+static char input[2048];
+
 int main()
 {
 	//----------------------------------------------------------- playground
@@ -1425,22 +1441,23 @@ int main()
 
 	//---------------------------------------------------------------- intro
 	puts(FG_BRIGHT_BLUE REVERSE "Lispy version 0.11.5 " RESET FG_BRIGHT_BLUE
-	                            " to Exit press CTRL + C" RESET);
+	                            " to Exit press CTRL + C"
+	                            " or type exit" RESET);
 
 	//----------------------------------------------------- lisp environment
 	LispEnv *lispenv = new_lispenv();
 	add_basicbuiltins_lispenv(lispenv);
+
 	//----------------------------------------------------------- input loop
-	// for (int i = 0; i < 20; i++) {
 	for (;;) {
 		print_prompt();
-		char *input = readline(" ");
-		// char *input = "init {(eval{len {* 7 4 5}}) {5 7 52.5e5} {(- 5 4 3 5)
-		// 5}}";
+		// char *input = readline(" ");
+		fgets(input, 2048, stdin);
 
 		if (input != NULL) {
-			if ((strcmp(input, "exit")) == 0) {
-				XFREE(input, "main input loop");
+			if ((strcmp(input, "exit\n")) == 0) {
+				// if (strstr(input, "exit")) {
+				// XFREE(input, "main input loop");
 				break;
 			}
 
@@ -1450,7 +1467,9 @@ int main()
 			mpc_result_t mpc_result;
 
 			if (mpc_parse("<stdin>", input, lispy_parser, &mpc_result)) {
+#ifdef DEBUG_MPC
 				mpc_ast_print(mpc_result.output);
+#endif
 
 				LispValue *lispvalue_result = read_lispvalue(mpc_result.output);
 				print_lispvalue_newline(lispenv, lispvalue_result);
@@ -1467,7 +1486,7 @@ int main()
 			}
 
 			/* readline malloc'd input*/
-			XFREE(input, "main input loop");
+			// XFREE(input, "main input loop");
 		}
 	}
 
