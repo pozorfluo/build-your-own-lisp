@@ -6,7 +6,7 @@
 - wurst case scenario : long stories get short
 
 ---
-
+[![asciicast](https://asciinema.org/a/xUzkxNCyVGNhiKQoIAZdmF4Ms.png)](https://asciinema.org/a/xUzkxNCyVGNhiKQoIAZdmF4Ms)
 
 
 ## **[todo]**
