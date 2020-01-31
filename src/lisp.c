@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// #include <editline/history.h>
+#include <editline/history.h>
 #include <editline/readline.h>
 #include <string.h>
 
+#include "../include/linenoise.h"
 #include "../include/mpc.h"
 
 //---------------------------------------------------------- PLATFORM MACROS ---
@@ -141,6 +142,8 @@ void xfree(void *pointer, const char *pointer_name, const char *origin)
 #endif
 
 //------------------------------------------------------------------- MACROS ---
+#define ARRAY_LENGTH(array) (sizeof(array) / sizeof((array)[0]))
+
 #define LVAL_ASSERT(_arguments, _condition, _format, ...)                      \
 	if (!(_condition)) {                                                       \
 		LispValue *error = new_lispvalue_error(_format, ##__VA_ARGS__);        \
@@ -235,56 +238,6 @@ LispValue *eval_lispvalue(LispEnv *env, LispValue *value);
 LispValue *copy_lispvalue(LispValue *value);
 void print_lispvalue(LispEnv *env, LispValue *value);
 
-//-------------------------------------------------- STATIC GLOBAL VARIABLES ---
-/** Readline auto-completion configuration
- *
- * todo
- * - [ ] use current LispEnv symbols directly or to supplement readline
- *       auto-completion vocabulary
- */
-static char *vocabulary[] = {"head",
-                             "tail",
-                             "list",
-                             "init",
-                             "eval",
-                             "join",
-                             "cons",
-                             "len",
-                             "def",
-                             "add",
-                             "sub",
-                             "mul",
-                             "div",
-                             "mod",
-                             "pow",
-                             "max",
-                             "min",
-                             "+",
-                             "-",
-                             "*",
-                             "/",
-                             "%",
-                             "^",
-                             ">", // used as min
-                             "<", // used as max
-                             //  "min",
-                             //  "max",
-                             //  "~",
-                             //  "!",
-                             //  "!=",
-                             //  "√",
-                             //  "Σ",
-                             //  "≥",
-                             //  "≤",
-                             //  "=",
-                             //  ">=",
-                             //  "<=",
-                             //  "...",
-                             "{",
-                             "}",
-                             "(",
-                             ")",
-                             NULL};
 //----------------------------------------------------------------- Function ---
 /**
  * Gets a readable name for a given LispValueType
@@ -1338,77 +1291,127 @@ void add_basicbuiltins_lispenv(LispEnv *env)
  *
  * see https://thoughtbot.com/blog/tab-completion-in-gnu-readline
  */
-char *completion_generator(const char *text, const int state)
-{
-	static int match_index, length;
-	char *match;
-
-	/*
-	    * readline calls this function with state = 0 the first time
-	    * this initialize once for the completion session
-	    */
-	if (!state) {
-		match_index = 0;
-		length      = strlen(text);
-	}
-
-	while ((match = vocabulary[match_index++])) {
-		if (strncmp(match, text, length) == 0) {
-			/* readline free() the returned string, correct ? */
-			return strdup(match);
-		}
-	}
-
-	return NULL;
-}
-
-//----------------------------------------------------------------- Function ---
-/**
- * Handles custom completion registered to readline global variable
- *   -> Completion matches
- */
-// char **completer(const char *text, const int start, const int end)
+// char *completion_generator(const char *text, const int state)
 // {
-// 	/* not doing filename completion even if 0 matches */
-// 	// rl_attempted_completion_over = 1;
+// 	static int match_index, length;
+// 	char *match;
 
-// 	/* readline expects char** fn(char*, int, int) */
-// 	/* workaround compiler warnings for unused-parameters */
-// 	UNUSED(start);
-// 	UNUSED(end);
+// 	/*
+// 	    * readline calls this function with state = 0 the first time
+// 	    * this initialize once for the completion session
+// 	    */
+// 	if (!state) {
+// 		match_index = 0;
+// 		length      = strlen(text);
+// 	}
 
-// 	return rl_completion_matches(text, &completion_generator);
+// 	while ((match = vocabulary[match_index++])) {
+// 		if (strncmp(match, text, length) == 0) {
+// 			/* readline free() the returned string, correct ? */
+// 			return strdup(match);
+// 		}
+// 	}
+
+// 	return NULL;
 // }
 
 //----------------------------------------------------------------- Function ---
 /**
- * pretty prints a prompt
+ * Handles linenoise custom completion callbacks
  *   -> Nothing
+ * 
+ * todo 
+ * - [ ] update to reflect current lispenv and not be a separate thing to
+ *       maintain
  */
-void print_prompt()
+void completion(const char *buf, linenoiseCompletions *lc)
 {
-	fputs(BG_BRIGHT_GREEN FG_GREEN "lispy " FG_BLACK "> " RESET, stdout);
+	switch (buf[0]) {
+	case 'a':
+		linenoiseAddCompletion(lc, "add");
+		break;
+	case 'c':
+		linenoiseAddCompletion(lc, "cons");
+		break;
+	case 'd':
+		linenoiseAddCompletion(lc, "div");
+		linenoiseAddCompletion(lc, "def");
+		break;
+	case 'e':
+		linenoiseAddCompletion(lc, "eval");
+		linenoiseAddCompletion(lc, "exit");
+		break;
+	case 'h':
+		linenoiseAddCompletion(lc, "head");
+		break;
+	case 'i':
+		linenoiseAddCompletion(lc, "init");
+		break;
+	case 'j':
+		linenoiseAddCompletion(lc, "join");
+		break;
+	case 'l':
+		linenoiseAddCompletion(lc, "list");
+		linenoiseAddCompletion(lc, "len");
+		break;
+	case 'm':
+		linenoiseAddCompletion(lc, "max");
+		linenoiseAddCompletion(lc, "min");
+		linenoiseAddCompletion(lc, "mod");
+		linenoiseAddCompletion(lc, "mul");
+		break;
+	case 'p':
+		linenoiseAddCompletion(lc, "pow");
+		break;
+	case 's':
+		linenoiseAddCompletion(lc, "sub");
+		break;
+	case 't':
+		linenoiseAddCompletion(lc, "tail");
+		break;
+	default:
+		// for (size_t i = 0; i < ARRAY_LENGTH(vocabulary); i++) {
+		// 	linenoiseAddCompletion(lc, vocabulary[i]);
+		// }
+		break;
+	}
+}
+//----------------------------------------------------------------- Function ---
+/**
+ * Handles linenoise hints callback
+ *   -> pointer to hint string
+ * 
+ * todo 
+ * - [ ] update to reflect current lispenv and not be a separate thing to
+ *       maintain
+ */
+char *hints(const char *buf, int *color, int *bold)
+{
+	if (!strcasecmp(buf, "head")) {
+		*color = 35;
+		*bold  = 0;
+		return " {qexpr}";
+	}
+	return NULL;
 }
 
 //--------------------------------------------------------------------- MAIN ---
 /**
- * Setup parsers
- * Setup completer
+ * Setup mpc parsers
+ * Setup linenoise
  * Print intro
  * Take and Process user input
- * Cleanup parsers
+ * Cleanup
  *   -> Error code
  *
  * todo
- * - [ ] hunt down leak
  * - [ ] have a go at const correctness
+ * - [ ] use current LispEnv symbols directly for hints and auto-completion
  */
-static char input[2048];
+// static char input[2048];
 
 int main()
 {
-	//----------------------------------------------------------- playground
-
 	//--------------------------------------------------------------- parser
 	const mpc_parser_t *number_parser = mpc_new("number");
 	const mpc_parser_t *symbol_parser = mpc_new("symbol");
@@ -1431,37 +1434,40 @@ int main()
 	          expr_parser,
 	          lispy_parser);
 
-	//------------------------------------------------------------ completer
-	/* register custom completer with readline global variable */
-	// rl_attempted_completion_function = &completer;
-
-	// By default readline does filename completion
-	// disable by asking readline to just insert the TAB character itself
-	// rl_bind_key('\t', rl_insert);
+	//------------------------------------------------------------ linenoise
+	/* Set the completion callback. This will be called every time the
+	 * user uses the <tab> key. */
+	linenoiseSetCompletionCallback(completion);
+	linenoiseSetHintsCallback(hints);
+	/* Load history at startup, hard set history length */
+	linenoiseHistoryLoad("lispy_history.txt");
+	linenoiseHistorySetMaxLen(16);
 
 	//---------------------------------------------------------------- intro
-	puts(FG_BRIGHT_BLUE REVERSE "Lispy version 0.11.5 " RESET FG_BRIGHT_BLUE
-	                            " to Exit press CTRL + C"
-	                            " or type exit" RESET);
+	puts(FG_BRIGHT_BLUE REVERSE "Lispy version 0.11.6 " RESET FG_BRIGHT_BLUE
+	                            " type exit to quit" RESET);
 
 	//----------------------------------------------------- lisp environment
 	LispEnv *lispenv = new_lispenv();
 	add_basicbuiltins_lispenv(lispenv);
 
 	//----------------------------------------------------------- input loop
+	char *prompt = BG_BRIGHT_GREEN FG_GREEN "lispy " FG_BLACK "> " RESET;
+	
 	for (;;) {
-		print_prompt();
-		// char *input = readline(" ");
-		fgets(input, 2048, stdin);
+		// print_prompt();
+		char *input = linenoise(prompt);
+		// fgets(input, 2048, stdin);
 
 		if (input != NULL) {
-			if ((strcmp(input, "exit\n")) == 0) {
+			if ((strcmp(input, "exit")) == 0) {
 				// if (strstr(input, "exit")) {
-				// XFREE(input, "main input loop");
+				XFREE(input, "main input loop");
 				break;
 			}
 
-			// add_history(input);
+			linenoiseHistoryAdd(input);
+			linenoiseHistorySave("lispy_history.txt");
 
 			/* try to parse input */
 			mpc_result_t mpc_result;
@@ -1486,7 +1492,7 @@ int main()
 			}
 
 			/* readline malloc'd input*/
-			// XFREE(input, "main input loop");
+			XFREE(input, "main input loop");
 		}
 	}
 

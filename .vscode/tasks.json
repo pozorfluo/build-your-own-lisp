@@ -13,6 +13,7 @@
 				"-g",
 				// "-DDEBUG_MALLOC",
 				// "-DDEBUG_MPC",
+				"-DVALGRIND",
                 "-O0",
                 // "-O3",
                 // "-ftree-vectorize",
@@ -21,7 +22,8 @@
                 // // "-fopt-info-vec-all",
                 "${file}",
                 "${workspaceRoot}/src/mpc.c", // link mpc lib
-                "-ledit", // editline lib
+                "${workspaceRoot}/src/linenoise.c", // link mpc lib
+                // "-ledit", // editline lib
                 "-lm", // link math lib
                 "-o",
                 // "${fileDirname}/../bin/${fileBasenameNoExtension}"

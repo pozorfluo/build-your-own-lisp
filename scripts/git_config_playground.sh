@@ -99,18 +99,13 @@ git status
 git add -A
 
 # commit, push
-git commit -m 'chapter 11 : hunting memory leaks
+git commit -m 'replaced readline with linenoise variant
 
-	Replaced malloc, free with XMALLOC, XFREE debug 
-	macros.
-
-	Pinned down "still reachable" blocks to readline.
-		
-	Unplugged readline.
+	Plugged linenoise variant : linenoise-mob.
+	It covers what was used in readline so far and 
+	the variant is not confused by ANSI escape codes
 	
-	Made printing out the mpc_ast tree every command
-	optionnal and available when compiled with 
-	-DDEBUG_MPC
-	'
+	Compile with -DVALGRIND for complete cleanup on
+	exit'
 
 git push -u origin master

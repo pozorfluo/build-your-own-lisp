@@ -6,7 +6,7 @@
 - wurst case scenario : long stories get short
 
 ---
-[![asciicast](https://asciinema.org/a/xUzkxNCyVGNhiKQoIAZdmF4Ms.png)](https://asciinema.org/a/xUzkxNCyVGNhiKQoIAZdmF4Ms)
+[![asciicast](https://asciinema.org/a/xUzkxNCyVGNhiKQoIAZdmF4Ms.png)](https://asciinema.org/a/xUzkxNCyVGNhiKQoIAZdmF4Ms?speed=2&theme=tango&size=medium&autoplay=1)
 
 
 ## **[todo]**
