@@ -1,0 +1,98 @@
+#!/usr/bin/expect -f
+
+set timeout 1
+
+array set TESTS {
+    "+ 5 5"  "10.0000"
+    "+ 5 6"  "11.0000"
+    "+ 5 6"  "10.0000"
+	"+ 5 7"  "12.0000"
+	"list"   "<list>" 
+	"init"   "<init>"
+	"eval"   "<eval>"
+	"join"   "<join>"
+	"cons"   "<cons>"
+	"len"    "<len>"
+	"def"    "<def>"
+	"sub"    "<sub>"
+	"mul"    "<mul>"
+	"add"    "<add>"
+	"div"    "<div>"
+	"mod"    "<mod>"
+	"pow"    "<pow>"
+	"max"    "<max>"
+	"min"    "<min>"
+	"+"      "<add>"
+	"-"      "<sub>"
+	"*"      "<mul>"
+	"/"      "<div>"
+	"%"      "<mod>"
+	"^"      "<pow>"
+	">"      "<max>"
+	"<"      "<min>"
+	"exit"   eof
+}
+
+set FAILED 0
+set PASSED 0
+
+
+spawn ../bin/lispy
+expect "> "
+
+foreach {INPUT RESULT} [array get TESTS] {
+	send_error "\n\u001b\[33m\u001b\[7m ? \t        INPUT: $INPUT EXPECTED: $RESULT \n"
+
+	send "$INPUT\r"
+	expect {
+		"$RESULT"   { 
+			send_error "\n\u001b\[36m\u001b\[7m + \t        passed.\n"
+			incr PASSED 1
+		}
+		"timeout"  { 
+			send_error "\n\u001b\[31m\u001b\[7m ! \t        failed.\n"
+			incr FAILED 1
+		}
+	}
+
+	expect "> "
+}
+
+send_error "\n\u001b\[92m\u001b\[7m + \t        PASSED : $PASSED "
+send_error "\n\u001b\[91m\u001b\[7m ! \t        FAILED : $FAILED "
+send_error "\u001b\[0m\n"
+
+# for {set NUM 0} {$NUM < $TEST_COUNT} {incr NUM} {
+# 	send_error "\n$NUM\n"
+# 	send_error "$TESTS($NUM)\n"
+# 	send_error "$RESULTS($NUM)\n"
+
+# 	send "$TESTS($NUM)\r"
+# 	expect {
+# 		"$RESULTS($NUM)"   { send_error "\n\u001b\[36m\u001b\[7m + \t        passed.\n"}
+# 		"timeout"  { send_error "\n\u001b\[31m\u001b\[7m ! \t        failed.\n"}
+# 	}
+#    }
+
+# send -- "+ 5 5\r"
+# expect {
+# 	"10.00000"   { send_error "\n\u001b\[36m\u001b\[7m + \t        passed.\n"}
+# 	"timeout"  { send_error "\n\u001b\[31m\u001b\[7m ! \t        failed.\n"}
+# }
+
+# send -- "list\r"
+# expect {
+# 	"<list>" { send_error "\n\u001b\[36m\u001b\[7m + \t        passed.\n"}
+# 	timeout  { send_error "\n\u001b\[31m\u001b\[7m ! \t        failed.\n"}
+# }
+# expect "> "
+
+# send -- "list\r"
+# expect {
+# 	"<lust>" { send_error "\n\u001b\[36m\u001b\[7m + \t        passed.\n"}
+# 	timeout  { send_error "\n\u001b\[31m\u001b\[7m ! \t        failed.\n"}
+# }
+# expect "> "
+
+# send "exit\r"
+# expect eof

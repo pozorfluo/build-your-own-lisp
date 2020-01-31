@@ -116,6 +116,8 @@
 	eval (head {+ - + - * /})
 	;; <function>
 	(eval (head {+ - + - * /})) 10 20
+	(eval (tail(tail(tail(tail(tail {+ - + - * /})))))) 10 20
+	
 	;; 30
 	hello
 	;; Error: unbound symbol!
@@ -200,6 +202,10 @@
    eval current
    + (* (eval target) (+ (len days) 1)) (-(eval (cons + days)))
    + (* (eval target) 12) (-(eval (cons + days)))
+   
+   def {days} 6
+   / (+ 1500 (* 2500 days)) 2300
+
 
 ;; chapter 11 : error reporting
 	head 4
@@ -235,4 +241,5 @@
 	> 
 	<
 
-;; valgrind --track-origins=yes --leak-check=full --show-reachable=yes ./bin/lisp
+;; valgrind --track-origins=yes --leak-check=full --show-reachable=yes ./lisp
+;; less +F -N lispy_history.txt

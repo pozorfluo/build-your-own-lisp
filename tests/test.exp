@@ -1,0 +1,76 @@
+#!/usr/bin/expect -f
+
+set timeout 1
+
+set EXECUTABLE [lindex $argv 0]
+
+array set TESTS {
+	"testing tests"  "fail on purpose"
+	"- 5 8"  "-3.0000"
+    "+ 5 5"  "10.0000"
+	"list"   "<list>" 
+	"init"   "<init>"
+	"eval"   "<eval>"
+	"join"   "<join>"
+	"cons"   "<cons>"
+	"len"    "<len>"
+	"def"    "<def>"
+	"sub"    "<sub>"
+	"mul"    "<mul>"
+	"add"    "<add>"
+	"div"    "<div>"
+	"mod"    "<mod>"
+	"pow"    "<pow>"
+	"max"    "<max>"
+	"min"    "<min>"
+	"+"      "<add>"
+	"-"      "<sub>"
+	"*"      "<mul>"
+	"/"      "<div>"
+	"%"      "<mod>"
+	"^"      "<pow>"
+	">"      "<max>"
+	"<"      "<min>"
+	"head 4" "Error :"
+	"head 4 5 4 {45 6}" "Error :"
+	"head len {45 5}" "Error :"
+	"head (len {45 5})" "Error :"
+	"head {}" "Error :"
+}
+
+set FAILED 0
+set PASSED 0
+
+
+# spawn ../bin/lispy
+spawn $EXECUTABLE
+
+expect "> "
+
+foreach {INPUT RESULT} [array get TESTS] {
+	send_error "\n\u001b\[33m\u001b\[7m ? \t        INPUT: $INPUT EXPECTED: $RESULT \n"
+
+	send -- "$INPUT\n"
+	expect {
+		-- "$RESULT"   {
+			expect "> "
+			send_error "\n\u001b\[36m\u001b\[7m + \t        passed.\n"
+			incr PASSED 1
+		}
+		"timeout"  { 
+			expect "> "
+			send_error "\n\u001b\[31m\u001b\[7m ! \t        failed.\n"
+			incr FAILED 1
+		}
+	}
+
+	
+	# sleep 1
+}
+
+send_error "\n\u001b\[92m\u001b\[7m + \t        PASSED : $PASSED "
+send_error "\n\u001b\[91m\u001b\[7m ! \t        FAILED : $FAILED "
+send_error "\u001b\[0m\n"
+
+send "exit\r"
+expect eof

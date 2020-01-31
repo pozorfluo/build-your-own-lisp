@@ -1435,6 +1435,7 @@ int main()
 	          lispy_parser);
 
 	//------------------------------------------------------------ linenoise
+	// linenoiseSetMultiLine(1);
 	/* Set the completion callback. This will be called every time the
 	 * user uses the <tab> key. */
 	linenoiseSetCompletionCallback(completion);

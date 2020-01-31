@@ -99,13 +99,16 @@ git status
 git add -A
 
 # commit, push
-git commit -m 'replaced readline with linenoise variant
+git commit -m 'automated some naive functional testing, cleaned up
 
-	Plugged linenoise variant : linenoise-mob.
-	It covers what was used in readline so far and 
-	the variant is not confused by ANSI escape codes
+	Tested "Expect" package to explore automating
+	some functional testing.
 	
-	Compile with -DVALGRIND for complete cleanup on
-	exit'
+	Added a Makefile for when not in vscode.
+
+	Renamed main source file to lispy to match
+	intended output.
+	
+	Updated README.md'
 
 git push -u origin master
