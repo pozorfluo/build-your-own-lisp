@@ -99,16 +99,6 @@ git status
 git add -A
 
 # commit, push
-git commit -m 'automated some naive functional testing, cleaned up
-
-	Tested "Expect" package to explore automating
-	some functional testing.
-	
-	Added a Makefile for when not in vscode.
-
-	Renamed main source file to lispy to match
-	intended output.
-	
-	Updated README.md'
+git commit -m 'removed Makefile from .gitignore'
 
 git push -u origin master
