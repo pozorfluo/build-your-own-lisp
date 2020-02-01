@@ -54,7 +54,7 @@
     - (- (* 2300 6) 6000) (+ 1554 1939 1529 2140 356)
 	
 ;; bonus mark : cons
-;; valgrind --track-origins=yes ./bin/lisp
+;; valgrind --track-origins=yes ./bin/lispy
 	cons 1
 	cons 1 {4 5 5} 5
 	cons 1 {4 5 5} 5 67 {4 6 7}
@@ -88,7 +88,7 @@
 	len (cons 5 (list 1 { 45 54 54 }))
 
 ;; bonus mark : init
-;; valgrind --track-origins=yes --leak-check=full --show-leak-kinds=all ./bin/lisp
+;; valgrind --track-origins=yes --leak-check=full --show-leak-kinds=all ./bin/lispy
 	init 0 1 4
 	init 0
 	init (+ 0 1 4)

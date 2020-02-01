@@ -99,6 +99,6 @@ git status
 git add -A
 
 # commit, push
-git commit -m 'removed Makefile from .gitignore'
+git commit -m 'reworked functional tests in python'
 
 git push -u origin master

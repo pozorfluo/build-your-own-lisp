@@ -5,7 +5,7 @@ TESTSDIR = ./tests
 
 CFLAGS = -Wall -Wextra -Werror -pedantic -g -fsanitize=address
 OFLAG = -Og
-DEBUGFLAGS = -DVALGRIND
+DEBUGFLAGS = -DVALGRIND #-DDEBUG_MALLOC
 LIBFLAGS = -lm
 
 # := is important to avoid running find every time SRC is inspected
@@ -20,4 +20,5 @@ clean:
 	rm -rf $(BINARYDIR)/$(EXEC)
 
 test:
-	expect $(TESTSDIR)/test.exp $(BINARYDIR)/$(EXEC)
+	# expect $(TESTSDIR)/test.exp $(BINARYDIR)/$(EXEC)
+	python $(TESTSDIR)/test.py

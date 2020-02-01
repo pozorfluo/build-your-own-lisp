@@ -1407,6 +1407,7 @@ char *hints(const char *buf, int *color, int *bold)
  * todo
  * - [ ] have a go at const correctness
  * - [ ] use current LispEnv symbols directly for hints and auto-completion
+ * - [ ] prevent def from rewriting default builtins
  */
 // static char input[2048];
 

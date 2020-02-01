@@ -5,6 +5,9 @@
 #gdb
 .gdb_history
 
+#project specific
+lispy_history.txt
+
 CMakeLists.txt.user
 CMakeCache.txt
 CMakeFiles
