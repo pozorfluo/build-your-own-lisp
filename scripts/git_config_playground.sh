@@ -99,6 +99,22 @@ git status
 git add -A
 
 # commit, push
-git commit -m 'reworked functional tests in python'
+git commit -m 'extended functional tests
+┌──────────────────────────────────────────────────────────────────────────────┐
+│   tests.py                                                                   │
+└──────────────────────────────────────────────────────────────────────────────┘
+███ Usage:
+	tests.py  <binary> [--stress=<n>] [--delay=<s>] [--log=<file>] [-v | --verbose] [-o | --output]
+	tests.py  -h | --help
+	tests.py  --version
+
+███ Options:
+	-h, --help     Show this screen.
+	--version      Show version.
+	--stress=<n>   Number of iterations for Lispenv test [default: 10].
+	--delay=<s>    Delay before sending commands [default: 0.01 seconds].
+	--log=<file>   Redirect output to a custom log file [default: test_report.yaml]
+	-v, --verbose  Pretty prints test results in terminal
+	-o, --output   Show spawned process output in terminal'
 
 git push -u origin master

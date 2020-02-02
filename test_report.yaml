@@ -1,0 +1,18 @@
+
+---
+start_date : 2020-02-02T06:17:07.881477
+end_date   : 2020-02-02T06:17:20.376387
+options    : {'--delay': '0.05',
+ '--help': False,
+ '--log': 'test_report.yaml',
+ '--output': False,
+ '--stress': '10',
+ '--verbose': False,
+ '--version': False,
+ '-h': False,
+ '-o': True,
+ '-v': True,
+ '<binary>': 'valgrind --track-origins=yes --leak-check=full --show-reachable=yes ./bin/lispy'}
+passed     : 112
+failed     : 0
+...
