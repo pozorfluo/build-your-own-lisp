@@ -5,18 +5,21 @@ u"""\x1B[32;7m
 └──────────────────────────────────────────────────────────────────────────────┘
 \x1B[0;32;49m
 ███ Usage:
-	tests.py  <binary> [--stress=<n>] [--delay=<s>] [--log=<file>] [-v | --verbose] [-o | --output]
+	tests.py  <binary> [--test=<file>] [--log=<file>]
+					   [--stress=<n>] [--delay=<s>] 
+					   [-v | --verbose] [-o | --output]
 	tests.py  -h | --help
 	tests.py  --version
 
 ███ Options:
 	-h, --help     Show this screen.
 	--version      Show version.
+	--test=<file>  Path to handwritten tests definition file [default: test.lisp].
+	--log=<file>   Path to log file [default: test_report.yaml].
 	--stress=<n>   Number of iterations for Lispenv test [default: 10].
 	--delay=<s>    Delay before sending commands [default: 0.01 seconds].
-	--log=<file>   Redirect output to a custom log file [default: test_report.yaml]
-	-v, --verbose  Pretty prints test results in terminal
-	-o, --output   Show spawned process output in terminal
+	-v, --verbose  Pretty prints test results in terminal.
+	-o, --output   Show spawned process output in terminal.
 
 \x1B[90m
 	todo
@@ -24,30 +27,45 @@ u"""\x1B[32;7m
  
 \x1B[0m
 """
-# from __future__ import absolute_import
-# from __future__ import print_function
-# from __future__ import unicode_literals
-
 from docopt import docopt
 import pexpect
 import re
 
-from sys import stdout 
+import sys
 import os
 import random
 import string
-# import time
 import datetime
 from collections import namedtuple
+from itertools import islice
 
+#---------------------------------------------- escaped ansi escape sequence ---
 # Brackets are escaped to be used with .expect(regexp)
-reset = "\x1b\[0m"
-fg_black = "\x1b\[30m"
-fg_green = "\x1b\[32m"
-fg_yellow = "\x1b\[33m"
-fg_cyan = "\x1b\[36m"
-bg_green = "\x1b\[102m"
+reset     = "\x1b\\[0m"
+reverse   = "\x1b\\[7m"
+fg_black  = "\x1b\\[30m"
+fg_red    = "\x1b\\[31m"
+fg_green  = "\x1b\\[32m"
+fg_yellow = "\x1b\\[33m"
+fg_cyan   = "\x1b\\[36m"
+bg_green  = "\x1b\\[102m"
 
+# this dict is more convenient to expand template string
+ansiseq = {
+	'reset'     : reset,
+	'reverse'   : reverse,
+	'fg_black'  : fg_black,
+	'fg_red'    : fg_red,
+	'fg_green'  : fg_green ,
+	'fg_yellow' : fg_yellow,
+	'fg_cyan'   : fg_cyan,
+	'bg_green'  : bg_green 
+}
+#---------------------------------------------- handwritten tests definition ---
+# todo 
+# - [ ] read handwritten test from separate, easy to edit file
+# - [ ] append generated tests to this dict
+# - [ ] run test loop once
 Test = namedtuple('Test', 'input result')
 
 tests = [
@@ -78,38 +96,182 @@ tests = [
 	Test("tail {qsd kkl aio}",
 		f"{{{fg_cyan}kkl{reset} {fg_cyan}aio{reset} }}")
 ]
+# Define handwritten tests in a separate file
+#   Each test definition is made of 2 lines
+#     1st line  : simulated user input
+#     2nd line  : expected result string template optionaly preceded by ;;
+#   Empty lines are not skipped !
+#   Multilines definition are not supported
+#
+# example : test.lisp
+#
+# + 1 (* 7 5) 3
+# ;; 39
+# list 1 2 3 4
+# ;; {{${fg_yellow}1${reset} ${fg_yellow}2${reset} ${fg_yellow}3${reset} ${fg_yellow}4${reset}]}
 
-# def get_speak_func(text, volume):
-#     def whisper():
-#         return text.lower() + '...'
-#     def yell():
-#         return text.upper() + '!'
-#     if volume > 0.5:
-#         return yell
-#     else:
-#         return whisper
+def pretty_number(number):
+	return f'${{fg_yellow}}{number.group(0)}${{reset}}'
 
+def pretty_symbol(symbol):
+	return f'${{fg_cyan}}{symbol.group(0)}${{reset}}'
+
+regex_number = re.compile(r"[-]?[0-9]+[.]?[0-9]*([eE][-+]?[0-9]+)?")
+regex_symbol = re.compile(r"[a-zA-Z_+\-*%^\/\\=<>!&]+(?=[\s{}()])")
+
+with open("tests/test.lisp", 'r') as testfile:
+	test = [line.rstrip('\n').lstrip(';;') for line in islice(testfile, 2)]
+	# if starts with Error..
+	# if starts with <...>
+	# else
+	# match symbols first other previously inserted placeholders will match too
+	test[1] = regex_symbol.sub(pretty_symbol, test[1])
+	test[1] = regex_number.sub(pretty_number, test[1])
+	test = Test._make(test)
+	print(test)
+
+
+
+t = string.Template(test.result)
+s = t.substitute(ansiseq)
+print(s)
+
+#------------------------------------------ Generated tests helper functions ---
+# import functools
+# @functools.wraps(func)
+
+# def format(op)
+
+def lisp(operatorfunc):
+	"""Makes the basic operator functions variadic
+
+		The process is interrupted if any intermediate result is a string
+			-> result or error string
+	"""
+	def wrapper(*numbers, **kwargs):
+		print(f"lisp: calling {operatorfunc.__name__}() "
+              f"with {numbers}, {kwargs}")
+		result = numbers[0]			  
+		for number in numbers[1:]:
+			print(f"{operatorfunc.__name__}({result}, {number})")
+			result = operatorfunc(result, number)
+			if isinstance(result, str):
+				return result
+		return result
+	return wrapper
+
+@lisp
 def op_add(a, b):
 	return a + b
 
+@lisp
 def op_sub(a, b):
 	return a - b
 
+@lisp
 def op_mul(a, b):
 	return a * b
 
+@lisp
+def op_div(a, b):
+	# Error :  Division by Zero !
+	# FG_RED REVERSE "Error : " RESET FG_RED " %s" RESET
+	if b == 0:
+		return f"{{{fg_red}{reverse} Division by Zero !{reset}}}"
+	else:
+		return a / b
+
+@lisp
 def op_mod(a, b):
 	if b == 0:
-		return "-nan"
+		return '-nan'
 	else:
 		return a % b
 
-# op_add = lambda a, b: a + b	
-# op_sub = lambda a, b: a - b	
+@lisp
+def op_pow(a, b):
+	return a ** b
+
+# python max and min are already variadic
+op_max = max
+op_min = min
+
+# easier to define as a dict; allows access by key
+builtins = {
+	'add': op_add,
+	'sub': op_sub,
+	'mul': op_mul,
+	'div': op_div,
+	'mod': op_mod,
+	'pow': op_pow,
+	'max': op_max,
+	'min': op_min,
+	'+':   op_add,
+	'-':   op_sub,
+	'*':   op_mul,
+	'/':   op_div,
+	'%':   op_mod,
+	'^':   op_pow,
+	'>':   op_max,
+	'<':   op_min
+}
+
+
 
 def random_symbol(length):
 	return ''.join(random.choice(string.ascii_letters) for i in range(length))
 
+def operand_generator(count, integer=False):
+	for n in range(count):
+		bounds = random.getrandbits(32) 
+		random_value = random.uniform(-bounds, bounds)
+		if integer:
+			random_value = int(random_value)
+		yield (random_symbol(random.getrandbits(4) + 2), random_value)
+
+def is_number(operand):
+	try:
+		float(operand)
+		return True
+	except ValueError:
+		return False
+
+def qexpr_template(operands):
+	qexpr = ['{']
+	for operand in operands:
+		if is_number(operand):
+			qexpr.append(f'${{fg_yellow}}{operand}${{reset}} ')
+		else:			
+			qexpr.append(f'${{fg_cyan}}{operand}${{reset}} ')
+	qexpr.append('}')
+	return ''.join(qexpr)
+
+
+qexpr_template('list 1 2 3 4'.split(' '))
+qexpr_template('{(+ 1.000000 2.000000 ) }'.split(' '))
+# def sexpr(operatorfunc):
+# 	"""Generates a test expected result template string for simple sexpr
+# 	"""
+# 	def wrapper(*operands):
+# 		result = operands[0]			  
+# 		for operand in operands[1:]:
+
+# 		return result
+# 	return wrapper
+
+operands = operand_generator(40)
+next(operands)
+
+def test_generator(count, builtin_dict):
+	# convert once to a list of tuple; allows subscripting
+	builtinlist  = list(builtins.items())	
+	builtincount = len(builtinlist)
+	for n in range(count):
+		# yield builtinlist[int(random.random() * builtincount)]
+		yield Test(gen_input, expected_result)
+
+test_suite = test_generator(10, builtins)
+#---------------------------------------------------------------------- main ---
 def main() -> None:
 	"""
     docopt based CLI
@@ -126,11 +288,10 @@ def main() -> None:
 		arguments['--log'] = 'test_report.yaml'
 
 
-	
+	# Get your bearings, setup, spawn process
 	currentDirectory = os.getcwd()
 	print(currentDirectory)
 
-	# spawn process, setup
 	stressiteration = int(arguments['--stress'])
 	verbose = arguments['-v'] | arguments['--verbose']
 	
@@ -141,23 +302,17 @@ def main() -> None:
 	testee.delaybeforesend = float(arguments['--delay'])
 
 	if (arguments['-o'] | arguments['--output']):
-		testee.logfile_read = stdout
-	# testee.logfile = logfile
+		testee.logfile_read = sys.stdout
 
-
-	# testee.logfile = sys.stdout
-	# testee.logfile_send = sys.stdout
 	passed = 0
 	failed = 0
 
-# 2020-01-30 17:32:55
+	# Testing !
 	with open(arguments['--log'], 'w') as logfile:
-		# timestamp = time.strftime("%Y-%m-%d %H:%M:%S\n", time.gmtime())
 		timestamp = datetime.datetime.now().isoformat()
-		# print(timestamp)
-		# print(str(arguments))
-		testee.expect(prompt)	
-		# Loop over tests
+		testee.expect(prompt)
+
+		# Loop over hand written tests
 		for test in tests:
 			try:
 				if verbose:
@@ -169,25 +324,22 @@ def main() -> None:
 					print("\x1b[31;7m ! \t            failed.\x1b[0m")
 				else:
 					print("\x1b[31;7m ! ", end = '', flush=True)
-					# stdout.write("\x1b[31;7m ! ")
-				logfile.write('\n--- # ----------------------------------------------------------------- TEST ---\n')
-				logfile.write(f"input           : {test.input}\n")
-				logfile.write(f"expected_result : {test.result}\n\n")
-				logfile.write(f"dump: {str(testee)}")
-				logfile.write('\n... # --------------------------------------------------------------- FAILED ---\n')
-				failed+=1
+				logfile.write(
+					'\n--- # ----------------------------------------------------------------- TEST ---\n'
+					f"input           : {test.input}\n"
+					f"expected_result : {test.result}\n\n"
+					f"dump: {str(testee)}"
+					'\n... # --------------------------------------------------------------- FAILED ---\n')
+				failed += 1
 			else:
 				testee.expect(prompt)
 				if verbose:
 					print("\x1b[36;7m + \t            passed.\x1b[0m")
 				else:
 					print("\x1b[36;7m + ", end ='', flush=True)
-				passed+=1
+				passed += 1
 
 		# stretching lispenv a bit
-		operators = [op_add, op_sub, op_mul, op_mod]
-		builtins = ["add", "sub", "mul", "mod"]
-
 		for x in range(stressiteration):
 			for y in range(10):
 				a = random.randint(x, 256)
@@ -197,44 +349,53 @@ def main() -> None:
 				result = operators[operator](a, b)
 				try:
 					if verbose:
-						print(f"\x1b[30;43m ? \t\x1b[0;33m{builtins[operator]} {a} {b} = {result}\x1b[0m")
-					testee.sendline(f"def {{{symbol[0]} {symbol[1]}}} {a} {b}")
-					testee.sendline(f"{builtins[operator]} {symbol[0]} {symbol[1]}")
-					testee.expect(f"{result}")
+						print(
+							f"\x1b[30;43m ? \t\x1b[0;33m{builtins[operator]}"
+							f" {a} {b} = {result}\x1b[0m")
+					testee.sendline(
+						f"def {{{symbol[0]} {symbol[1]}}} {a} {b}")
+					testee.sendline(
+						f"{builtins[operator]} {symbol[0]} {symbol[1]}")
+					testee.expect(
+						f"{result}")
 				except pexpect.exceptions.TIMEOUT:
 					if verbose:
 						print("\x1b[31;7m ! \t            failed.\x1b[0m")
 					else:
 						print("\x1b[31;7m ! ", end = '', flush=True)
-					logfile.write('\n--- # ----------------------------------------------------------------- TEST ---\n')
-					logfile.write(f"input           : {builtins[operator]} {symbol[0]} {symbol[1]}\n")
-					logfile.write(f"expected_result : {result}\n\n")
-					logfile.write(f"dump: {str(testee)}")
-					logfile.write('\n... # --------------------------------------------------------------- FAILED ---\n')
-					failed+=1
+					logfile.write(
+						'\n--- # ----------------------------------------------------------------- TEST ---\n'
+						f"input           : {builtins[operator]} {symbol[0]} {symbol[1]}\n"
+						f"expected_result : {result}\n\n"
+						f"dump: {str(testee)}"
+						'\n... # --------------------------------------------------------------- FAILED ---\n')
+					failed += 1
 				else:
 					testee.expect(prompt)
 					if verbose:
 						print("\x1b[36;7m + \t            passed.\x1b[0m")
 					else:
-						print("\x1b[36;7m + ", end ='', flush=True)
-					passed+=1
+						print("\x1b[36;7m + ", end = '', flush=True)
+					passed += 1
 
 		# exit from inside spawned process
 		testee.sendline("exit")
-		# todo
-		#   - [ ] make Valgrind optional and handle its ouput
+		# todo 
+		# - [ ] make Valgrind optional and handle its ouput
 		testee.expect("ERROR SUMMARY:") 
+
 		# final tally
-		print(f"\n\x1b[92;7m + \t            PASSED : {passed}\x1b[0m")
-		print(f"\x1b[91;7m ! \t            FAILED : {failed}\x1b[0m")
-		logfile.write(f"\n---\n")
-		logfile.write(f"start_date : {timestamp}\n")
-		logfile.write(f"end_date   : {datetime.datetime.now().isoformat()}\n")
-		logfile.write(f"options    : {str(arguments)}\n")
-		logfile.write(f"passed     : {passed}\n")
-		logfile.write(f"failed     : {failed}\n")
-		logfile.write(f"...")
+		print(
+			f"\n\x1b[92;7m + \t            PASSED : {passed}\x1b[0m"
+			f"\n\x1b[91;7m ! \t            FAILED : {failed}\x1b[0m")
+		logfile.write(
+			'\n---\n'
+			f"start_date : {timestamp}\n"
+			f"end_date   : {datetime.datetime.now().isoformat()}\n"
+			f"options    : {str(arguments)}\n"
+			f"passed     : {passed}\n"
+			f"failed     : {failed}\n"
+			'...')
 
 	testee.close()
 	
