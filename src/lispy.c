@@ -1,8 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <editline/history.h>
-#include <editline/readline.h>
 #include <string.h>
 
 #include "../include/linenoise.h"
@@ -1480,7 +1478,9 @@ int main()
 #endif
 
 				LispValue *lispvalue_result = read_lispvalue(mpc_result.output);
+#ifdef DEBUG_MPC
 				print_lispvalue_newline(lispenv, lispvalue_result);
+#endif
 
 				lispvalue_result = eval_lispvalue(lispenv, lispvalue_result);
 				print_lispvalue_newline(lispenv, lispvalue_result);

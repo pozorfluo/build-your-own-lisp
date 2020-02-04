@@ -99,9 +99,12 @@ git status
 git add -A
 
 # commit, push
-git commit -m 'wip functional tests 
+git commit -m 'lispy.c cleanup
 
-	I need this update available at a different location
-	so test.py is a wip and broken at the moment'
+	Removed unused include directives.
+	
+	Printing the result of traversing and reading the AST
+	tree is now optional and available when compiled with
+	-DDEBUG_MPC'
 
 git push -u origin master
