@@ -99,16 +99,11 @@ git status
 git add -A
 
 # commit, push
-git commit -m 'Test for false negative reports and ease of updating tests
-	
-	Change a couple rules and cosmetic element in lispy.
+git commit -m 'Log Valgrind summary to test_report.yaml'
 
-	Run the test.lisp suite.
-	Assert that it picks up on the change and reports test failures
-	accordingly.
+git commit -m 'Adjust tests timeout length accordingly in test.py
 
-	Update the corresponding rules in test.py.
-	Run test.lisp suite again.
-	Assert that all tests pass.'
+	Use a generous timeout length for valgrind and/or program startup.
+	Use a short timeout length to avoid lingering on failures.'
 
 git push -u origin master

@@ -349,7 +349,7 @@ def main() -> None:
     prompt = f"{bg_green}{fg_green}lispy {fg_black}> {reset}"
 
     testee = pexpect.spawn(arguments["<binary>"], encoding="utf-8")
-    testee.timeout = 1
+    
     testee.delaybeforesend = float(arguments["--delay"])
 
     if arguments["-o"] | arguments["--output"]:
@@ -363,11 +363,17 @@ def main() -> None:
     # Testing !
     with open(logfile_path, "w") as logfile:
         timestamp = datetime.datetime.now().isoformat()
-        testee.expect_exact(prompt)
 
         # try:
         tests = read_tests(arguments["--test"])
         # except:
+
+        # use a generous timeout length for valgrind and/or program startup
+        testee.timeout = 5
+        testee.expect_exact(prompt)
+
+        # use a short timeout length to avoid lingering on failures
+        testee.timeout = 0.5
 
         # Loop over hand written tests
         for test in tests:
