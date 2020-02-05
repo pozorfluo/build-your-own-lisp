@@ -31,7 +31,7 @@ Run handwritten tests defined in a given file
 
   Empty lines are not skipped !
   Multilines definition are not supported :
-    Each 'lisp style comment' line will generate an expect() statement
+    Each 'lisp style comment' line will generate an expect_exact() statement
 \x1B[90m 
 > example : test.lisp -> define 4 tests 
 
@@ -62,14 +62,17 @@ from collections import namedtuple
 import re
 
 # --------------------------------------------- escaped ansi escape sequence ---
-# Brackets are escaped to be used with .expect(regexp)
 reset = "\x1b[0m"
 reverse = "\x1b[7m"
 fg_black = "\x1b[30m"
 fg_red = "\x1b[31m"
 fg_green = "\x1b[32m"
 fg_yellow = "\x1b[33m"
+fg_blue = "\x1b[34m"
+fg_magenta = "\x1b[35m"
 fg_cyan = "\x1b[36m"
+fg_white = "\x1b[37m"
+fg_default = "\x1b[39m"
 bg_green = "\x1b[102m"
 
 # use dict form to expand template string
@@ -80,7 +83,11 @@ ansiseq = {
     "fg_red": fg_red,
     "fg_green": fg_green,
     "fg_yellow": fg_yellow,
+    "fg_blue": fg_blue,
+    "fg_magenta": fg_magenta,
     "fg_cyan": fg_cyan,
+    "fg_white": fg_white,
+    "fg_default": fg_default,
     "bg_green": bg_green,
 }
 
@@ -257,7 +264,7 @@ def prettify(line):
     If lispy cosmetics change, this need to be changed accordingly
     """
     if "Error : " in line:
-        line = line.replace("Error : ", f"{fg_red}{reverse}Error : {reset}{fg_red}", 1)
+        line = line.replace("Error : ", f"{fg_red}{reverse}Error : {reset}{fg_magenta}", 1)
     elif (line[:4] == ";;  ") or (line[:4] == ";; \t"):
         line = line.rstrip("\n") + f"{reset}"
     elif ";; <" in line:
@@ -432,7 +439,8 @@ def main() -> None:
         # exit from inside spawned process
         testee.sendline("exit")
         # todo
-        # - [ ] make Valgrind optional and handle its ouput
+        # - [ ] make Valgrind optional
+        # - [ ] add Valgrinds heap and error summary to test_report.yaml
         testee.expect("ERROR SUMMARY:")
 
         # final tally

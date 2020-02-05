@@ -673,7 +673,7 @@ void print_lispvalue(LispEnv *env, LispValue *value)
 		break;
 
 	case LVAL_ERR:
-		printf(FG_RED REVERSE "Error : " RESET FG_RED " %s" RESET,
+		printf(FG_RED REVERSE "Error : " RESET FG_MAGENTA " %s" RESET,
 		       value->error);
 		break;
 
@@ -737,7 +737,7 @@ LispValue *eval_lispvalue_sexpr(LispEnv *env, LispValue *value)
 		return take_lispvalue(value, 0);
 	}
 	else {
-		/* make sure first element is a function */
+		/* make sure first element is a function after evaluation */
 		LispValue *first_element = pop_lispvalue(value, 0);
 
 		if (first_element->type != LVAL_FUNCTION) {
@@ -1317,8 +1317,8 @@ void add_basicbuiltins_lispenv(LispEnv *env)
 /**
  * Handles linenoise custom completion callbacks
  *   -> Nothing
- * 
- * todo 
+ *
+ * todo
  * - [ ] update to reflect current lispenv and not be a separate thing to
  *       maintain
  */
@@ -1378,8 +1378,8 @@ void completion(const char *buf, linenoiseCompletions *lc)
 /**
  * Handles linenoise hints callback
  *   -> pointer to hint string
- * 
- * todo 
+ *
+ * todo
  * - [ ] update to reflect current lispenv and not be a separate thing to
  *       maintain
  */
@@ -1453,7 +1453,7 @@ int main()
 
 	//----------------------------------------------------------- input loop
 	char *prompt = BG_BRIGHT_GREEN FG_GREEN "lispy " FG_BLACK "> " RESET;
-	
+
 	for (;;) {
 		// print_prompt();
 		char *input = linenoise(prompt);
