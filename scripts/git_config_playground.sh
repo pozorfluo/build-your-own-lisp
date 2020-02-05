@@ -99,12 +99,40 @@ git status
 git add -A
 
 # commit, push
-git commit -m 'lispy.c cleanup
+git commit -m 'Add functional tests
 
-	Removed unused include directives.
+	Run handwritten tests defined in a given easy to edit file.
+	Work from known/last good build output to generate tests.
+	Add support for Test(input, n lines result).
+	Define cosmetic rules separately and once.
+	Log context and failure to file.
+
+	Unplug generated tests to stress lispenv until reworked.
 	
-	Printing the result of traversing and reading the AST
-	tree is now optional and available when compiled with
-	-DDEBUG_MPC'
+	Usage:
+	Define a test input with a line that is a not lisp style comment
+    ( i.e., NOT starting with ";;" )
+      
+	Define test expected results with the following lines as lisp style comments
+		( i.e., starting with ";;" )
+
+	Empty lines are not skipped !
+	Multilines definition are not supported :
+		Each "lisp style comment" line will generate an expect() statement
+
+	> example : test.lisp -> define 4 tests 
+
+	+ 1 (* 7 5) 3
+	;; 39
+	join (head {(+ 1 2) (+ 10 20)}) {5 6 7}
+	;; {(+ 1.000000 2.000000 ) 5.000000 6.000000 7.000000 }
+	list 1 2 3 4
+	;; {1.000000 2.000000 3.000000 4.000000 }
+	tail (len {+ 5 5})
+	;; Error :  Function tail passed incorrect type for element 0 !
+	;;          expected Q-Expression, got Number.
+
+	make
+	make test'
 
 git push -u origin master

@@ -10,5 +10,6 @@
 		"stdint.h": "c",
 		"type_traits": "c",
 		"stddef.h": "c"
-	}
+	},
+	"python.formatting.provider": "black"
 }

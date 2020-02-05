@@ -21,9 +21,6 @@ clean:
 	rm -rf $(BINARYDIR)/$(EXEC)
 
 test:
-	# Raise --delay=<s> if there are false positive :
-	# It looks like it slows down after many malloc/free
-	# and pexpect sends the next line 'too fast'.
-	# The test then fails and it hangs for pexpect timeout duration.
-	python $(TESTSDIR)/test.py $(VALGRIND) --delay=0.05 --stress=10 -v -o
+	# Raise --delay=<s> if there are false positive 
+	python $(TESTSDIR)/test.py $(VALGRIND) -v -o
 	
