@@ -1,7 +1,16 @@
+==21618== 
+==21618== HEAP SUMMARY:
+==21618==     in use at exit: 0 bytes in 0 blocks
+==21618==   total heap usage: 94,051 allocs, 94,051 frees, 11,136,840 bytes allocated
+==21618== 
+==21618== All heap blocks were freed -- no leaks are possible
+==21618== 
+==21618== For counts of detected and suppressed errors, rerun with: -v
+==21618== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
 
 ---
-start_date : 2020-02-05T17:31:29.343127
-end_date   : 2020-02-05T17:31:41.134487
+start_date : 2020-02-07T04:29:52.755713
+end_date   : 2020-02-07T04:30:04.476080
 options    : {'--delay': 0.05,
  '--help': False,
  '--log': 'test_report.yaml',

@@ -369,8 +369,8 @@ def main() -> None:
         # except:
 
         # use a generous timeout length for valgrind and/or program startup
-        testee.timeout = 5
-        testee.expect_exact(prompt)
+        # testee.timeout = 5
+        testee.expect_exact(prompt, timeout=5)
 
         # use a short timeout length to avoid lingering on failures
         testee.timeout = 0.5
@@ -446,7 +446,9 @@ def main() -> None:
         testee.sendline("exit")
         # todo
         # - [ ] make Valgrind optional
-        # - [ ] add Valgrinds heap and error summary to test_report.yaml
+        # - [x] add Valgrinds heap and error summary to test_report.yaml
+        testee.expect("exit")
+        testee.logfile_read = logfile
         testee.expect("ERROR SUMMARY:")
 
         # final tally

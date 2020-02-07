@@ -101,9 +101,4 @@ git add -A
 # commit, push
 git commit -m 'Log Valgrind summary to test_report.yaml'
 
-git commit -m 'Adjust tests timeout length accordingly in test.py
-
-	Use a generous timeout length for valgrind and/or program startup.
-	Use a short timeout length to avoid lingering on failures.'
-
 git push -u origin master
