@@ -211,7 +211,7 @@ struct LispValue {
 	LispBuiltin function;
 	// todo
 	// - [ ] make count unsigned
-	int count;
+	size_t count;
 	struct LispValue **cells;
 };
 
@@ -220,7 +220,7 @@ struct LispEnv {
 	/* entry in the other list by index */
 	// todo
 	// - [ ] make count unsigned
-	int count;
+	size_t count;
 	char **symbols;
 	LispValue **values;
 };
@@ -418,7 +418,7 @@ void delete_lispvalue(LispValue *value)
 
 	case LVAL_SEXPR:
 	case LVAL_QEXPR:
-		for (int i = 0; i < value->count; i++) {
+		for (size_t i = 0; i < value->count; i++) {
 			delete_lispvalue(value->cells[i]);
 		}
 
@@ -439,7 +439,7 @@ void delete_lispvalue(LispValue *value)
  */
 void delete_lispenv(LispEnv *env)
 {
-	for (int i = 0; i < env->count; i++) {
+	for (size_t i = 0; i < env->count; i++) {
 		XFREE(env->symbols[i], "delete_lispenv");
 		delete_lispvalue(env->values[i]);
 	}
@@ -460,7 +460,7 @@ void delete_lispenv(LispEnv *env)
  */
 LispValue *get_lispenv(LispEnv *env, LispValue *value)
 {
-	for (int i = 0; i < env->count; i++) {
+	for (size_t i = 0; i < env->count; i++) {
 		if (strcmp(env->symbols[i], value->symbol) == 0) {
 			return copy_lispvalue(env->values[i]);
 		}
@@ -479,7 +479,7 @@ LispValue *get_lispenv(LispEnv *env, LispValue *value)
  */
 char *get_symbol_lispenv(LispEnv *env, LispBuiltin function)
 {
-	for (int i = 0; i < env->count; i++) {
+	for (size_t i = 0; i < env->count; i++) {
 		if (env->values[i]->function == function) {
 			return env->symbols[i];
 		}
@@ -507,7 +507,7 @@ char *get_symbol_lispenv(LispEnv *env, LispBuiltin function)
  */
 void put_lispenv(LispEnv *env, LispValue *symbol, LispValue *value)
 {
-	for (int i = 0; i < env->count; i++) {
+	for (size_t i = 0; i < env->count; i++) {
 		if (strcmp(env->symbols[i], symbol->symbol) == 0) {
 			delete_lispvalue(env->values[i]);
 			env->values[i] = copy_lispvalue(value);
@@ -632,7 +632,7 @@ LispValue *copy_lispvalue(LispValue *value)
 		copy->count = value->count;
 		copy->cells = XMALLOC(
 		    sizeof(LispValue *) * copy->count, "copy_lispvalue", "copy->cells");
-		for (int i = 0; i < copy->count; i++) {
+		for (size_t i = 0; i < copy->count; i++) {
 			copy->cells[i] = copy_lispvalue(value->cells[i]);
 		}
 
@@ -655,7 +655,7 @@ void print_lispvalue_expr(LispEnv *env,
 {
 	putchar(open);
 
-	for (int i = 0; i < value->count; i++) {
+	for (size_t i = 0; i < value->count; i++) {
 		print_lispvalue(env, value->cells[i]);
 		putchar(' ');
 	}
@@ -720,12 +720,12 @@ void print_lispvalue_newline(LispEnv *env, LispValue *value)
 LispValue *eval_lispvalue_sexpr(LispEnv *env, LispValue *value)
 {
 	/* evaluate children */
-	for (int i = 0; i < value->count; i++) {
+	for (size_t i = 0; i < value->count; i++) {
 		value->cells[i] = eval_lispvalue(env, value->cells[i]);
 	}
 
 	/* check for errors */
-	for (int i = 0; i < value->count; i++) {
+	for (size_t i = 0; i < value->count; i++) {
 		if (value->cells[i]->type == LVAL_ERR) {
 			return take_lispvalue(value, i);
 		}
@@ -835,7 +835,7 @@ LispValue *take_lispvalue(LispValue *value, const int index)
 int are_all_numbers(LispValue *arguments)
 {
 	// int result = 1;
-	for (int i = 0; i < arguments->count; i++) {
+	for (size_t i = 0; i < arguments->count; i++) {
 		if (arguments->cells[i]->type != LVAL_NUMBER) {
 			// result = 0;
 			return 0;
@@ -911,7 +911,7 @@ LispValue *builtin_env(LispEnv *env, LispValue *arguments)
 	// this is not a good place to be caught with your pants down
 	qexpr->cells = realloc(qexpr->cells, sizeof(LispValue *) * qexpr->count);
 
-	for (int i = 0; i < env->count; i++) {
+	for (size_t i = 0; i < env->count; i++) {
 		printf("\t%s\t", env->symbols[i]);
 		print_lispvalue(env, env->values[i]);
 		putchar('\n');
@@ -1073,7 +1073,7 @@ LispValue *builtin_join(LispEnv *env, LispValue *arguments)
 {
 	UNUSED(env);
 
-	for (int i = 0; i < arguments->count; i++) {
+	for (size_t i = 0; i < arguments->count; i++) {
 		LVAL_ASSERT_TYPE("join", arguments, i, LVAL_QEXPR);
 	}
 
@@ -1164,7 +1164,7 @@ LispValue *builtin_def(LispEnv *env, LispValue *arguments)
 
 	LispValue *symbols = arguments->cells[0];
 
-	for (int i = 0; i < symbols->count; i++) {
+	for (size_t i = 0; i < symbols->count; i++) {
 		LVAL_ASSERT(arguments,
 		            (symbols->cells[i]->type == LVAL_SYMBOL),
 		            "Function 'def' passed incorrect type for element %d !\n"
@@ -1182,7 +1182,7 @@ LispValue *builtin_def(LispEnv *env, LispValue *arguments)
 	    arguments->count - 1,
 	    symbols->count);
 
-	for (int i = 0; i < symbols->count; i++) {
+	for (size_t i = 0; i < symbols->count; i++) {
 		put_lispenv(env, symbols->cells[i], arguments->cells[i + 1]);
 	}
 

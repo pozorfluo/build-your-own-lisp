@@ -99,33 +99,6 @@ git status
 git add -A
 
 # commit, push
-git commit -m 'add 'env' builtin for chapter 11 : bonus mark assignment
-
-	› Write a function for printing out all the named values in an environment.
-
-	LispValue *builtin_env(LispEnv *env, LispValue *arguments)
-		Dump given Lispenv.
-		Return a Q-Expression with the list of symbols in given LispEnv.
-
-	Update test.py accordingly
-
-	Limitations : 
-		So far, in chapter 11, when evaluating a S-Expr there is a clause
-		for single element expression that prevents using the env command 
-		alone.
-
-	Suggest using :
-		 env {}
-
-	Next step :
-		builtin_operator and the builtins calling it rely on the single 
-		element clause to get by without checking the argument list is
-		not empty. This can be fixed by actually checking and reporting
-		error properly.
-
-		Keep in mind the single element clause is necessary for expression 
-		like (5) to be evaluated either alone or in the middle of another 
-		expression.
- '
+git commit -m 'use size_t to count the number of elements'
 
 git push -u origin master
