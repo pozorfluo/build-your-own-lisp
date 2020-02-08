@@ -1,3 +1,13 @@
+env
+<env>
+env {}
+;; {add sub mul div mod pow max min + - * / % ^ > < head tail list init eval join cons len def env }
+env 0
+;; {add sub mul div mod pow max min + - * / % ^ > < head tail list init eval join cons len def env }
+def {hola} {5}
+;; ()
+env 0
+;; {add sub mul div mod pow max min + - * / % ^ > < head tail list init eval join cons len def env hola }
 head
 ;; <head>
 join (head {(+ 1 2) (+ 10 20)}) {5 6 7}

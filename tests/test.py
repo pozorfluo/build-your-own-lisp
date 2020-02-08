@@ -264,7 +264,9 @@ def prettify(line):
     If lispy cosmetics change, this need to be changed accordingly
     """
     if "Error : " in line:
-        line = line.replace("Error : ", f"{fg_red}{reverse}Error : {reset}{fg_magenta}", 1)
+        line = line.replace(
+            "Error : ", f"{fg_red}{reverse}Error : {reset}{fg_magenta}", 1
+        )
     elif (line[:4] == ";;  ") or (line[:4] == ";; \t"):
         line = line.rstrip("\n") + f"{reset}"
     elif ";; <" in line:
@@ -349,7 +351,7 @@ def main() -> None:
     prompt = f"{bg_green}{fg_green}lispy {fg_black}> {reset}"
 
     testee = pexpect.spawn(arguments["<binary>"], encoding="utf-8")
-    
+
     testee.delaybeforesend = float(arguments["--delay"])
 
     if arguments["-o"] | arguments["--output"]:
@@ -444,12 +446,16 @@ def main() -> None:
 
         # exit from inside spawned process
         testee.sendline("exit")
+        testee.expect("exit")
+
+        # valgrind
         # todo
         # - [ ] make Valgrind optional
         # - [x] add Valgrinds heap and error summary to test_report.yaml
-        testee.expect("exit")
+        logfile.write("---\nvalgrind : '\n")
         testee.logfile_read = logfile
         testee.expect("ERROR SUMMARY:")
+        logfile.write("'\n")
 
         # final tally
         print(
@@ -457,7 +463,6 @@ def main() -> None:
             f"\n\x1b[91;7m ! \t            FAILED : {failed}\x1b[0m"
         )
         logfile.write(
-            "\n---\n"
             f"start_date : {timestamp}\n"
             f"end_date   : {datetime.datetime.now().isoformat()}\n"
             f"options    : {str(arguments)}\n"

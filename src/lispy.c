@@ -209,7 +209,8 @@ struct LispValue {
 	char *error;
 	char *symbol;
 	LispBuiltin function;
-
+	// todo
+	// - [ ] make count unsigned
 	int count;
 	struct LispValue **cells;
 };
@@ -217,6 +218,8 @@ struct LispValue {
 struct LispEnv {
 	/* entries in each list match their corresponding */
 	/* entry in the other list by index */
+	// todo
+	// - [ ] make count unsigned
 	int count;
 	char **symbols;
 	LispValue **values;
@@ -230,8 +233,8 @@ struct LispEnv {
  */
 LispValue *
 builtin_operator(LispEnv *env, LispValue *arguments, const char *operator);
-LispValue *take_lispvalue(LispValue *value, int index);
-LispValue *pop_lispvalue(LispValue *value, int index);
+LispValue *take_lispvalue(LispValue *value, const int index);
+LispValue *pop_lispvalue(LispValue *value, const int index);
 LispValue *eval_lispvalue(LispEnv *env, LispValue *value);
 LispValue *copy_lispvalue(LispValue *value);
 void print_lispvalue(LispEnv *env, LispValue *value);
@@ -492,7 +495,7 @@ char *get_symbol_lispenv(LispEnv *env, LispBuiltin function)
  * with given value
  *   -> nothing
  *
- * Iterate over all items in environment
+ * Iterate over all items in given LispEnv
  *   If symbol is found
  *     Delete value at that position
  *     Replace with copy of given value
@@ -730,10 +733,12 @@ LispValue *eval_lispvalue_sexpr(LispEnv *env, LispValue *value)
 
 	/* empty expression */
 	if (value->count == 0) {
+		// printf("empty expression ");
 		return value;
 	}
 	/* single expression */
 	else if (value->count == 1) {
+		// printf("single expression ");
 		return take_lispvalue(value, 0);
 	}
 	else {
@@ -884,6 +889,43 @@ LispValue *builtin_max(LispEnv *env, LispValue *value)
 LispValue *builtin_min(LispEnv *env, LispValue *value)
 {
 	return builtin_operator(env, value, "<");
+}
+
+//----------------------------------------------------------------- Function ---
+/**
+ * Dump given LispEnv 
+ * Return a Q-Expression with the list of symbols in given LispEnv
+ *
+ * 	 Create a new Q-Expression the size of given LispEnv
+ *   Iterate over all items in given LispEnv
+ * 		Print item's symbol
+ * 		Print item's value
+ * 		Add a copy LispValue for each item found to this Q-Expression
+ *
+ *     -> pointer to LispValue error or Q-Expression
+ */
+LispValue *builtin_env(LispEnv *env, LispValue *arguments)
+{
+	LispValue *qexpr = new_lispvalue_qexpr();
+	qexpr->count = env->count;
+	// this is not a good place to be caught with your pants down
+	qexpr->cells = realloc(qexpr->cells, sizeof(LispValue *) * qexpr->count);
+
+	for (int i = 0; i < env->count; i++) {
+		printf("\t%s\t", env->symbols[i]);
+		print_lispvalue(env, env->values[i]);
+		putchar('\n');
+		// qexpr->cells[i] = copy_lispvalue(env->values[i]);
+		LispValue *copy = XMALLOC(sizeof(LispValue), "builtin_env", "copy");
+		copy->type = LVAL_SYMBOL;
+		copy->symbol = XMALLOC(
+			strlen(env->symbols[i]) + 1, "builtin_env", "copy");
+		strcpy(copy->symbol, env->symbols[i]);
+		qexpr->cells[i] = copy;
+	}
+
+	delete_lispvalue(arguments);
+	return qexpr;
 }
 
 //----------------------------------------------------------------- Function ---
@@ -1280,6 +1322,8 @@ void add_basicbuiltins_lispenv(LispEnv *env)
 	add_builtin_lispenv(env, "cons", builtin_cons);
 	add_builtin_lispenv(env, "len", builtin_len);
 	add_builtin_lispenv(env, "def", builtin_def);
+
+	add_builtin_lispenv(env, "env", builtin_env);
 }
 
 //----------------------------------------------------------------- Function ---
@@ -1336,6 +1380,7 @@ void completion(const char *buf, linenoiseCompletions *lc)
 		linenoiseAddCompletion(lc, "def");
 		break;
 	case 'e':
+		linenoiseAddCompletion(lc, "env");
 		linenoiseAddCompletion(lc, "eval");
 		linenoiseAddCompletion(lc, "exit");
 		break;
