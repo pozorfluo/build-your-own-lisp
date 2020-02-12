@@ -7,13 +7,41 @@
  > nothing fancy, move along
 ```
 [![asciicast](https://asciinema.org/a/xUzkxNCyVGNhiKQoIAZdmF4Ms.png)](https://asciinema.org/a/xUzkxNCyVGNhiKQoIAZdmF4Ms?speed=2&theme=tango&size=medium&autoplay=1)
+
+# from Abstraction to Compression
+Modern higher level languages made it very friendly to get my journey started. Yet they also made it painfully obvious that the layers of abstraction they provide can turn against you. 
+
+Everything is a blackbox when you don't have the faintest idea of what goes on under the hood. At a surface level it indeed is more readable, but when it goes wrong, it doesn't helps me understand the problem, let alone anticipate it.
+With that comes a certain level anxiety about everything you do. So you try recipes at first and quickly it turns into performing rituals. 
+
+C is still quite high level, it is not completely out of reach, but it forces me to think about the implications of what I'm doing.
+
+By getting a better picture of what goes on behind the curtains I hope to turn these abstraction blackboxes into compressions whose meaning is restored in context. `Less angsty voodoo, more internalized strategies`.
+
 ### ← playground/src
 all the things I need to `explore` on the side.
 
 
 ## `[todo]`
-- [x] ~~Say hello SNAIC~~
-- [ ] Make haste, spread the word  
+- [x] Complete Simplon's **prerequisites** list
+- [x] Get started with the tools
+    + [x] Debian for WSL2 on Windows machine
+    + [x] Debian on dedicated machine
+    + [x] Windows terminal
+    + [x] VS Code
+    + [x] GCC
+    + [x] GDB
+    + [x] make
+    + [x] valgrind
+    + [x] clang-format
+    + [x] git
+    + [x] python
+    + [x] conda
+    + [x] markdown
+    + [x] ssh
+    + [x] mc
+- [x] Recap what's been done so far
+- [ ] Lay out alternative plan
   
 
 
