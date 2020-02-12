@@ -1,0 +1,4 @@
+certifi==2019.11.28
+docopt==0.6.2
+pexpect==4.8.0
+ptyprocess==0.6.0

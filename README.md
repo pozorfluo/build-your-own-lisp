@@ -1,6 +1,3 @@
-
-
-
 # **lispy**
 ```
  > following http://www.buildyourownlisp.com/ tutorial
@@ -18,6 +15,17 @@ C is still quite high level, it is not completely out of reach, but it forces me
 
 By getting a better picture of what goes on behind the curtains I hope to turn these abstraction blackboxes into compressions whose meaning is restored in context. `Less angsty voodoo, more internalized strategies`.
 
+## build
+```bash
+make
+```
+
+## test
+```bash
+sudo apt install valgrind
+pip install --user --requirement requirements.txt
+make test
+```
 ### ← playground/src
 all the things I need to `explore` on the side.
 
@@ -40,7 +48,7 @@ all the things I need to `explore` on the side.
     + [x] markdown
     + [x] ssh
     + [x] mc
-- [x] Recap what's been done so far
+- [ ] Recap what's been done so far
 - [ ] Lay out alternative plan
   
 
