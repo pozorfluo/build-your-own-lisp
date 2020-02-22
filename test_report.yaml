@@ -1,17 +1,17 @@
 ---
 valgrind : '
-==619== 
-==619== HEAP SUMMARY:
-==619==     in use at exit: 0 bytes in 0 blocks
-==619==   total heap usage: 95,676 allocs, 95,676 frees, 11,432,423 bytes allocated
-==619== 
-==619== All heap blocks were freed -- no leaks are possible
-==619== 
-==619== For counts of detected and suppressed errors, rerun with: -v
-==619== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+==4362== 
+==4362== HEAP SUMMARY:
+==4362==     in use at exit: 0 bytes in 0 blocks
+==4362==   total heap usage: 95,676 allocs, 95,676 frees, 11,432,626 bytes allocated
+==4362== 
+==4362== All heap blocks were freed -- no leaks are possible
+==4362== 
+==4362== For counts of detected and suppressed errors, rerun with: -v
+==4362== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
 '
-start_date : 2020-02-08T07:43:25.876696
-end_date   : 2020-02-08T07:43:38.366837
+start_date : 2020-02-18T05:00:30.941792
+end_date   : 2020-02-18T05:00:42.891393
 options    : {'--delay': 0.05,
  '--help': False,
  '--log': 'test_report.yaml',

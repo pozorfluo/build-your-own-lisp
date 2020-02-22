@@ -48,16 +48,13 @@ all the things I need to `explore` on the side.
     + [x] markdown
     + [x] ssh
     + [x] mc
-- [ ] Recap what's been done so far
-- [ ] Lay out alternative plan
-  
-
 
 ## `SNAIC`
 ![alt text][nvrstap]
 - to do iz slow, to dunt is fastr
 - nuthin last, best is fast  
 - nevr fullow, best is first
+- hi velucity = speed of fast + da wae
 - wurst case scenario : long stories get short
 
 
