@@ -7,6 +7,7 @@
 
 #project specific
 lispy_history.txt
+test_report.yaml
 
 CMakeLists.txt.user
 CMakeCache.txt
