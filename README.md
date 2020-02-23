@@ -1,4 +1,4 @@
-# **lispy**
+# **&#955;ispy**
 ```
  > following http://www.buildyourownlisp.com/ tutorial
  > nothing fancy, move along
