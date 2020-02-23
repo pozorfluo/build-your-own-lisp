@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <string.h>
 /**
  * see : http://www.catb.org/esr/structure-packing/
@@ -29,6 +30,8 @@
 //----------------------------------------------------------------- TYPEDEFS ---
 typedef struct LispValue {
 	int type;
+	bool mutable;
+
 	double number;
 	char *error;
 	char *symbol;
@@ -43,6 +46,7 @@ typedef struct LispValueReordered {
 	double number;
 	char *error;
 	char *symbol;
+	bool mutable;
 	struct LispValue **cells;
 } LispValueReordered;
 
@@ -182,6 +186,7 @@ int main()
 	       total_unpadded_size,
 	       pretty_byte - total_unpadded_size);
 	PRINT_PRETTY_SIZE("\t(int) type           ", int);
+	PRINT_PRETTY_SIZE("\t(bool) mutable       ", bool);
 	PRINT_PRETTY_SIZE("\t(double) number      ", double);
 	PRINT_PRETTY_SIZE("\t(char *) error       ", char *);
 	PRINT_PRETTY_SIZE("\t(char *) symbol      ", char *);
@@ -193,6 +198,7 @@ int main()
 
 	PRINT_PRETTY_AT("LispValue            \t", lispvalue_array[0]);
 	PRINT_PRETTY_AT("\t(int) type           ", (lispvalue_array[0].type));
+	PRINT_PRETTY_AT("\t(bool) mutable       ", (lispvalue_array[0].mutable));
 	PRINT_PRETTY_AT("\t(double) number      ", (lispvalue_array[0].number));
 	PRINT_PRETTY_AT("\t(char *) error       ", (lispvalue_array[0].error));
 	PRINT_PRETTY_AT("\t(char *) symbol      ", (lispvalue_array[0].symbol));
@@ -202,8 +208,12 @@ int main()
 	puts("\nLispValue lispvalue");
 	unsigned long padding_type;
 
-	padding_type = (unsigned long)(&lispvalue_array[0].number) -
+	padding_type = (unsigned long)(&lispvalue_array[0].mutable) -
 	               (unsigned long)(&lispvalue_array[0].type);
+	printf("\n(bool) type padded to \t\t: %lx bytes\n", padding_type);
+
+	padding_type = (unsigned long)(&lispvalue_array[0].number) -
+	               (unsigned long)(&lispvalue_array[0].mutable);
 	printf("\n(int) type padded to \t\t: %lx bytes\n", padding_type);
 
 	padding_type = (unsigned long)(&lispvalue_array[0].error) -
@@ -235,31 +245,36 @@ int main()
 	PRINT_PRETTY_AT("\t(double) number      ", (lispvalue_reordered[0].number));
 	PRINT_PRETTY_AT("\t(char *) error       ", (lispvalue_reordered[0].error));
 	PRINT_PRETTY_AT("\t(char *) symbol      ", (lispvalue_reordered[0].symbol));
+	PRINT_PRETTY_AT("\t(bool) mutable       ", (lispvalue_reordered[0].mutable));
 	PRINT_PRETTY_AT("\t(LispValue **) cells ", (lispvalue_reordered[0].cells));
 
-	padding_type = (unsigned long)(&lispvalue_reordered[0].count) -
-	               (unsigned long)(&lispvalue_reordered[0].type);
-	printf("\n(int) type padded to \t\t: %lx bytes\n", padding_type);
+	/**
+	 * todo
+	 * - [ ] fix order padding substractions
+	 */
+	// padding_type = (unsigned long)(&lispvalue_reordered[0].count) -
+	//                (unsigned long)(&lispvalue_reordered[0].type);
+	// printf("\n(int) type padded to \t\t: %lx bytes\n", padding_type);
 
-	padding_type = (unsigned long)(&lispvalue_reordered[0].number) -
-	               (unsigned long)(&lispvalue_reordered[0].count);
-	printf("(double) number padded to \t: %lx bytes\n", padding_type);
+	// padding_type = (unsigned long)(&lispvalue_reordered[0].cells) -
+	//                (unsigned long)(&lispvalue_reordered[0].symbol);
+	// printf("(int) count padded to \t\t: %lx bytes\n", padding_type);
 
-	padding_type = (unsigned long)(&lispvalue_reordered[0].error) -
-	               (unsigned long)(&lispvalue_reordered[0].number);
-	printf("(char *) error padded to \t: %lx bytes\n", padding_type);
+	// padding_type = (unsigned long)(&lispvalue_reordered[0].number) -
+	//                (unsigned long)(&lispvalue_reordered[0].count);
+	// printf("(double) number padded to \t: %lx bytes\n", padding_type);
 
-	padding_type = (unsigned long)(&lispvalue_reordered[0].symbol) -
-	               (unsigned long)(&lispvalue_reordered[0].error);
-	printf("(char *) symbol padded to \t: %lx bytes\n", padding_type);
+	// padding_type = (unsigned long)(&lispvalue_reordered[0].error) -
+	//                (unsigned long)(&lispvalue_reordered[0].number);
+	// printf("(char *) error padded to \t: %lx bytes\n", padding_type);
 
-	padding_type = (unsigned long)(&lispvalue_reordered[0].cells) -
-	               (unsigned long)(&lispvalue_reordered[0].symbol);
-	printf("(int) count padded to \t\t: %lx bytes\n", padding_type);
+	// padding_type = (unsigned long)(&lispvalue_reordered[0].symbol) -
+	//                (unsigned long)(&lispvalue_reordered[0].error);
+	// printf("(char *) symbol padded to \t: %lx bytes\n", padding_type);
 
-	padding_type = (unsigned long)(&lispvalue_reordered[1].type) -
-	               (unsigned long)(&lispvalue_reordered[0].cells);
-	printf("(LispValue **) cells padded to \t: %lx bytes\n\n", padding_type);
+	// padding_type = (unsigned long)(&lispvalue_reordered[1].type) -
+	//                (unsigned long)(&lispvalue_reordered[0].cells);
+	// printf("(LispValue **) cells padded to \t: %lx bytes\n\n", padding_type);
 
 	printf("offset of : %lu\n", ((size_t) & (((LispValue *)0)->type)));
 

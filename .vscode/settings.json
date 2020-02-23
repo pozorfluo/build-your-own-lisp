@@ -9,7 +9,17 @@
 		"types.h": "c",
 		"stdint.h": "c",
 		"type_traits": "c",
-		"stddef.h": "c"
+		"stddef.h": "c",
+		"cctype": "c",
+		"cmath": "c",
+		"cstdarg": "c",
+		"cstdint": "c",
+		"cstdio": "c",
+		"cstdlib": "c",
+		"cwchar": "c",
+		"cwctype": "c",
+		"cinttypes": "c",
+		"typeinfo": "c"
 	},
 	"python.formatting.provider": "black"
 }

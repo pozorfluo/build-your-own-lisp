@@ -99,6 +99,45 @@ git status
 git add -A
 
 # commit, push
-git commit -m 'use size_t to count the number of elements'
+git commit -m 'Make builtins variable immutable for chapter 11 : Bonus Marks
+
+	Return an error if def is used with a symbol used for builtins or
+	an immutable variable.
+
+	Add a "mutable" bool field to LispValue struct. 
+	Make it default to false upon initialization; everything is immutable
+	unless otherwise specified.
+
+	Add a make_mutable function to allow user defined variable to be made
+	mutable if requested.
+	
+	- [ ] study if current implementation allows immutability by default
+			LispValue are not currently handled like persistent data
+			structures, they do get recycled/modified here and there
+			and that is a problem.
+	- [ ] check structure packing for added bool mutable field.'
 
 git push -u origin master
+
+# start interactive rebase session for last 3 commits
+git rebase -i HEAD~3
+
+# download latest commits
+git remote update -p
+
+# update local branch
+git merge -ff-only @{u}
+
+# create an alias for download latest, update local branch
+git config --global alias.up '!git remote update -p; git merge --ff-only @{u}'
+git up
+
+# if local branch has diverged
+git rebase -p @{u}
+
+# review
+git log --graph --oneline --decorate --date-order --color --boundary @{u}
+
+# stop tracking and remove previously tracked file from the index
+echo -e "\ntest_report.yaml" >> .gitignore
+git rm --cached test_report.yaml
