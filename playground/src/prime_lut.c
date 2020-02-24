@@ -1,3 +1,24 @@
+//------------------------------------------------------------------ SUMMARY ---
+/**
+ * Describe the plan for a hash table as I currently understand it :
+ *   Generate hashes from a large "hash space" for given key set
+ *   Use an "array" big enough relative to key set and desired load factor 
+ *     but smaller than "hash space" as hash map
+ *   Use hash % (map size) as index to ...  
+ *   Insert/Append KeyValue pairs along with hash in a linked list
+ *   Resize map when/if load factor threshold is crossed 
+ *     this should NOT require to recompute all the hashes
+ *   Handle map index collision with search in linked list
+ *   Figure out if/how to handle actual hash collision
+ *  
+ * todo 
+ *   - [ ] Implement basic multiplicative hash function
+ *   - [ ] Port murmur3 to C to suit your needs
+ *   - [ ] Include xxhash
+ *   - [ ] Compare and select hash function
+ */
+
+
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
