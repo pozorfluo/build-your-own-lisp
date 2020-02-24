@@ -389,7 +389,7 @@ int main(void)
 	    "list", "init", "eval", "join", "cons", "len",  "def",  "env"};
 
 	//------------------------------------------------------- table size
-	// find first prime_size bigger the key list length times load factor
+	// find first prime_size bigger than the key list length times load factor
 	size_t size_index     = 0;
 	size_t load_factor    = 16;
 	size_t multiplier     = prime_numbers[30];
