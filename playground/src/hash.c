@@ -84,6 +84,7 @@ void xfree(void *pointer, const char *pointer_name, const char *origin)
 #define XMALLOC(_size, _origin, _destination) malloc(_size)
 #define XFREE(_pointer, _origin) free(_pointer)
 #endif
+
 //------------------------------------------------------------------- MACROS ---
 #define ARRAY_LENGTH(array) (sizeof(array) / sizeof((array)[0]))
 
@@ -292,13 +293,14 @@ size_t count_digits(const size_t n)
  */
 size_t hash_multiplicative(const char *key, const size_t seed)
 {
-	// todo
-	// - [ ] adjust initial value according to use, how ?
-	size_t hash         = 0;
-	const size_t length = strlen(key);
+	size_t hash = seed;
+	// const size_t length = strlen(key);
 
-	for (size_t i = 0; i < length; i++) {
-		hash = seed * hash + key[i];
+	// for (size_t i = 0; i < length; i++) {
+	// 	hash = seed * hash + key[i];
+	// }
+	while (*key) {
+		hash = seed * hash + *key++;
 	}
 
 	return hash;

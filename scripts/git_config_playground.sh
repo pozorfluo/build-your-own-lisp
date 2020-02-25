@@ -141,3 +141,6 @@ git log --graph --oneline --decorate --date-order --color --boundary @{u}
 # stop tracking and remove previously tracked file from the index
 echo -e "\ntest_report.yaml" >> .gitignore
 git rm --cached test_report.yaml
+
+# rename file and stage change for commit
+git mv playground/src/prime_lut.c playground/src/hash.c
