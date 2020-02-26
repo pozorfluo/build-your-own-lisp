@@ -19,7 +19,8 @@
 		"cwchar": "c",
 		"cwctype": "c",
 		"cinttypes": "c",
-		"typeinfo": "c"
+		"typeinfo": "c",
+		"hash_murmur3_nose.h": "c"
 	},
 	"python.formatting.provider": "black"
 }

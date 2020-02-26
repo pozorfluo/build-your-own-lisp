@@ -6,6 +6,7 @@
             "label": "gcc build active file",
             "command": "/usr/bin/gcc",
             "args": [
+				"-iquote${workspaceRoot}/include",
                 "-Wall",
                 "-Wextra",
                 "-Werror",

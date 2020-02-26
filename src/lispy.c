@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../include/linenoise.h"
-#include "../include/mpc.h"
+#include "linenoise.h"
+#include "mpc.h"
 
 //---------------------------------------------------------- PLATFORM MACROS ---
 

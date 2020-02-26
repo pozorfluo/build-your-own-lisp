@@ -19,7 +19,7 @@
  */ 
 // #include <string.h>
 
-#include "../include/hash_murmur3_nose.h"
+#include "hash_murmur3_nose.h"
 
 //------------------------------------------------------------------- MACROS ---
 /**

@@ -3,6 +3,7 @@ SOURCEDIR = ./src
 BINARYDIR = ./bin
 TESTSDIR = ./tests
 
+IFLAGS = -iquote$(HEADERDIR)
 CFLAGS = -Wall -Wextra -Werror -pedantic -g #-fsanitize=address -static-libasan
 OFLAG = -Og
 DEBUGFLAGS = -DVALGRIND #-DDEBUG_MALLOC
@@ -15,7 +16,7 @@ EXEC = lispy
 VALGRIND = "valgrind --track-origins=yes --leak-check=full --show-reachable=yes $(BINARYDIR)/$(EXEC)"
 
 $(EXEC): 
-	$(CC) $(CFLAGS) $(DEBUGFLAGS) $(OFLAG) $(LIBFLAGS) -o $(BINARYDIR)/$@ $(SRC)
+	$(CC) $(IFLAGS) $(CFLAGS) $(DEBUGFLAGS) $(OFLAG) $(LIBFLAGS) -o $(BINARYDIR)/$@ $(SRC)
 
 clean:
 	rm -rf $(BINARYDIR)/$(EXEC)
