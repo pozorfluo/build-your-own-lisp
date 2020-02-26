@@ -1,6 +1,8 @@
 # volatile folders
-.archive/*
-.tmp/*
+.[Aa]rchive/
+.tmp/
+# .archive/*
+# .tmp/*
 
 #gdb
 .gdb_history
@@ -535,7 +537,8 @@ SourceArt/**/*.png
 SourceArt/**/*.tga
 
 # Binary Files
-bin/*
+[Bbin]/
+# bin/*
 Binaries/*
 Plugins/*/Binaries/*
 
