@@ -87,7 +87,7 @@
 
 //------------------------------------------------------------- DEBUG MACROS ---
 /**
- * Helps me follow malloc / free where needed
+ * Help follow malloc / free where needed
  */
 #ifdef DEBUG_MALLOC
 
@@ -177,10 +177,11 @@ void xfree(void *pointer, const char *pointer_name, const char *origin)
 	            _element_index)
 
 /**
- * Suppresses compiler warning about unused parameters needed in
+ * Suppress compiler warning about unused parameters needed in
  * function signatures
- *
- * Debating whether to use gcc specific __attribute__((unused)) or this
+ * 
+ * todo
+ *   - [ ] consider using gcc specific __attribute__((unused))
  */
 #define UNUSED(_parameter) (void)(_parameter)
 
@@ -238,7 +239,7 @@ static void print_lispvalue(LispEnv *env, LispValue *value);
 
 //----------------------------------------------------------------- Function ---
 /**
- * Gets a readable name for a given LispValueType
+ * Get a readable name for a given LispValueType
  *   -> pointer to string
  */
 static char *lispvalue_type_tostring(int type)
@@ -262,7 +263,7 @@ static char *lispvalue_type_tostring(int type)
 }
 //----------------------------------------------------------------- Function ---
 /**
- * Creates a new LispValue of type number for a given a number
+ * Create a new LispValue of type number for a given a number
  *   -> pointer to new LispValue number
  */
 static LispValue *new_lispvalue_number(const double number)
@@ -278,7 +279,7 @@ static LispValue *new_lispvalue_number(const double number)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Creates a new LispValue of type error for a given a error format and given
+ * Create a new LispValue of type error for a given a error format and given
  * variable number of messages
  *
  *   Create and init a variadic argument list
@@ -309,7 +310,7 @@ static LispValue *new_lispvalue_error(const char *format, ...)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Creates a new LispValue of type symbol for a given a symbol
+ * Create a new LispValue of type symbol for a given a symbol
  *   -> pointer to new LispValue symbol
  */
 static LispValue *new_lispvalue_symbol(const char *symbol)
@@ -327,7 +328,7 @@ static LispValue *new_lispvalue_symbol(const char *symbol)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Creates a new empty LispValue of type function
+ * Create a new empty LispValue of type function
  *   -> pointer to new LispValue function
  */
 static LispValue *new_lispvalue_function(LispBuiltin function)
@@ -343,8 +344,7 @@ static LispValue *new_lispvalue_function(LispBuiltin function)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Creaes a new empty LispEnvironment
- *
+ * Create a new empty LispEnvironment
  *   -> pointer to new LispEnvironment
  */
 static LispEnv *new_lispenv(void)
@@ -358,7 +358,7 @@ static LispEnv *new_lispenv(void)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Creates a new empty LispValue of type sexpr
+ * Create a new empty LispValue of type sexpr
  *   -> pointer to new LispValue sexpr
  */
 
@@ -376,7 +376,7 @@ static LispValue *new_lispvalue_sexpr(void)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Creates a new empty LispValue of type qexpr
+ * Create a new empty LispValue of type qexpr
  *   -> pointer to new LispValue qexpr
  */
 static LispValue *new_lispvalue_qexpr(void)
@@ -393,7 +393,7 @@ static LispValue *new_lispvalue_qexpr(void)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Frees given LispValue ressources according to its type
+ * Free given LispValue ressources according to its type
  *   -> nothing
  */
 static void delete_lispvalue(LispValue *value)
@@ -431,7 +431,7 @@ static void delete_lispvalue(LispValue *value)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Frees given LispEnv ressources
+ * Free given LispEnv ressources
  *   -> nothing
  */
 static void delete_lispenv(LispEnv *env)
@@ -447,7 +447,7 @@ static void delete_lispenv(LispEnv *env)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Gets LispValue associated with given LispValue symbol if any
+ * Get LispValue associated with given LispValue symbol if any
  *   -> pointer to new copy of associated LispValue
  *
  * Iterate over all items in environment
@@ -469,7 +469,7 @@ static LispValue *get_lispenv(LispEnv *env, LispValue *value)
 }
 //----------------------------------------------------------------- Function ---
 /**
- * Gets symbol associated with given LispBuiltin function if any
+ * Get symbol associated with given LispBuiltin function if any
  *   -> pointer to symbol string
  *
  * Iterate over all value in environment
@@ -490,7 +490,7 @@ static char *get_symbol_lispenv(LispEnv *env, LispBuiltin function)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Creates a new entry in given LispEnvironment for given symbol, value pair
+ * Create a new entry in given LispEnvironment for given symbol, value pair
  * or replaces value associated with existing symbol in given LispEnvironment
  * with given value
  *   -> nothing
@@ -528,7 +528,7 @@ static void put_lispenv(LispEnv *env, LispValue *symbol, LispValue *value)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Evaluates given AST node of type number
+ * Evaluate given AST node of type number
  *   -> pointer to a LispValue number
  */
 static LispValue *read_lispvalue_number(mpc_ast_t *ast)
@@ -542,7 +542,7 @@ static LispValue *read_lispvalue_number(mpc_ast_t *ast)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Adds a given LispValue to the list of expressions of a given LispValue
+ * Add a given LispValue to the list of expressions of a given LispValue
  * of type sexpr or qexpr
  *   -> pointer to given LispValue sexpr
  */
@@ -557,7 +557,7 @@ static LispValue *add_lispvalue(LispValue *expr, LispValue *value)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Traverses given AST and evaluates the expression
+ * Traverse given AST and evaluates the expression
  *   -> pointer to a LispValue
  */
 static LispValue *read_lispvalue(mpc_ast_t *ast)
@@ -598,7 +598,7 @@ static LispValue *read_lispvalue(mpc_ast_t *ast)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Creates a copy of given LispValue
+ * Create a copy of given LispValue
  *   -> pointer to new LispValue
  */
 static LispValue *copy_lispvalue(LispValue *value)
@@ -645,7 +645,7 @@ static LispValue *copy_lispvalue(LispValue *value)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Pretty prints given LispValue of type sexpr
+ * Pretty print given LispValue of type sexpr
  *   -> Nothing
  */
 static void print_lispvalue_expr(LispEnv *env,
@@ -665,7 +665,7 @@ static void print_lispvalue_expr(LispEnv *env,
 
 //----------------------------------------------------------------- Function ---
 /**
- * Pretty prints given LispValue according to its type
+ * Pretty print given LispValue according to its type
  *   -> Nothing
  */
 static void print_lispvalue(LispEnv *env, LispValue *value)
@@ -703,7 +703,7 @@ static void print_lispvalue(LispEnv *env, LispValue *value)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Pretty prints given LispValue followed by newline
+ * Pretty print given LispValue followed by newline
  *   -> Nothing
  */
 static void print_lispvalue_newline(LispEnv *env, LispValue *value)
@@ -714,17 +714,17 @@ static void print_lispvalue_newline(LispEnv *env, LispValue *value)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Evaluates given LispValue of type sexpr
+ * Evaluate given LispValue of type sexpr
  *   -> pointer to result LispValue
  */
 static LispValue *eval_lispvalue_sexpr(LispEnv *env, LispValue *value)
 {
-	/* evaluate children */
+	/* Evaluate children */
 	for (size_t i = 0; i < value->count; i++) {
 		value->cells[i] = eval_lispvalue(env, value->cells[i]);
 	}
 
-	/* check for errors */
+	/* Check for errors */
 	for (size_t i = 0; i < value->count; i++) {
 		if (value->cells[i]->type == LVAL_ERR) {
 			return take_lispvalue(value, i);
@@ -766,7 +766,7 @@ static LispValue *eval_lispvalue_sexpr(LispEnv *env, LispValue *value)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Evaluates given LispValue
+ * Evaluate given LispValue
  *   -> pointer to result LispValue
  */
 static LispValue *eval_lispvalue(LispEnv *env, LispValue *value)
@@ -788,8 +788,8 @@ static LispValue *eval_lispvalue(LispEnv *env, LispValue *value)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Extracts single element from given LispValue of type sexpr
- * Shifts the rest of element list pointer backward over extracted element
+ * Extract single element from given LispValue of type sexpr
+ * Shift the rest of element list pointer backward over extracted element
  * pointer
  *   -> Extracted LispValue
  */
@@ -810,8 +810,8 @@ static LispValue *pop_lispvalue(LispValue *value, const int index)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Extracts single element from given LispValue of type sexpr
- * Deletes the rest
+ * Extract single element from given LispValue of type sexpr
+ * Delete the rest
  *   -> Extracted LispValue
  *
  * todo
@@ -827,8 +827,8 @@ static LispValue *take_lispvalue(LispValue *value, const int index)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Goes over all elements of given LispValue
- * Checks that they are all of type number
+ * Go over all elements of given LispValue
+ * Check that they are all of type number
  *   -> Truth value of predicate
  *
  */
@@ -846,9 +846,9 @@ static int are_all_numbers(LispValue *arguments)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Calls builtin_operator with appropriate symbol characters for basic math
+ * Call builtin_operator with appropriate symbol characters for basic math
  * operations
- * Used to register function with given LispEnv
+ * Register functions with given LispEnv
  *  -> Evaluation result LispValue
  */
 static LispValue *builtin_add(LispEnv *env, LispValue *value)
@@ -930,7 +930,7 @@ static LispValue *builtin_env(LispEnv *env, LispValue *arguments)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Returns a Q-Expression with only the first element of given Q-Expression
+ * Return a Q-Expression with only the first element of given Q-Expression
  *
  *   Ensure only a single argument is passed
  *   Ensure that argument is a Q-Expression
@@ -956,7 +956,7 @@ static LispValue *builtin_head(LispEnv *env, LispValue *arguments)
 }
 //----------------------------------------------------------------- Function ---
 /**
- * Returns a Q-Expression with the first element of given Q-Expression removed
+ * Return a Q-Expression with the first element of given Q-Expression removed
  *
  *   Ensure only a single argument is passed
  *   Ensure that argument is a Q-Expression
@@ -980,7 +980,7 @@ static LispValue *builtin_tail(LispEnv *env, LispValue *arguments)
 }
 //----------------------------------------------------------------- Function ---
 /**
- * Returns a Q-Expression containing given arguments
+ * Return a Q-Expression containing given arguments
  *
  *   Convert input S-Expression to Q-Expression
  *     -> pointer to a Q-Expression
@@ -994,7 +994,7 @@ static LispValue *builtin_list(LispEnv *env, LispValue *arguments)
 }
 //----------------------------------------------------------------- Function ---
 /**
- * Returns a Q-Expression with the last element of given Q-Expression removed
+ * Return a Q-Expression with the last element of given Q-Expression removed
  *
  *   Ensure only a single argument is passed
  *   Ensure that argument is a Q-Expression
@@ -1022,7 +1022,7 @@ static LispValue *builtin_init(LispEnv *env, LispValue *arguments)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Evaluates given Q-Expression
+ * Evaluate given Q-Expression
  *
  *   Ensure only a single argument is passed
  *   Ensure that argument is a Q-Expression
@@ -1044,7 +1044,7 @@ static LispValue *builtin_eval(LispEnv *env, LispValue *arguments)
 }
 //----------------------------------------------------------------- Function ---
 /**
- * Joins given LispValues together
+ * Join given LispValues together
  *
  *  Pop each item from second given LispValue until it's empty and
  *  Add each item to first given LispValue
@@ -1063,7 +1063,7 @@ static LispValue *join_lispvalue(LispValue *first, LispValue *second)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Joins one or more Q-Expressions together
+ * Join one or more Q-Expressions together
  *
  *   Ensure that all arguments are Q-Expression
  *   Join arguments
@@ -1088,7 +1088,7 @@ static LispValue *builtin_join(LispEnv *env, LispValue *arguments)
 }
 //----------------------------------------------------------------- Function ---
 /**
- * Appends given LispValue first argument to the front of given following
+ * Append given LispValue first argument to the front of given following
  * Q-Expression
  *
  *   Ensure that there are 2 arguments
@@ -1124,7 +1124,7 @@ static LispValue *builtin_cons(LispEnv *env, LispValue *arguments)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Returns the number of elements in given Q-Expression
+ * Return the number of elements in given Q-Expression
  *
  *   Ensure only a single argument is passed
  *   Ensure that argument is a Q-Expression
@@ -1149,7 +1149,7 @@ static LispValue *builtin_len(LispEnv *env, LispValue *arguments)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Adds symbol, value pairs from a given Q-Expression list of symbols
+ * Add symbol, value pairs from a given Q-Expression list of symbols
  * and given list of LispValue to given LispEnv
  *
  *   Ensure first argument passed is a Q-Expression
@@ -1192,7 +1192,7 @@ static LispValue *builtin_def(LispEnv *env, LispValue *arguments)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Performs operation for given operator and LispValue representing all
+ * Perform operation for given operator and LispValue representing all
  * the arguments to operate on
  *   -> pointer to Evaluation result LispValue
  */
@@ -1281,7 +1281,7 @@ exit_error:
 
 //----------------------------------------------------------------- Function ---
 /**
- * Registers given builtin function and  given name as symbol with given LispEnv
+ * Register given builtin function and  given name as symbol with given LispEnv
  *   -> Nothing
  */
 static void add_builtin_lispenv(LispEnv *env, char *name, LispBuiltin function)
@@ -1329,8 +1329,8 @@ static void add_basicbuiltins_lispenv(LispEnv *env)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Generates auto-completes matches from global word vocabulary
- *   -> Returns matches from vocabulary
+ * Generate auto-completes matches from global word vocabulary
+ *   -> Return matches from vocabulary
  *
  * see https://thoughtbot.com/blog/tab-completion-in-gnu-readline
  */
@@ -1360,7 +1360,7 @@ static void add_basicbuiltins_lispenv(LispEnv *env)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Handles linenoise custom completion callbacks
+ * Handle linenoise custom completion callbacks
  *   -> Nothing
  *
  * todo
@@ -1422,7 +1422,7 @@ static void completion(const char *buf, linenoiseCompletions *lc)
 }
 //----------------------------------------------------------------- Function ---
 /**
- * Handles linenoise hints callback
+ * Handle linenoise hints callback
  *   -> pointer to hint string
  *
  * todo
@@ -1454,8 +1454,7 @@ static char *hints(const char *buf, int *color, int *bold)
  * - [ ] prevent def from rewriting default builtins
  */
 // static char input[2048];
-
-int main()
+int main(void)
 {
 	//--------------------------------------------------------------- parser
 	const mpc_parser_t *number_parser = mpc_new("number");
@@ -1515,7 +1514,7 @@ int main()
 			linenoiseHistoryAdd(input);
 			linenoiseHistorySave("lispy_history.txt");
 
-			/* try to parse input */
+			/* Try to parse input */
 			mpc_result_t mpc_result;
 
 			if (mpc_parse("<stdin>", input, lispy_parser, &mpc_result)) {
@@ -1539,7 +1538,7 @@ int main()
 				mpc_err_delete(mpc_result.error);
 			}
 
-			/* readline malloc'd input*/
+			/* Free linenoise  malloc'd input */
 			XFREE(input, "main input loop");
 		}
 	}
