@@ -13,22 +13,10 @@
  */
 
 #include <stdio.h>
-/**
- * todo
-*   - [ ] Move to separate example
- */ 
-// #include <string.h>
 
 #include "hash_murmur3_nose.h"
 
 //------------------------------------------------------------------- MACROS ---
-/**
- * todo
- *   - [ ] Move to separate example
- */ 
-// #define EXIT_SUCCESS 0
-// #define EXIT_FAILURE 1
-
 #define ROTL32(_x, _r) (_x << _r) | (_x >> (32 - _r));
 #define ROTL64(_x, _r) (_x << _r) | (_x >> (64 - _r));
 
@@ -407,38 +395,3 @@ Hash128 murmurhash3_x64(const void *key, const size_t len, const uint32_t seed)
 
 	return hash;
 }
-
-//--------------------------------------------------------------------- MAIN ---
-/**
- * todo
- *   - [ ] Move to separate example
- */ 
-// int main(int argc, char **argv)
-// {
-// 	//------------------------------------------------------------ usage
-// 	if (argc != 2) {
-// 		printf("Usage : %s \"string to hash\"\n", argv[0]);
-// 		return EXIT_FAILURE;
-// 	}
-
-// 	//------------------------------------------------------------- work
-// 	uint32_t seed = 47;
-// 	uint32_t hash32;
-// 	Hash128 hash;
-
-// 	printf("size of uint32_t : %lu bytes\n", sizeof(seed));
-// 	printf("size of Hash128  : %lu bytes\n\n", sizeof(hash));
-
-// 	printf("Input   : \"%s\"\n", argv[1]);
-
-// 	hash32 = murmurhash3_x86_32(argv[1], strlen(argv[1]), seed);
-// 	printf("x86_32  : %08x\n", hash32);
-
-// 	hash = murmurhash3_x86_128(argv[1], strlen(argv[1]), seed);
-// 	printf("x86_128 : %016lx %016lx\n", hash.hi, hash.lo);
-
-// 	hash = murmurhash3_x64(argv[1], strlen(argv[1]), seed);
-// 	printf("x64_128 : %016lx %016lx\n", hash.hi, hash.lo);
-
-// 	return EXIT_SUCCESS;
-// }
