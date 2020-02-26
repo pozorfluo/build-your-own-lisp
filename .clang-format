@@ -3,6 +3,7 @@ Language: Cpp
 BasedOnStyle: LLVM
 AlignConsecutiveAssignments: true
 AlignConsecutiveDeclarations: false
+PenaltyReturnTypeOnItsOwnLine: 1000000
 AlignAfterOpenBracket: AlwaysBreak
 AlignEscapedNewlinesLeft: false
 AlignOperands: true
