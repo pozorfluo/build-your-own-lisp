@@ -18,15 +18,15 @@
 extern "C" {
 #endif // __cplusplus
 
-#include <stddef.h>
-#include <stdint.h>
+#include <stddef.h> /* size_t */
+#include <stdint.h> /* uint32_t, uint64_t */
+
 //------------------------------------------------------------- DECLARATIONS ---
 typedef struct Hash128 {
 	uint64_t hi;
 	uint64_t lo;
 } Hash128;
 
-//----------------------------------------------------------------- Function ---
 uint32_t murmurhash3_x86_32(const void *key,
                             const size_t len,
                             const uint32_t seed);

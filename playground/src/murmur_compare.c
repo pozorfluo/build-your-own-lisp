@@ -531,7 +531,8 @@ Hash128 murmurhash3_x64_128(const void *key, const int len, const uint32_t seed)
 
 Hash128_hilo
 murmurhash3_x64_hilo(const void *key, const size_t len, const uint32_t seed)
-// Hash128 murmurhash3_x64(const void *key, const size_t len, const uint32_t seed)
+// Hash128 murmurhash3_x64(const void *key, const size_t len, const uint32_t
+// seed)
 {
 	const uint8_t *data  = (const uint8_t *)key;
 	const size_t nblocks = len / 16;
@@ -743,6 +744,312 @@ void murmurhash3_x64_128_og(const void *key,
 	((uint64_t *)out)[1] = h2;
 }
 
+//----------------------------------------------------------------- Function ---
+/**
+ * Return 128-bit hash
+ */
+Hash128_hilo murmurhash3_x86_128_const(const void *key,
+                                       const size_t len,
+                                       const uint32_t seed)
+{
+	const uint32_t c1 = 0x239b961b;
+	const uint32_t c2 = 0xab0e9789;
+	const uint32_t c3 = 0x38b34ae5;
+	const uint32_t c4 = 0xa1e38b93;
+
+	const uint32_t r1 = 15;
+	const uint32_t r2 = 19;
+	const uint32_t r3 = 16;
+	const uint32_t r4 = 17;
+	const uint32_t r5 = 18;
+	const uint32_t r6 = 13;
+
+	const uint32_t m = 5;
+	const uint32_t n = 0x561ccd1b;
+	const uint32_t o = 0x0bcaa747;
+	const uint32_t p = 0x96cd1c35;
+	const uint32_t q = 0x32ac3b17;
+
+	const uint8_t *data = (const uint8_t *)key;
+	const int nblocks   = len / 16;
+
+	uint32_t h1 = seed;
+	uint32_t h2 = seed;
+	uint32_t h3 = seed;
+	uint32_t h4 = seed;
+
+	//------------------------------------------------------------- body
+	const uint32_t *blocks = (const uint32_t *)(data + nblocks * 16);
+
+	for (int i = -nblocks; i; i++) {
+		uint32_t k1 = GETBLOCK(blocks, i * 4 + 0);
+		uint32_t k2 = GETBLOCK(blocks, i * 4 + 1);
+		uint32_t k3 = GETBLOCK(blocks, i * 4 + 2);
+		uint32_t k4 = GETBLOCK(blocks, i * 4 + 3);
+
+		k1 *= c1;
+		k1 = ROTL32(k1, r1);
+		k1 *= c2;
+		h1 ^= k1;
+
+		h1 = ROTL32(h1, r2);
+		h1 += h2;
+		h1 = h1 * m + n;
+
+		k2 *= c2;
+		k2 = ROTL32(k2, r3);
+		k2 *= c3;
+		h2 ^= k2;
+
+		h2 = ROTL32(h2, r4);
+		h2 += h3;
+		h2 = h2 * m + o;
+
+		k3 *= c3;
+		k3 = ROTL32(k3, r4);
+		k3 *= c4;
+		h3 ^= k3;
+
+		h3 = ROTL32(h3, r1);
+		h3 += h4;
+		h3 = h3 * m + p;
+
+		k4 *= c4;
+		k4 = ROTL32(k4, r5);
+		k4 *= c1;
+		h4 ^= k4;
+
+		h4 = ROTL32(h4, r6);
+		h4 += h1;
+		h4 = h4 * m + q;
+	}
+
+	//------------------------------------------------------------- tail
+	const uint8_t *tail = (const uint8_t *)(data + nblocks * 16);
+
+	uint32_t k1 = 0;
+	uint32_t k2 = 0;
+	uint32_t k3 = 0;
+	uint32_t k4 = 0;
+
+	switch (len & 15) {
+	case 15:
+		k4 ^= tail[14] << 16;
+	case 14:
+		k4 ^= tail[13] << 8;
+	case 13:
+		k4 ^= tail[12] << 0;
+		k4 *= c4;
+		k4 = ROTL32(k4, r5);
+		k4 *= c1;
+		h4 ^= k4;
+
+	case 12:
+		k3 ^= tail[11] << 24;
+	case 11:
+		k3 ^= tail[10] << 16;
+	case 10:
+		k3 ^= tail[9] << 8;
+	case 9:
+		k3 ^= tail[8] << 0;
+		k3 *= c3;
+		k3 = ROTL32(k3, r4);
+		k3 *= c4;
+		h3 ^= k3;
+
+	case 8:
+		k2 ^= tail[7] << 24;
+	case 7:
+		k2 ^= tail[6] << 16;
+	case 6:
+		k2 ^= tail[5] << 8;
+	case 5:
+		k2 ^= tail[4] << 0;
+		k2 *= c2;
+		k2 = ROTL32(k2, r3);
+		k2 *= c3;
+		h2 ^= k2;
+
+	case 4:
+		k1 ^= tail[3] << 24;
+	case 3:
+		k1 ^= tail[2] << 16;
+	case 2:
+		k1 ^= tail[1] << 8;
+	case 1:
+		k1 ^= tail[0] << 0;
+		k1 *= c1;
+		k1 = ROTL32(k1, r1);
+		k1 *= c2;
+		h1 ^= k1;
+	};
+
+	//----------------------------------------------------- finalization
+	h1 ^= len;
+	h2 ^= len;
+	h3 ^= len;
+	h4 ^= len;
+
+	h1 += h2;
+	h1 += h3;
+	h1 += h4;
+	h2 += h1;
+	h3 += h1;
+	h4 += h1;
+
+	FINALIZE_32(h1);
+	FINALIZE_32(h2);
+	FINALIZE_32(h3);
+	FINALIZE_32(h4);
+
+	h1 += h2;
+	h1 += h3;
+	h1 += h4;
+	h2 += h1;
+	h3 += h1;
+	h4 += h1;
+
+	Hash128_hilo hash = {((uint64_t)h1 << 32) + h2, ((uint64_t)h3 << 32) + h4};
+
+	return hash;
+}
+
+//----------------------------------------------------------------- Function ---
+/**
+ * Return 128-bit hash
+ */
+Hash128_hilo
+murmurhash3_x64_128_const(const void *key, const size_t len, const uint32_t seed)
+{
+	const uint64_t c1 = 0x87c37b91114253d5ull;
+	const uint64_t c2 = 0x4cf5ad432745937full;
+
+	const uint32_t r1 = 31;
+	const uint32_t r2 = 27;
+	const uint32_t r3 = 33;
+
+	const uint32_t m = 5;
+	const uint32_t n = 0x52dce729;
+	const uint32_t o = 0x38495ab5;
+
+	const uint8_t *data  = (const uint8_t *)key;
+	const size_t nblocks = len / 16;
+
+	uint64_t h1 = seed;
+	uint64_t h2 = seed;
+
+	//------------------------------------------------------------- body
+	const uint64_t *blocks = (const uint64_t *)(data);
+
+	for (size_t i = 0; i < nblocks; i++) {
+		uint64_t k1 = GETBLOCK(blocks, i * 2 + 0);
+		uint64_t k2 = GETBLOCK(blocks, i * 2 + 1);
+
+		k1 *= c1;
+		k1 = ROTL64(k1, r1);
+		k1 *= c2;
+		h1 ^= k1;
+
+		h1 = ROTL64(h1, r2);
+		h1 += h2;
+		h1 = h1 * m + n;
+
+		k2 *= c2;
+		k2 = ROTL64(k2, r3);
+		k2 *= c1;
+		h2 ^= k2;
+
+		h2 = ROTL64(h2, r1);
+		h2 += h1;
+		h2 = h2 * m + o;
+	}
+
+	//------------------------------------------------------------- tail
+	const uint8_t *tail = (const uint8_t *)(data + nblocks * 16);
+
+	uint64_t k1 = 0;
+	uint64_t k2 = 0;
+
+	switch (len & 15) {
+	case 15:
+		k2 ^= (uint64_t)(tail[14]) << 48;
+	case 14:
+		k2 ^= (uint64_t)(tail[13]) << 40;
+	case 13:
+		k2 ^= (uint64_t)(tail[12]) << 32;
+	case 12:
+		k2 ^= (uint64_t)(tail[11]) << 24;
+	case 11:
+		k2 ^= (uint64_t)(tail[10]) << 16;
+	case 10:
+		k2 ^= (uint64_t)(tail[9]) << 8;
+	case 9:
+		k2 ^= (uint64_t)(tail[8]) << 0;
+		k2 *= c2;
+		k2 = ROTL64(k2, r3);
+		k2 *= c1;
+		h2 ^= k2;
+
+	case 8:
+		k1 ^= (uint64_t)(tail[7]) << 56;
+	case 7:
+		k1 ^= (uint64_t)(tail[6]) << 48;
+	case 6:
+		k1 ^= (uint64_t)(tail[5]) << 40;
+	case 5:
+		k1 ^= (uint64_t)(tail[4]) << 32;
+	case 4:
+		k1 ^= (uint64_t)(tail[3]) << 24;
+	case 3:
+		k1 ^= (uint64_t)(tail[2]) << 16;
+	case 2:
+		k1 ^= (uint64_t)(tail[1]) << 8;
+	case 1:
+		k1 ^= (uint64_t)(tail[0]) << 0;
+		k1 *= c1;
+		k1 = ROTL64(k1, r1);
+		k1 *= c2;
+		h1 ^= k1;
+	};
+
+	//----------------------------------------------------- finalization
+	h1 ^= len;
+	h2 ^= len;
+
+	h1 += h2;
+	h2 += h1;
+
+	FINALIZE_64(h1);
+	FINALIZE_64(h2);
+
+	h1 += h2;
+	h2 += h1;
+
+	Hash128_hilo hash = {h1, h2};
+
+	return hash;
+}
+
+//----------------------------------------------------------------- Function ---
+/**
+ * Returns a multiplicative style hash for given key
+ *
+ * see : Linear congruential generator
+ */
+size_t hash_multiplicative(const char *key, const size_t seed)
+{
+	size_t hash = seed;
+	// const size_t length = strlen(key);
+
+	// for (size_t i = 0; i < length; i++) {
+	// 	hash = seed * hash + key[i];
+	// }
+	while (*key) {
+		hash = seed * hash + *key++;
+	}
+
+	return hash;
+}
 //--------------------------------------------------------------------- MAIN ---
 int main(void)
 {
@@ -815,19 +1122,6 @@ int main(void)
 	// BENCH(murmurhash3_x64_128, LOOP_SIZE, results[0]);
 	float start, stop, diff, result;
 
-	//--------------------------------------------------------- bench og
-	uint32_t hash[4];
-	START_BENCH(start);
-
-	for (size_t n = 0; n < LOOP_SIZE; n++) {
-		for (size_t i = 0; i < ARRAY_LENGTH(keys); i++) {
-			murmurhash3_x64_128_og(keys[i], strlen(keys[i]), seed, hash);
-		}
-	}
-
-	STOP_BENCH(start, stop, diff, result);
-	printf("hash_og   \t: %f \n", result);
-
 	//---------------------------------------------- bench return struct
 	Hash128 hash128;
 	START_BENCH(start);
@@ -839,7 +1133,7 @@ int main(void)
 	}
 
 	STOP_BENCH(start, stop, diff, result);
-	printf("hash128   \t: %f \n", result);
+	printf("murmurhash3_x64_128   \t: %f \n", result);
 
 	//---------------------------------------------- bench return struct
 	Hash128_hilo hash_hilo;
@@ -855,7 +1149,71 @@ int main(void)
 	}
 
 	STOP_BENCH(start, stop, diff, result);
-	printf("hash_hilo   \t: %f \n", result);
+	printf("murmurhash3_x64_hilo   \t: %f \n", result);
+
+	//---------------------------------------------- bench return struct
+	Hash128_hilo hash_const;
+	START_BENCH(start);
+
+	for (size_t n = 0; n < LOOP_SIZE; n++) {
+		for (size_t i = 0; i < ARRAY_LENGTH(keys); i++) {
+			hash_const =
+			    murmurhash3_x86_128_const(keys[i], strlen(keys[i]), seed);
+			// printf("x64_128: %016lx %016lx\n",
+			//        hash_hilo.hi,
+			//        hash_hilo.lo);
+		}
+	}
+
+	STOP_BENCH(start, stop, diff, result);
+	printf("murmurhash3_x86_128_const   \t: %f \n", result);
+
+	//--------------------------------------------------------- bench og
+	uint32_t hash[4];
+	START_BENCH(start);
+
+	for (size_t n = 0; n < LOOP_SIZE; n++) {
+		for (size_t i = 0; i < ARRAY_LENGTH(keys); i++) {
+			murmurhash3_x64_128_og(keys[i], strlen(keys[i]), seed, hash);
+		}
+	}
+
+	STOP_BENCH(start, stop, diff, result);
+	printf("murmurhash3_x64_128_og   \t: %f \n", result);
+
+	//---------------------------------------------- bench return struct
+	Hash128_hilo hash_x64const;
+	START_BENCH(start);
+
+	for (size_t n = 0; n < LOOP_SIZE; n++) {
+		for (size_t i = 0; i < ARRAY_LENGTH(keys); i++) {
+			hash_x64const =
+			    murmurhash3_x64_128_const(keys[i], strlen(keys[i]), seed);
+			// printf("x64_128: %016lx %016lx\n",
+			//        hash_hilo.hi,
+			//        hash_hilo.lo);
+		}
+	}
+
+	STOP_BENCH(start, stop, diff, result);
+	printf("murmurhash3_x64_128_const   \t: %f \n", result);
+
+	//---------------------------------------- bench hash_multiplicative
+	size_t hash_mult;
+	START_BENCH(start);
+
+	for (size_t n = 0; n < LOOP_SIZE; n++) {
+		for (size_t i = 0; i < ARRAY_LENGTH(keys); i++) {
+			hash_mult =
+			    hash_multiplicative(keys[i], seed);
+			// printf("x64_128: %016lx %016lx\n",
+			//        hash_hilo.hi,
+			//        hash_hilo.lo);
+		}
+	}
+
+	STOP_BENCH(start, stop, diff, result);
+	printf("hash_mult   \t: %f \n", result);
 
 	// print last hash of each benchmark to make sure the whole loop is not
 	// discarded by compiler ?
@@ -865,5 +1223,8 @@ int main(void)
 	printf("x64_128: %016lx %016lx\n", hash128.chunks[0], hash128.chunks[1]);
 
 	printf("x64_128: %016lx %016lx\n", hash_hilo.hi, hash_hilo.lo);
+	printf("x86_128: %016lx %016lx\n", hash_const.hi, hash_const.lo);
+	printf("x64_128: %016lx %016lx\n", hash_x64const.hi, hash_x64const.lo);
+	printf("hash_mult: %016lx\n", hash_mult);
 	return 0;
 }

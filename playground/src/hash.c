@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../../include/hash_murmur3_nose.h"
 //------------------------------------------------------------- DEBUG MACROS ---
 /**
  * Helps me follow malloc / free where needed
@@ -377,17 +378,23 @@ int main(void)
 
 	puts("\nhash tests :\n");
 	size_t hash;
+	Hash128 hash128;
 	size_t bucket_index;
 
 	for (size_t i = 0; i < ARRAY_LENGTH(keys); i++) {
 		hash         = hash_multiplicative(keys[i], seed);
+		hash128      = murmurhash3_x64(keys[i], strlen(keys[i]), seed);
 		bucket_index = hash % MAP_SIZE;
 
-		printf("#%lu \t hash_mult : %016lx    bucket : %lu    \t => %s",
-		       i,
-		       hash,
-		       bucket_index,
-		       keys[i]);
+		printf(
+		    "#%lu \t murmurhash3_x64 : %016lx %016lx hash_mult : %016lx    "
+		    "bucket : %lu    \t => %s",
+		    i,
+		    hash128.hi,
+		    hash128.lo,
+		    hash,
+		    bucket_index,
+		    keys[i]);
 
 		if (test_table[bucket_index].key != NULL) {
 			printf(" <== !!!! COLLISION !!!!\n");

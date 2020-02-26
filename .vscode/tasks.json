@@ -22,8 +22,9 @@
                 // "-fopt-info-vec-optimized",
                 // // "-fopt-info-vec-all",
                 "${file}",
-                "${workspaceRoot}/src/mpc.c", // link mpc lib
-                "${workspaceRoot}/src/linenoise.c", // link mpc lib
+                "${workspaceRoot}/src/mpc.c",
+                "${workspaceRoot}/src/linenoise.c",
+                "${workspaceRoot}/src/hash_murmur3_nose.c",
                 // "-ledit", // editline lib
                 "-lm", // link math lib
                 "-o",
