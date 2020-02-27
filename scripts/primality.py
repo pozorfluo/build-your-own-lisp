@@ -20,7 +20,7 @@
 \x1B[90m
     Explore prime number and in particular prime numbers that are also (2^n - 1)
     
-    Test primality of given intergers list
+    Test primality of given integers list
     List prime numbers, mersenne numbers, known mersenne prime exponents
 \x1B[0m
 """
