@@ -21,6 +21,11 @@ extern "C" {
 #include <stddef.h> /* size_t */
 #include <stdint.h> /* uint32_t, uint64_t */
 
+//---------------------------------------------------------- PLATFORM MACROS ---
+#ifndef __GNUC__
+#define __attribute__(x) /* Nothing */
+#endif
+
 //------------------------------------------------------------- DECLARATIONS ---
 typedef struct Hash128 {
 	uint64_t hi;
@@ -29,13 +34,14 @@ typedef struct Hash128 {
 
 uint32_t murmurhash3_x86_32(const void *key,
                             const size_t len,
-                            const uint32_t seed);
+                            const uint32_t seed) __attribute__ ((pure));
 
 Hash128 murmurhash3_x86_128(const void *key,
                             const size_t len,
-                            const uint32_t seed);
+                            const uint32_t seed) __attribute__ ((pure));
 
-Hash128 murmurhash3_x64(const void *key, const size_t len, const uint32_t seed);
+Hash128 murmurhash3_x64(const void *key, const size_t len, const uint32_t seed)
+   __attribute__ ((pure));
 
 #ifdef __cplusplus
 }
