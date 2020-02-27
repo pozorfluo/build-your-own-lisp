@@ -183,7 +183,7 @@ int main(int argc, char **argv)
 		}
 		// Abort if seed is only junk or prefixed with junk
 		// Ignore junk after valid seed though
-		// Note : a	leading 0 means base 8, thus 09 will yield 0 as 9
+		// Note : a leading 0 means base 8, thus 09 will yield 0 as 9
 		//        is considered junk in base 8
 		if (seed_end == argv[2]) {
 			printf("Error : could NOT process given seed : junk !\n");
