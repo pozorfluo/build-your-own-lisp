@@ -6,15 +6,15 @@
             "label": "gcc build active file",
             "command": "/usr/bin/gcc",
             "args": [
-				"-iquote${workspaceRoot}/include",
+                "-iquote${workspaceRoot}/include",
                 "-Wall",
                 "-Wextra",
                 "-Werror",
                 "-pedantic",
-				"-g",
-				// "-DDEBUG_MALLOC",
-				// "-DDEBUG_MPC",
-				"-DVALGRIND",
+                "-g",
+                // "-DDEBUG_MALLOC",
+                // "-DDEBUG_MPC",
+                "-DVALGRIND",
                 // "-O0",
                 "-Og",
                 // "-O3",
@@ -28,6 +28,7 @@
                 "${workspaceRoot}/src/hash_murmur3_nose.c",
                 // "-ledit", // editline lib
                 "-lm", // link math lib
+                // "-lbsd",
                 "-o",
                 // "${fileDirname}/../bin/${fileBasenameNoExtension}"
                 "${workspaceRoot}/bin/${fileBasenameNoExtension}"

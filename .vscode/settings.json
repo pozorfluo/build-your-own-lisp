@@ -1,26 +1,8 @@
 {
     "files.associations": {
-		"*.sh": "shellscript",
-		".gdbinit": "shellscript",
-		"exception": "c",
-		"limits": "c",
-		"*.tcc": "c",
-		"stdlib.h": "c",
-		"types.h": "c",
-		"stdint.h": "c",
-		"type_traits": "c",
-		"stddef.h": "c",
-		"cctype": "c",
-		"cmath": "c",
-		"cstdarg": "c",
-		"cstdint": "c",
-		"cstdio": "c",
-		"cstdlib": "c",
-		"cwchar": "c",
-		"cwctype": "c",
-		"cinttypes": "c",
-		"typeinfo": "c",
-		"hash_murmur3_nose.h": "c"
-	},
+        "*.sh": "shellscript",
+        ".gdbinit": "shellscript",
+        "stddef.h": "c"
+    },
 	"python.formatting.provider": "black"
 }
