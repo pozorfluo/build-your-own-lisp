@@ -60,8 +60,9 @@ typedef struct HashmapEntry {
 	char *key;
 	void *value;
 	ValueDestructor destructor;
-	struct HashmapEntry *next; /* in bucket */
-	                           // struct HashmapEntry *before_xor_after;
+	struct HashmapEntry *bucket_next; /* in bucket */
+	struct HashmapEntry *previous;    /* in insertion list */
+	struct HashmapEntry *next;        /* in insertion list */
 } HashmapEntry;
 
 typedef struct Hashmap {
@@ -71,7 +72,8 @@ typedef struct Hashmap {
 	size_t capacity;
 	size_t count;
 	HashmapEntry **buckets;
-	// HashmapEntry *head_xor_tail;
+	HashmapEntry *head; /* insertion list */
+	HashmapEntry *tail; /* insertion list */
 } Hashmap;
 
 //----------------------------------------------------------------- Function ---
@@ -137,10 +139,10 @@ HashmapEntry *new_hashmap_entry(const char *key,
 	new_entry->key = malloc(strlen(key) + 1); // + sizeof('\0')
 	strcpy(new_entry->key, key);
 
-	new_entry->value      = alloced_value;
-	new_entry->destructor = destructor;
-	new_entry->hash       = hash;
-	new_entry->next       = NULL;
+	new_entry->value       = alloced_value;
+	new_entry->destructor  = destructor;
+	new_entry->hash        = hash;
+	new_entry->bucket_next = NULL;
 	return new_entry;
 }
 
@@ -154,6 +156,7 @@ HashmapEntry *new_hashmap_entry(const char *key,
  * 	   Create new entry
  *     Insert entry in bucket
  *     Increment Hashmap entry count ( Check Hashmap fitness )
+ *     Append entry to insertion list
  * 		-> nothing
  *   Else traverse entry list in bucket
  *     If key found
@@ -162,8 +165,12 @@ HashmapEntry *new_hashmap_entry(const char *key,
  *         -> nothing
  *   Create new entry
  *   Append entry to entry list in bucket
+ *   Append entry to insertion list
  *   Increment Hashmap entry count ( Check Hashmap fitness )
  *     -> nothing
+ *
+ *  todo
+ *   - [ ] Split insertion list logic to separate functions
  */
 void put_hashmap(Hashmap *hashmap,
                  const char *key,
@@ -175,29 +182,47 @@ void put_hashmap(Hashmap *hashmap,
 
 	HashmapEntry *entry = hashmap->buckets[index];
 
+	/* Empty bucket */
 	if (entry == NULL) {
 		hashmap->buckets[index] =
 		    new_hashmap_entry(key, alloced_value, destructor, hash);
-		hashmap->count++;
 		// check_hashmap(hashmap);
+		/* Append to  insertion list */
+		hashmap->count++;
+		if (hashmap->tail == NULL) {
+			hashmap->head                     = hashmap->buckets[index];
+			hashmap->buckets[index]->previous = NULL;
+		}
+		else {
+			hashmap->tail->next               = hashmap->buckets[index];
+			hashmap->buckets[index]->previous = hashmap->tail;
+		}
+		hashmap->buckets[index]->next = NULL;
+		hashmap->tail                 = hashmap->buckets[index];
 		return;
 	}
 
-	HashmapEntry *previous_entry = entry;
-	while (entry != NULL) {
+	/* Collision */
+	HashmapEntry *current = entry;
+	// while (entry != NULL) {
+	do {
 		if (strcmp(entry->key, key) == 0) {
 			entry->destructor(entry->value);
 			entry->value = alloced_value;
 			return;
 		}
-		previous_entry = entry;
-		entry          = entry->next;
-	}
+		current = entry;
 
-	previous_entry->next =
+	} while ((entry = entry->bucket_next) != NULL);
+
+	current->bucket_next =
 	    new_hashmap_entry(key, alloced_value, destructor, hash);
-	// entry->next = new_hashmap_entry(key, alloced_value, destructor, hash);
 	hashmap->count++;
+	hashmap->tail->next            = current->bucket_next;
+	current->bucket_next->previous = hashmap->tail;
+	current->bucket_next->next     = NULL;
+	hashmap->tail                  = current->bucket_next;
+
 	// check_hashmap(hashmap);
 	return;
 }
@@ -241,8 +266,8 @@ void delete_hashmap(Hashmap *hashmap)
 
 		HashmapEntry *next;
 		while (entry != NULL) {
-			next = entry->next;
-			printf("delete %s\n", entry->key);
+			next = entry->bucket_next;
+			// printf("delete %s\n", entry->key);
 			destroy_entry(entry);
 			entry = next;
 		}
@@ -261,33 +286,51 @@ void delete_hashmap(Hashmap *hashmap)
  */
 void dump_hashmap(Hashmap *hashmap)
 {
+	// for (size_t i = 0; i < hashmap->capacity; i++) {
+	// 	HashmapEntry *entry = hashmap->buckets[i];
+
+	// 	if (entry == NULL) {
+	// 		continue;
+	// 	}
+
+	// 	printf("hashmap->bucket[%lu]\n", i);
+
+	// 	for (;;) {
+	// 		printf("\t %016lx %016lx : %s\n",
+	// 		       entry->hash.hi,
+	// 		       entry->hash.lo,
+	// 		       entry->key);
+	// 		if (entry->bucket_next == NULL) {
+	// 			break;
+	// 		}
+	// 		entry = entry->bucket_next;
+	// 	}
+	// 	// putchar('\n');
+	// }
 	printf("hashmap->seed     : %u\n", hashmap->seed);
 	printf("hashmap->function : %p\n", (unsigned char *)&(hashmap->function));
 	printf("hashmap->n        : %u\n", hashmap->n);
 	printf("hashmap->capacity : %lu\n", hashmap->capacity);
 	printf("hashmap->count    : %lu\n", hashmap->count);
+	printf("hashmap->buckets  : %p\n", (void *)hashmap->buckets);
+	printf("hashmap->head     : %p\n", (void *)hashmap->head);
+	printf("hashmap->tail     : %p\n", (void *)hashmap->tail);
+}
 
-	for (size_t i = 0; i < hashmap->capacity; i++) {
-		HashmapEntry *entry = hashmap->buckets[i];
+//----------------------------------------------------------------- Function ---
+/**
+ * Print given Hashmap content
+ *   -> nothing
+ */
+void print_hashmap(Hashmap *hashmap)
+{
+	HashmapEntry *entry = hashmap->head;
 
-		if (entry == NULL) {
-			continue;
-		}
-
-		printf("hashmap->bucket[%lu]\n", i);
-
-		for (;;) {
-			printf("\t %016lx %016lx : %s\n",
-			       entry->hash.hi,
-			       entry->hash.lo,
-			       entry->key);
-			if (entry->next == NULL) {
-				break;
-			}
-			entry = entry->next;
-		}
-		putchar('\n');
+	while (entry != NULL) {
+		printf("%32s : %s\n", entry->key, (char *)entry->value);
+		entry = entry->next;
 	}
+	putchar('\n');
 }
 
 //----------------------------------------------------------------- Function ---
@@ -299,6 +342,7 @@ void dump_hashmap(Hashmap *hashmap)
  *   Copy dummy to Hashmap
  *   Allocate Hashmap buckets
  *   Init Hashmap buckets to NULL
+ *   Init insertion list
  *     -> pointer to HashTable
  *
  * todo
@@ -311,7 +355,8 @@ Hashmap *new_hashmap(const unsigned int n,
                      HashFunc function)
 {
 	const size_t capacity      = (1u << n) - 1;
-	const Hashmap hashmap_init = {seed, function, n, capacity, 0, NULL};
+	const Hashmap hashmap_init = {
+	    seed, function, n, capacity, 0, NULL, NULL, NULL};
 
 	Hashmap *new_hashmap = malloc(sizeof(Hashmap));
 	memcpy(new_hashmap, &hashmap_init, sizeof(Hashmap));
@@ -319,20 +364,46 @@ Hashmap *new_hashmap(const unsigned int n,
 	new_hashmap->buckets = malloc(sizeof(HashmapEntry *) * capacity);
 	memset(new_hashmap->buckets, 0, sizeof(HashmapEntry *) * capacity);
 
+	new_hashmap->head = NULL;
+	new_hashmap->tail = NULL;
+
 	return new_hashmap;
 }
 
 //--------------------------------------------------------------------- MAIN ---
 int main(void)
 {
-	uint32_t seed = 31;
+	uint32_t seed    = 31;
+	Hashmap *hashmap = new_hashmap(17, seed, murmurhash3_x86_128);
 
-	Hashmap *hashmap = new_hashmap(2, seed, murmurhash3_x86_128);
-	dump_hashmap(hashmap);
-	putchar('\n');
-
+//------------------------------------------------------------ setup
+#define KEYPOOL_SIZE 32
+	char random_keys[KEYPOOL_SIZE] = {'\0'};
+	size_t test_count              = 100000;
 	char key[256];
 	char *dummy_value;
+
+	// putchar('\n');
+
+	for (size_t k = 0; k < test_count; k++) {
+			for (size_t i = 0; i < KEYPOOL_SIZE - 1; i++) {
+				random_keys[i] = (char)(rand() % 26 + 0x61);
+				// putchar(random_keys[i]);
+			}
+			dummy_value = strdup(&random_keys[rand() % (KEYPOOL_SIZE - 1)]);
+			// printf("%s : %s\n",
+			//        &random_keys[rand() % (KEYPOOL_SIZE - 1)],
+			//        dummy_value);
+			put_hashmap(hashmap,
+			            &random_keys[rand() % (KEYPOOL_SIZE - 1)],
+			            dummy_value,
+			            free);
+			// free(dummy_value);
+	}
+	//------------------------------------------------------ interactive
+
+	// dump_hashmap(hashmap);
+
 	for (;;) {
 		scanf("%s", key);
 		if ((strcmp(key, "exit")) == 0) {
@@ -343,6 +414,10 @@ int main(void)
 		printf("%s : %s\n", key, dummy_value);
 		put_hashmap(hashmap, key, dummy_value, free);
 		dump_hashmap(hashmap);
+		putchar('\n');
+		printf("%32s : %s\n", hashmap->tail->key, (char *)hashmap->tail->value);
+		putchar('\n');
+		// print_hashmap(hashmap);
 	}
 
 	//-------------------------------------------------------------- cleanup
