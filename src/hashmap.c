@@ -39,9 +39,17 @@
 #define TABLE_SIZE 8191
 
 //------------------------------------------------------------------- MACROS ---
-#define ARRAY_LENGTH(array) (sizeof(array) / sizeof((array)[0]))
+#define ARRAY_LENGTH(_array) (sizeof(_array) / sizeof((_array)[0]))
+
+#define BEFORE(_xor_link, _after) xor_link(_xor_link, _after)
+#define AFTER(_xor_link, _before) xor_link(_xor_link, _before)
 
 //----------------------------------------------------- FORWARD DECLARATIONS ---
+// struct HashmapEntry;
+// struct Hashmap;
+// typedef struct HashmapEntry HashmapEntry;
+// typedef struct Hashmap Hashmap;
+
 static inline size_t mod_2n1(uint_fast64_t dividend, const unsigned int n)
     __attribute__((const, always_inline));
 static size_t mod_hash128(const Hash128 hash, const unsigned int n)
@@ -59,10 +67,11 @@ typedef struct HashmapEntry {
 	Hash128 hash;
 	char *key;
 	void *value;
+	// - [ ] Consider replacing destructor with
+	//       dispatch(HashmapEntry->type)
 	ValueDestructor destructor;
-	struct HashmapEntry *bucket_next; /* in bucket */
-	struct HashmapEntry *previous;    /* in insertion list */
-	struct HashmapEntry *next;        /* in insertion list */
+	struct HashmapEntry *next_in_bucket; /* bucket list*/
+	struct HashmapEntry *xor_link;       /* insertion list */
 } HashmapEntry;
 
 typedef struct Hashmap {
@@ -71,10 +80,55 @@ typedef struct Hashmap {
 	unsigned int n;
 	size_t capacity;
 	size_t count;
+	size_t collisions;
 	HashmapEntry **buckets;
 	HashmapEntry *head; /* insertion list */
 	HashmapEntry *tail; /* insertion list */
 } Hashmap;
+
+//----------------------------------------------------------------- Function ---
+/**
+ * Compute the xor_link pointer of given previous, next pointer pair
+ *   -> XORed pointer to HashmapEntry
+ */
+static inline HashmapEntry *xor_link(HashmapEntry *previous, HashmapEntry *next)
+{
+	return (HashmapEntry *)((uintptr_t)(previous) ^ (uintptr_t)(next));
+}
+
+//----------------------------------------------------------------- Function ---
+/**
+ * Insert given HashmapEntry node after given target HashmapEntry node
+ *   -> XORed pointer of inserted node
+ */
+// static inline HashmapEntry *insert_after(HashmapEntry *target,
+//                                          HashmapEntry *inserted)
+// {
+
+// 	return inserted->xor_link;
+// }
+//----------------------------------------------------------------- Function ---
+/**
+ * Insert given HashmapEntry node at given Hashmap tail
+ *   -> XORed pointer of inserted node
+ */
+static inline HashmapEntry *insert_xor_list(Hashmap *hashmap,
+                                            HashmapEntry *node)
+{
+	// todo
+	//   - [ ] Init tail so that the NULL check is superfluous
+	if (hashmap->tail == NULL) {
+		hashmap->head  = node;
+		node->xor_link = xor_link(hashmap->head, NULL);
+	}
+	else {
+		HashmapEntry *before    = BEFORE(hashmap->tail->xor_link, NULL);
+		hashmap->tail->xor_link = xor_link(before, node);
+	}
+	node->xor_link = xor_link(hashmap->tail, NULL);
+	hashmap->tail  = node;
+	return node->xor_link;
+}
 
 //----------------------------------------------------------------- Function ---
 /**
@@ -121,7 +175,7 @@ static inline size_t mod_hash128(const Hash128 hash, const unsigned int n)
  *   -> pointer to new HashmapEntry
  *
  * todo
- *   - [ ] Figure out how bad it is to let caller allocate for value and
+ *   - [x] Figure out how bad it is to let caller allocate for value and
  *         merely point to it
  *     + [ ] Consider making a proper copy of value
  *     + [ ] See
@@ -139,10 +193,11 @@ HashmapEntry *new_hashmap_entry(const char *key,
 	new_entry->key = malloc(strlen(key) + 1); // + sizeof('\0')
 	strcpy(new_entry->key, key);
 
-	new_entry->value       = alloced_value;
-	new_entry->destructor  = destructor;
-	new_entry->hash        = hash;
-	new_entry->bucket_next = NULL;
+	new_entry->value          = alloced_value;
+	new_entry->destructor     = destructor;
+	new_entry->hash           = hash;
+	new_entry->next_in_bucket = NULL;
+	new_entry->xor_link       = NULL;
 	return new_entry;
 }
 
@@ -180,50 +235,44 @@ void put_hashmap(Hashmap *hashmap,
 	const Hash128 hash = hashmap->function(key, strlen(key), hashmap->seed);
 	const size_t index = mod_hash128(hash, hashmap->n);
 
-	HashmapEntry *entry = hashmap->buckets[index];
+	// HashmapEntry *entry = hashmap->buckets[index];
 
 	/* Empty bucket */
-	if (entry == NULL) {
+	if (hashmap->buckets[index] == NULL) {
 		hashmap->buckets[index] =
 		    new_hashmap_entry(key, alloced_value, destructor, hash);
-		// check_hashmap(hashmap);
 		/* Append to  insertion list */
+		insert_xor_list(hashmap, hashmap->buckets[index]);
+		// check_hashmap(hashmap);
 		hashmap->count++;
-		if (hashmap->tail == NULL) {
-			hashmap->head                     = hashmap->buckets[index];
-			hashmap->buckets[index]->previous = NULL;
-		}
-		else {
-			hashmap->tail->next               = hashmap->buckets[index];
-			hashmap->buckets[index]->previous = hashmap->tail;
-		}
-		hashmap->buckets[index]->next = NULL;
-		hashmap->tail                 = hashmap->buckets[index];
 		return;
 	}
 
 	/* Collision */
-	HashmapEntry *current = entry;
-	// while (entry != NULL) {
+	HashmapEntry *entry    = hashmap->buckets[index];
+	HashmapEntry *previous = NULL;
+
+	// printf("\n !!! About to resolve collision !!! \n");
 	do {
 		if (strcmp(entry->key, key) == 0) {
 			entry->destructor(entry->value);
 			entry->value = alloced_value;
+			// printf("!!! Done resolving collision -> Key Exist !!! \n");
+
 			return;
 		}
-		current = entry;
+		previous = entry;
+		entry    = entry->next_in_bucket;
+	} while (entry != NULL);
 
-	} while ((entry = entry->bucket_next) != NULL);
-
-	current->bucket_next =
+	previous->next_in_bucket =
 	    new_hashmap_entry(key, alloced_value, destructor, hash);
-	hashmap->count++;
-	hashmap->tail->next            = current->bucket_next;
-	current->bucket_next->previous = hashmap->tail;
-	current->bucket_next->next     = NULL;
-	hashmap->tail                  = current->bucket_next;
-
+	insert_xor_list(hashmap, hashmap->buckets[index]);
 	// check_hashmap(hashmap);
+	hashmap->count++;
+	hashmap->collisions++;
+	// printf("!!! Done resolving collision -> Key appended to bucket list
+	// !!!\n");
 	return;
 }
 
@@ -240,15 +289,18 @@ static inline void destroy_entry(HashmapEntry *entry)
 }
 //----------------------------------------------------------------- Function ---
 /**
- * Free HashmapEntry of given Hashmap for given key
+ * Locate HasmapEntry for given key in given Hashmap
+ * If found
+ *   Remove HashmapEntry from insertion list
+ *   Free HashmapEntry
  *   -> nothing
  */
-void delete_hashmap_entry(Hashmap *hashmap, const char *key)
-{
-	const Hash128 hash = hashmap->function(key, strlen(key), hashmap->seed);
-	const size_t index = mod_hash128(hash, hashmap->n);
-	destroy_entry(hashmap->buckets[index]);
-}
+// void delete_hashmap_entry(Hashmap *hashmap, const char *key)
+// {
+// 	const Hash128 hash = hashmap->function(key, strlen(key), hashmap->seed);
+// 	const size_t index = mod_hash128(hash, hashmap->n);
+// 	destroy_entry(hashmap->buckets[index]);
+// }
 
 //----------------------------------------------------------------- Function ---
 /**
@@ -266,7 +318,7 @@ void delete_hashmap(Hashmap *hashmap)
 
 		HashmapEntry *next;
 		while (entry != NULL) {
-			next = entry->bucket_next;
+			next = entry->next_in_bucket;
 			// printf("delete %s\n", entry->key);
 			destroy_entry(entry);
 			entry = next;
@@ -286,35 +338,35 @@ void delete_hashmap(Hashmap *hashmap)
  */
 void dump_hashmap(Hashmap *hashmap)
 {
-	// for (size_t i = 0; i < hashmap->capacity; i++) {
-	// 	HashmapEntry *entry = hashmap->buckets[i];
+	for (size_t i = 0; i < hashmap->capacity; i++) {
+		HashmapEntry *entry = hashmap->buckets[i];
 
-	// 	if (entry == NULL) {
-	// 		continue;
-	// 	}
+		if (entry == NULL) {
+			continue;
+		}
+		printf("\x1b[102mhashmap->\x1b[30mbucket[%lu]\x1b[0m\n", i);
 
-	// 	printf("hashmap->bucket[%lu]\n", i);
-
-	// 	for (;;) {
-	// 		printf("\t %016lx %016lx : %s\n",
-	// 		       entry->hash.hi,
-	// 		       entry->hash.lo,
-	// 		       entry->key);
-	// 		if (entry->bucket_next == NULL) {
-	// 			break;
-	// 		}
-	// 		entry = entry->bucket_next;
-	// 	}
-	// 	// putchar('\n');
-	// }
-	printf("hashmap->seed     : %u\n", hashmap->seed);
-	printf("hashmap->function : %p\n", (unsigned char *)&(hashmap->function));
-	printf("hashmap->n        : %u\n", hashmap->n);
-	printf("hashmap->capacity : %lu\n", hashmap->capacity);
-	printf("hashmap->count    : %lu\n", hashmap->count);
-	printf("hashmap->buckets  : %p\n", (void *)hashmap->buckets);
-	printf("hashmap->head     : %p\n", (void *)hashmap->head);
-	printf("hashmap->tail     : %p\n", (void *)hashmap->tail);
+		for (;;) {
+			printf("\t %016lx %016lx : %s\n",
+			       entry->hash.hi,
+			       entry->hash.lo,
+			       entry->key);
+			if (entry->next_in_bucket == NULL) {
+				break;
+			}
+			entry = entry->next_in_bucket;
+		}
+		// putchar('\n');
+	}
+	printf("hashmap->seed       : %u\n", hashmap->seed);
+	printf("hashmap->function   : %p\n", (unsigned char *)&(hashmap->function));
+	printf("hashmap->n          : %u\n", hashmap->n);
+	printf("hashmap->capacity   : %lu\n", hashmap->capacity);
+	printf("hashmap->count      : %lu\n", hashmap->count);
+	printf("hashmap->collisions : %lu\n", hashmap->collisions);
+	printf("hashmap->buckets    : %p\n", (void *)hashmap->buckets);
+	printf("hashmap->head       : %p\n", (void *)hashmap->head);
+	printf("hashmap->tail       : %p\n", (void *)hashmap->tail);
 }
 
 //----------------------------------------------------------------- Function ---
@@ -325,11 +377,21 @@ void dump_hashmap(Hashmap *hashmap)
 void print_hashmap(Hashmap *hashmap)
 {
 	HashmapEntry *entry = hashmap->head;
+	// HashmapEntry *previous = NULL;
+	// HashmapEntry *next;
+	printf("head -> %32s : %s\n", entry->key, (char *)entry->value);
+	printf("tail -> %32s : %s\n",
+	       hashmap->tail->key,
+	       (char *)hashmap->tail->value);
+	// todo
+	//   - [ ] fix traversing insertion list in print_hashmap
 
-	while (entry != NULL) {
-		printf("%32s : %s\n", entry->key, (char *)entry->value);
-		entry = entry->next;
-	}
+	// while (entry != NULL) {
+	// 	printf("%32s : %s\n", entry->key, (char *)entry->value);
+	// 	next     = AFTER(entry->xor_link, previous);
+	// 	previous = entry;
+	// 	entry    = next;
+	// }
 	putchar('\n');
 }
 
@@ -356,7 +418,7 @@ Hashmap *new_hashmap(const unsigned int n,
 {
 	const size_t capacity      = (1u << n) - 1;
 	const Hashmap hashmap_init = {
-	    seed, function, n, capacity, 0, NULL, NULL, NULL};
+	    seed, function, n, capacity, 0, 0, NULL, NULL, NULL};
 
 	Hashmap *new_hashmap = malloc(sizeof(Hashmap));
 	memcpy(new_hashmap, &hashmap_init, sizeof(Hashmap));
@@ -374,50 +436,55 @@ Hashmap *new_hashmap(const unsigned int n,
 int main(void)
 {
 	uint32_t seed    = 31;
-	Hashmap *hashmap = new_hashmap(17, seed, murmurhash3_x86_128);
+	Hashmap *hashmap = new_hashmap(18, seed, murmurhash3_x86_128);
 
-//------------------------------------------------------------ setup
+//-------------------------------------------------------------------- setup
 #define KEYPOOL_SIZE 32
 	char random_keys[KEYPOOL_SIZE] = {'\0'};
-	size_t test_count              = 100000;
+	size_t test_count              = 1000000;
 	char key[256];
 	char *dummy_value;
 
-	// putchar('\n');
-
 	for (size_t k = 0; k < test_count; k++) {
-			for (size_t i = 0; i < KEYPOOL_SIZE - 1; i++) {
-				random_keys[i] = (char)(rand() % 26 + 0x61);
-				// putchar(random_keys[i]);
-			}
-			dummy_value = strdup(&random_keys[rand() % (KEYPOOL_SIZE - 1)]);
-			// printf("%s : %s\n",
-			//        &random_keys[rand() % (KEYPOOL_SIZE - 1)],
-			//        dummy_value);
-			put_hashmap(hashmap,
-			            &random_keys[rand() % (KEYPOOL_SIZE - 1)],
-			            dummy_value,
-			            free);
-			// free(dummy_value);
+		for (size_t i = 0; i < KEYPOOL_SIZE - 1; i++) {
+			random_keys[i] = (char)(rand() % 26 + 0x61);
+			// putchar(random_keys[i]);
+		}
+		dummy_value = strdup(&random_keys[rand() % (KEYPOOL_SIZE - 1)]);
+		// printf("%s : %s\n",
+		//        &random_keys[rand() % (KEYPOOL_SIZE - 1)],
+		//        dummy_value);
+		put_hashmap(hashmap,
+		            &random_keys[rand() % (KEYPOOL_SIZE - 1)],
+		            dummy_value,
+		            free);
+		// free(dummy_value);
 	}
-	//------------------------------------------------------ interactive
 
+	//----------------------------------------------------------- input loop
 	// dump_hashmap(hashmap);
 
 	for (;;) {
+		fputs("\x1b[102m > \x1b[0m", stdout);
 		scanf("%s", key);
+		
 		if ((strcmp(key, "exit")) == 0) {
 			break;
 		}
 
-		dummy_value = strdup(key);
-		printf("%s : %s\n", key, dummy_value);
-		put_hashmap(hashmap, key, dummy_value, free);
-		dump_hashmap(hashmap);
-		putchar('\n');
-		printf("%32s : %s\n", hashmap->tail->key, (char *)hashmap->tail->value);
-		putchar('\n');
-		// print_hashmap(hashmap);
+		if ((strcmp(key, "dump")) == 0) {
+			dump_hashmap(hashmap);
+		}
+		else {
+			dummy_value = strdup(key);
+			printf("%s : %s\n", key, dummy_value);
+			put_hashmap(hashmap, key, dummy_value, free);
+			// putchar('\n');
+			// printf("%32s : %s\n", hashmap->tail->key, (char
+			// *)hashmap->tail->value);
+			// putchar('\n');
+			print_hashmap(hashmap);
+		}
 	}
 
 	//-------------------------------------------------------------- cleanup
