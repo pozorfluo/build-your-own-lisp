@@ -334,7 +334,9 @@ void delete_hashmap(Hashmap *hashmap)
  *   -> nothing
  *
  * todo
- *   - [ ] Consider a insertion ordered double-linked list of HashmapEntry
+ *   - [x] Consider a insertion ordered double-linked list of HashmapEntry
+ *   - [ ] Implement list iterator
+ *     + [ ] See http://rosettacode.org/wiki/Doubly-linked_list/Traversal#C
  */
 void dump_hashmap(Hashmap *hashmap)
 {
@@ -435,59 +437,143 @@ Hashmap *new_hashmap(const unsigned int n,
 //--------------------------------------------------------------------- MAIN ---
 int main(void)
 {
-	uint32_t seed    = 31;
-	Hashmap *hashmap = new_hashmap(18, seed, murmurhash3_x86_128);
+	uint32_t seed = 31;
+	// Hashmap *hashmap = new_hashmap(18, seed, murmurhash3_x86_128);
 
-//-------------------------------------------------------------------- setup
-#define KEYPOOL_SIZE 32
+	//----------------------------------------------------------- fib hash
+	char *dummy_key       = "abb";
+	const uint16_t *chunk = (const uint16_t *)dummy_key;
+	const uint32_t simple = (const uint32_t)*dummy_key;
+
+	printf("%u : %s\n", *chunk, (char *)chunk);
+	printf("%u : %s\n", simple, (char *)&simple);
+
+	for (int i = 7; i >= 0; i--) {
+		putchar(((*dummy_key + 1) & (1 << i)) ? '1' : '0');
+	}
+
+	// size_t stringbytes = 0;
+
+	// for (size_t i = 0; i <strlen(dummy_key); i++)
+	// int i = 0;
+	size_t hash     = seed;
+	size_t hash_odd = seed;
+	size_t hash_xor = seed;
+	while (*dummy_key) {
+		putchar(*dummy_key);
+		// stringbytes |= *(dummy_key++) << 8 * i++;
+		hash += *(dummy_key++) * 11400714819323198485llu;
+		hash |= 1;
+	}
+	// hash >>= 54;
+
+	// printf("\nstringbytes : %lu\n", stringbytes);
+	printf("\nhash : %lu\n", hash);
+
+	Hash128 hash_murmur;
+	size_t hash_murmur_reduced;
+
+	size_t n = 11;
+
+#define KEYPOOL_SIZE 256
 	char random_keys[KEYPOOL_SIZE] = {'\0'};
-	size_t test_count              = 1000000;
-	char key[256];
-	char *dummy_value;
-
+	size_t test_count              = 1000;
 	for (size_t k = 0; k < test_count; k++) {
+		//---------------------------------------------------- setup
+		// for (size_t i = 0; i < KEYPOOL_SIZE - 1; i++) {
+		// 	random_keys[i] = (char)(rand() % 26 + 0x61);
+		// }
 		for (size_t i = 0; i < KEYPOOL_SIZE - 1; i++) {
-			random_keys[i] = (char)(rand() % 26 + 0x61);
-			// putchar(random_keys[i]);
+			random_keys[i] = (char)(i);
 		}
-		dummy_value = strdup(&random_keys[rand() % (KEYPOOL_SIZE - 1)]);
-		// printf("%s : %s\n",
-		//        &random_keys[rand() % (KEYPOOL_SIZE - 1)],
-		//        dummy_value);
-		put_hashmap(hashmap,
-		            &random_keys[rand() % (KEYPOOL_SIZE - 1)],
-		            dummy_value,
-		            free);
-		// free(dummy_value);
+
+
+		dummy_key = random_keys;
+
+		//-------------------------------------------------- murmur3
+		hash_murmur         = murmurhash3_x86_128(dummy_key, strlen(dummy_key), seed);
+		hash_murmur_reduced = mod_hash128(hash_murmur, n);
+
+		//----------------------------------- fibonhash + fiboddhash
+
+		hash     = seed;
+		hash_odd = seed;
+		hash_xor = seed;
+		// while (*dummy_key) {
+			putchar(*dummy_key);
+			// stringbytes |= *(dummy_key++) << 8 * i++;
+			hash *= 11400714819323198485llu;
+			hash += *(dummy_key);
+			hash_odd *= 11400714819323198485llu * (*(dummy_key) | 1);
+			// hash_odd |= 1;
+			hash_xor *= 11400714819323198485llu;
+			// hash_xor *= *(dummy_key++) << 15;
+			hash_xor *= *(dummy_key++) << 15;
+			hash_xor = (hash_xor << 7) | (hash_xor >> (32 - 7));
+		}
+
+		printf(" %lu %lu %lu %lu %lu %lu %lu%lu %lu\n",
+		       hash,
+		       hash >> ( 64 - n ),
+		       hash_odd,
+		       hash_odd >> ( 64 - n ),
+		       hash_xor,
+		       hash_xor >> ( 64 - n ),
+			   hash_murmur.hi,
+			   hash_murmur.lo,
+			   hash_murmur_reduced);
 	}
 
-	//----------------------------------------------------------- input loop
-	// dump_hashmap(hashmap);
+	//-------------------------------------------------------------------- setup
+	// #define KEYPOOL_SIZE 32
+	// 	char random_keys[KEYPOOL_SIZE] = {'\0'};
+	// 	size_t test_count              = 10;
+	// 	char key[256];
+	// 	char *dummy_value;
 
-	for (;;) {
-		fputs("\x1b[102m > \x1b[0m", stdout);
-		scanf("%s", key);
-		
-		if ((strcmp(key, "exit")) == 0) {
-			break;
-		}
+	// 	for (size_t k = 0; k < test_count; k++) {
+	// 		for (size_t i = 0; i < KEYPOOL_SIZE - 1; i++) {
+	// 			random_keys[i] = (char)(rand() % 26 + 0x61);
+	// 			// putchar(random_keys[i]);
+	// 		}
+	// 		dummy_value = strdup(&random_keys[rand() % (KEYPOOL_SIZE - 1)]);
+	// 		// printf("%s : %s\n",
+	// 		//        &random_keys[rand() % (KEYPOOL_SIZE - 1)],
+	// 		//        dummy_value);
+	// 		put_hashmap(hashmap,
+	// 		            &random_keys[rand() % (KEYPOOL_SIZE - 1)],
+	// 		            dummy_value,
+	// 		            free);
+	// 		// free(dummy_value);
+	// 	}
 
-		if ((strcmp(key, "dump")) == 0) {
-			dump_hashmap(hashmap);
-		}
-		else {
-			dummy_value = strdup(key);
-			printf("%s : %s\n", key, dummy_value);
-			put_hashmap(hashmap, key, dummy_value, free);
-			// putchar('\n');
-			// printf("%32s : %s\n", hashmap->tail->key, (char
-			// *)hashmap->tail->value);
-			// putchar('\n');
-			print_hashmap(hashmap);
-		}
-	}
+	// 	//----------------------------------------------------------- input loop
+	// 	// dump_hashmap(hashmap);
 
-	//-------------------------------------------------------------- cleanup
-	delete_hashmap(hashmap);
+	// 	for (;;) {
+	// 		fputs("\x1b[102m > \x1b[0m", stdout);
+	// 		scanf("%s", key);
+
+	// 		if ((strcmp(key, "exit")) == 0) {
+	// 			break;
+	// 		}
+
+	// 		if ((strcmp(key, "dump")) == 0) {
+	// 			dump_hashmap(hashmap);
+	// 		}
+	// 		else {
+	// 			dummy_value = strdup(key);
+	// 			printf("%s : %s\n", key, dummy_value);
+	// 			put_hashmap(hashmap, key, dummy_value, free);
+	// 			// putchar('\n');
+	// 			// printf("%32s : %s\n", hashmap->tail->key, (char
+	// 			// *)hashmap->tail->value);
+	// 			// putchar('\n');
+	// 			print_hashmap(hashmap);
+	// 		}
+	// 	}
+
+	// 	//-------------------------------------------------------------- cleanup
+	// 	delete_hashmap(hashmap);
 	return 0;
 }
