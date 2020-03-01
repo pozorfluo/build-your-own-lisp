@@ -30,7 +30,7 @@
 #endif /* BENCHMARK */
 
 //------------------------------------------------------------------- MACROS ---
-#define ARRAY_LENGTH(array) (sizeof(array) / sizeof((array)[0]))
+#define ARRAY_LENGTH(_array) (sizeof(_array) / sizeof((_array)[0]))
 
 //------------------------------------------------------------- DECLARATIONS ---
 
