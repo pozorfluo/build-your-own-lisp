@@ -24,17 +24,17 @@
  * 	   + [ ] See :
  * https://stackoverflow.com/questions/22437416/best-way-to-resize-a-hash-table
  * 	   + [ ] See : https://github.com/jamesroutley/write-a-hash-table
- * 
+ *
  *  - [x] Provide ** mode where user allocate, map points to
  * 	  + [x] Iterate through entry via doubly linked xor list
- * 
+ *
  *  - [ ] Provide * mode where map is backed by contiguous array
  *    + [ ] Alloc map and backing array by chunks on creation and resize only
  *    + [ ] Map backing array index in (key, size_t value) hashtable !!
  *    + [ ] Resize by updating hashtable, not backing array
  *    + [ ] Do not discard backing array chunks, supplement them
  *    + [ ] Iterate through backing array, skip deleted
- *  
+ *
  *  - [ ] Allocate collisions^2 slots in buckets
  *    + [ ] Hash with different function/seed until collision
  *    + [ ] Store function/seed in bucket
@@ -71,13 +71,16 @@ static inline size_t hash_fimur_reduce(const char *key,
                                        const size_t seed,
                                        const unsigned int n)
     __attribute__((const, always_inline));
+static inline size_t hash_tab(const unsigned char *key, const size_t *xor_seed)
+    __attribute__((const, always_inline));
 //------------------------------------------------------------- DECLARATIONS ---
 /**
  * todo
  *   - [ ] Consider a wrapper Hash type to deal with different hash bit depth
  */
 // typedef Hash128 (*HashFunc)(const void *, const size_t, const uint32_t);
-typedef size_t (*HashFunc)(const char *, const size_t, const unsigned int);
+// typedef size_t (*HashFunc)(const char *, const size_t, const unsigned int);
+typedef size_t (*HashFunc)(const unsigned char *, const size_t *);
 
 typedef void (*ValueDestructor)(void *);
 
@@ -103,8 +106,21 @@ typedef struct Hashmap {
 	HashmapEntry **buckets;
 	HashmapEntry *head; /* insertion list */
 	HashmapEntry *tail; /* insertion list */
+	const size_t xor_seed[256];
 } Hashmap;
 
+typedef struct HashmapInit {
+	uint32_t seed;
+	HashFunc function;
+	unsigned int n;
+	size_t capacity;
+	size_t count;
+	size_t collisions;
+	HashmapEntry **buckets;
+	HashmapEntry *head; /* insertion list */
+	HashmapEntry *tail; /* insertion list */
+	size_t xor_seed[256];
+} HashmapInit;
 //----------------------------------------------------------------- Function ---
 /**
  * Compute the xor_link pointer of given previous, next pointer pair
@@ -206,6 +222,24 @@ static inline size_t hash_fimur_reduce(const char *key,
 
 	return hash >> (64 - n);
 }
+
+//----------------------------------------------------------------- Function ---
+/**
+ * Compute a tabulation style hash table size for given key, xor_seed table
+ *   -> Hashmap index
+ */
+static inline size_t hash_tab(const unsigned char *key, const size_t *xor_seed)
+{
+
+	size_t hash = 0;
+
+	while (*key) {
+		hash ^= xor_seed[*key] ^ *key;
+		key++;
+	}
+
+	return hash;
+}
 //----------------------------------------------------------------- Function ---
 /**
  * Create a new HashmapEntry for given key, value pair
@@ -273,7 +307,9 @@ void put_hashmap(Hashmap *hashmap,
                  ValueDestructor destructor)
 {
 	// const Hash128 hash = hashmap->function(key, strlen(key), hashmap->seed);
-	const size_t hash = hashmap->function(key, hashmap->seed, hashmap->n);
+	// const size_t hash = hashmap->function(key, hashmap->seed, hashmap->n);
+	const size_t hash =
+	    hashmap->function((unsigned char *)key, hashmap->xor_seed);
 	// const size_t index = mod_hash128(hash, hashmap->n);
 	const size_t index = hash;
 
@@ -382,36 +418,50 @@ void delete_hashmap(Hashmap *hashmap)
  */
 void dump_hashmap(Hashmap *hashmap)
 {
+	size_t empty_bucket = 0;
+
 	for (size_t i = 0; i < hashmap->capacity; i++) {
 		HashmapEntry *entry = hashmap->buckets[i];
 
 		if (entry == NULL) {
+			empty_bucket++;
 			continue;
 		}
-		printf("\x1b[102mhashmap->\x1b[30mbucket[%lu]\x1b[0m\n", i);
+		// printf("\x1b[102mhashmap->\x1b[30mbucket[%lu]\x1b[0m\n", i);
 
-		for (;;) {
-			// printf("\t %016lx %016lx : %s\n",
-			//        entry->hash.hi,
-			//        entry->hash.lo,
-			//        entry->key);
-			printf("\t %016lx : %s\n", entry->hash, entry->key);
-			if (entry->next_in_bucket == NULL) {
-				break;
-			}
-			entry = entry->next_in_bucket;
-		}
+		// for (;;) {
+		// 	// printf("\t %016lx %016lx : %s\n",
+		// 	//        entry->hash.hi,
+		// 	//        entry->hash.lo,
+		// 	//        entry->key);
+		// 	printf("\t %016lx : %s\n", entry->hash, entry->key);
+		// 	if (entry->next_in_bucket == NULL) {
+		// 		break;
+		// 	}
+		// 	entry = entry->next_in_bucket;
+		// }
 		// putchar('\n');
 	}
 	printf("hashmap->seed       : %u\n", hashmap->seed);
 	printf("hashmap->function   : %p\n", (unsigned char *)&(hashmap->function));
 	printf("hashmap->n          : %u\n", hashmap->n);
 	printf("hashmap->capacity   : %lu\n", hashmap->capacity);
-	printf("hashmap->count      : %lu\n", hashmap->count);
-	printf("hashmap->collisions : %lu\n", hashmap->collisions);
+	printf("hashmap->count      : %lu \t-> %f%%\n",
+	       hashmap->count,
+	       (float)hashmap->count / (float)hashmap->capacity * 100);
+	printf("hashmap->collisions : %lu \t-> %lf%%\n",
+	       hashmap->collisions,
+	    //    (float)hashmap->collisions / (float)hashmap->capacity,
+		   (float)hashmap->collisions / (float)hashmap->count * 100);
+	printf("empty_buckets       : %lu \t-> %f%%\n",
+	       empty_bucket,
+	       (float)empty_bucket / (float)hashmap->capacity * 100);
 	printf("hashmap->buckets    : %p\n", (void *)hashmap->buckets);
 	printf("hashmap->head       : %p\n", (void *)hashmap->head);
 	printf("hashmap->tail       : %p\n", (void *)hashmap->tail);
+	for (size_t i = 0; i < 256; i++) {
+		printf("%lx", hashmap->xor_seed[i]);
+	}
 }
 
 //----------------------------------------------------------------- Function ---
@@ -444,9 +494,11 @@ void print_hashmap(Hashmap *hashmap)
 /**
  * Create Hashmap of capacity equal to 2^(given n),  with given seed
  *
- *   Init a dummy
+ *   Init a dummy xor_seed
+ *   Init a dummy HashmapInit
+ * 	 Copy dummy xor_seed in dummy HashmapInit
  *   Allocate a Hashmap
- *   Copy dummy to Hashmap
+ *   Copy dummy HashmapInit to Hashmap
  *   Allocate Hashmap buckets
  *   Init Hashmap buckets to NULL
  *   Init insertion list
@@ -461,10 +513,16 @@ Hashmap *new_hashmap(const unsigned int n,
                      const uint32_t seed,
                      HashFunc function)
 {
+	const size_t capacity = (1u << n);
+	size_t xor_seed_init[256];
+
+	for (size_t i = 0; i < 256; i++) {
+		xor_seed_init[i] = rand() % capacity;
+	}
 	// const size_t capacity      = (1u << n) - 1;
-	const size_t capacity      = (1u << n);
-	const Hashmap hashmap_init = {
-	    seed, function, n, capacity, 0, 0, NULL, NULL, NULL};
+	HashmapInit hashmap_init = {
+	    seed, function, n, capacity, 0, 0, NULL, NULL, NULL, {0}};
+	memcpy(hashmap_init.xor_seed, xor_seed_init, sizeof(xor_seed_init));
 
 	Hashmap *new_hashmap = malloc(sizeof(Hashmap));
 	memcpy(new_hashmap, &hashmap_init, sizeof(Hashmap));
@@ -481,14 +539,15 @@ Hashmap *new_hashmap(const unsigned int n,
 //--------------------------------------------------------------------- MAIN ---
 int main(void)
 {
-	uint32_t seed    = 31;
-	size_t n = 22;
-	Hashmap *hashmap = new_hashmap(n, seed, hash_fimur_reduce);
+	uint32_t seed = 31;
+	size_t n      = 18;
+	// Hashmap *hashmap = new_hashmap(n, seed, hash_fimur_reduce);
+	Hashmap *hashmap = new_hashmap(n, seed, hash_tab);
 
 //-------------------------------------------------------------------- setup
 #define KEYPOOL_SIZE 32
 	char random_keys[KEYPOOL_SIZE] = {'\0'};
-	size_t test_count              = (1 << n) / 2;
+	size_t test_count              = (1 << (n - 2));
 	char key[256];
 	char *dummy_value;
 
@@ -525,7 +584,8 @@ int main(void)
 		else {
 			//-------------------------------------------- lookup prototype
 			const size_t index =
-			    hashmap->function(key, hashmap->seed, hashmap->n);
+			    // hashmap->function(key, hashmap->seed, hashmap->n);
+			    hashmap->function((unsigned char *)key, hashmap->xor_seed);
 
 			if (hashmap->buckets[index] != NULL) {
 
