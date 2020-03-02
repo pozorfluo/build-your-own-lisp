@@ -40,6 +40,7 @@
  *    + [ ] Store function/seed in bucket
  */
 
+#include <math.h>   /* pow() */
 #include <stddef.h> /* size_t */
 #include <stdint.h> /* uint32_t, uint64_t */
 #include <stdio.h>
@@ -405,6 +406,46 @@ void delete_hashmap(Hashmap *hashmap)
 	free(hashmap->buckets);
 	free(hashmap);
 }
+//----------------------------------------------------------------- Function ---
+/**
+ * Compute the expected number of entries per bucket for given number of keys,
+ * buckets
+ *   -> expected number of entries per bucket
+ */
+double expected_entries_per_bucket(size_t keys, size_t buckets)
+{
+	return (double)keys / (double)buckets;
+}
+//----------------------------------------------------------------- Function ---
+/**
+ * Compute the expected number of empty buckets for given number of keys,
+ * buckets
+ *   -> expected number of empty buckets
+ */
+double expected_empty_buckets(size_t keys, size_t buckets)
+{
+	return (double)buckets * pow(1 - (1 / (double)buckets), (double)keys);
+}
+//----------------------------------------------------------------- Function ---
+/**
+ * Compute the expected number of filled buckets for given number of keys,
+ * buckets
+ *   -> expected number of filled buckets
+ */
+double expected_filled_buckets(size_t keys, size_t buckets)
+{
+	return (double)buckets - expected_empty_buckets(keys, buckets);
+}
+//----------------------------------------------------------------- Function ---
+/**
+ * Compute the expected number of collisions for given number of keys,
+ * buckets
+ *   -> expected number of collisions
+ */
+double expected_collisions(size_t keys, size_t buckets)
+{
+	return (double)keys - expected_filled_buckets(keys, buckets);
+}
 
 //----------------------------------------------------------------- Function ---
 /**
@@ -442,20 +483,31 @@ void dump_hashmap(Hashmap *hashmap)
 		// }
 		// putchar('\n');
 	}
+	printf("EV entries / bucket = %f\n",
+	       expected_entries_per_bucket(hashmap->count, hashmap->capacity));
+	printf("EV collisions = %f \t-> %f%%\n",
+	       expected_collisions(hashmap->count, hashmap->capacity),
+	       expected_collisions(hashmap->count, hashmap->capacity) /
+	           (double)hashmap->count * 100);
+	printf("EV empty = %f \t-> %f%%\n",
+	       expected_empty_buckets(hashmap->count, hashmap->capacity),
+	       expected_empty_buckets(hashmap->count, hashmap->capacity) /
+	           (double)hashmap->capacity * 100);
+
 	printf("hashmap->seed       : %u\n", hashmap->seed);
 	printf("hashmap->function   : %p\n", (unsigned char *)&(hashmap->function));
 	printf("hashmap->n          : %u\n", hashmap->n);
 	printf("hashmap->capacity   : %lu\n", hashmap->capacity);
 	printf("hashmap->count      : %lu \t-> %f%%\n",
 	       hashmap->count,
-	       (float)hashmap->count / (float)hashmap->capacity * 100);
+	       (double)hashmap->count / (double)hashmap->capacity * 100);
 	printf("hashmap->collisions : %lu \t-> %lf%%\n",
 	       hashmap->collisions,
-	    //    (float)hashmap->collisions / (float)hashmap->capacity,
-		   (float)hashmap->collisions / (float)hashmap->count * 100);
+	       //    (float)hashmap->collisions / (float)hashmap->capacity,
+	       (double)hashmap->collisions / (double)hashmap->count * 100);
 	printf("empty_buckets       : %lu \t-> %f%%\n",
 	       empty_bucket,
-	       (float)empty_bucket / (float)hashmap->capacity * 100);
+	       (double)empty_bucket / (double)hashmap->capacity * 100);
 	printf("hashmap->buckets    : %p\n", (void *)hashmap->buckets);
 	printf("hashmap->head       : %p\n", (void *)hashmap->head);
 	printf("hashmap->tail       : %p\n", (void *)hashmap->tail);
@@ -547,7 +599,7 @@ int main(void)
 //-------------------------------------------------------------------- setup
 #define KEYPOOL_SIZE 32
 	char random_keys[KEYPOOL_SIZE] = {'\0'};
-	size_t test_count              = (1 << (n - 2));
+	size_t test_count              = (1 << (n - 1));
 	char key[256];
 	char *dummy_value;
 
