@@ -605,7 +605,7 @@ int main(void)
 
 	for (size_t k = 0; k < test_count; k++) {
 		for (size_t i = 0; i < KEYPOOL_SIZE - 1; i++) {
-			random_keys[i] = (char)(rand() % 26 + 0x61);
+			random_keys[i] = (char)(rand() % 95 + 0x20);
 			// putchar(random_keys[i]);
 		}
 		dummy_value = strdup(&random_keys[rand() % (KEYPOOL_SIZE - 1)]);
