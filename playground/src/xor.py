@@ -33,7 +33,7 @@ for key in range(100):
     (key * 11400714819323198485) >> 54
 
 
-fimurhash = [
+fimur_hash = [
     8613972110907996638,
     15358817489599691552,
     3656918988786498657,
@@ -99,8 +99,8 @@ def hamming(a, b, bitdepth):
     return distance
 
 
-for i, hash in enumerate(fimurhash):
-    distance = hamming(hash, fimurhash[i-1], 64)
+for i, hash in enumerate(fimur_hash):
+    distance = hamming(hash, fimur_hash[i-1], 64)
     print(f"distance  [{i}]<->[{i-1}] \t {distance}/64")
 
 for i, hash in enumerate(murmur3_x64):
@@ -207,6 +207,63 @@ for i in range(0, 544, 34):
     print(f"fimurhalt [{i}]<->[{i+1}] \t {distance}/64 = {distance/64}")
 
 
+
+pool = 1000
+for i in range(pool):
+    print(f"{fimurhash(i) >> 54} \t: "
+    f"{fimurhash(fimurhash(i >> 54) + i) >> 54} \t: "
+    f"{fimurhash(fimurhash(i >> 54) ^ i) >> 54}")
+
+# for i in range(pool):
+#     print(f"{fimurhash(i)} \t: "
+#     f"{fimurhash(fimurhash(i) + i)} \t: "
+#     f"{fimurhash(fimurhash(i) ^ i)}")
+    
+
+def fimurhash_seed(number, seed):
+    hash = (seed * 11400714819323198485 * (number << 15)) & 0xFFFFFFFFFFFFFFFF
+    hash = ((hash << 7) | (hash >> (32 - 7)) ) & 0xFFFFFFFFFFFFFFFF
+    return hash
+
+# for i in range(0, 545, 34):
+#     print(f"{i} ; "
+#         f"{fimurhash_seed(i, 31) >> 54} ; "
+#     f"{fimurhash_seed(i, 31 + fimurhash_seed(i, 31)) >> 54} ; "
+#     f"{fimurhash_seed(i, 31 ^ fimurhash_seed(i, 31)) >> 54}")
+
+
+# nested hash
+n = 14
+top_n = 0
+seed = 31 << 7
+collisions = 0
+entry_count = (2**(n-1))
+
+hmap = [[] for n in range(2**top_n)]
+for i in range(1, entry_count):
+    hash = fimurhash_seed(i, seed)
+    top_level = hash >> (64 - top_n)
+    # nested_seed =fimurhash_seed(i ^ hash, seed + hash) >> (64 - n + top_n)
+    # nested_hash = fimurhash_seed(i, (seed * hash) & 0xFFFFFFFFFFFFFFFF )
+    # nested_hash = fimurhash_seed(i, seed << 7)
+    nested_hash = fimurhash_seed(i, seed)
+    nested_level = nested_hash >> (64 - n + top_n)
+    print(f"{i} : { hash } : { nested_hash } : {top_level} : {nested_level}")
+    hmap[top_level].append(nested_level)
+
+
+for i, top_level in enumerate(hmap):
+    entries = len(top_level)
+    unique = len(set(top_level))
+    collisions += entries-unique
+    print(f"toplevel[{i}] -> {unique}/{entries} : {entries-unique} collisions")
+
+print(f"{collisions} / {entry_count} : {collisions/entry_count}")
+
+
+
+# for i in range(100):
+#     print(f"{i} : { fimurhash_seed(i, 31) >> 54}")
 # def fimurhash(number):
 #     hash = 31 * 11400714819323198486 * (number << 15)
 #     hash = (hash << 7) | (hash >> (32 - 7))
@@ -275,4 +332,7 @@ for i in range(0, 544, 34):
 #     print(f"merxorhash64 [{i}]<->[{i+1}] \t {distance}/64 = {distance/64}")
 
 # print(f"mean = {mean/pool}")
+
+
+
 

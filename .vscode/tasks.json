@@ -10,7 +10,7 @@
                 "-Wall",
                 "-Wextra",
                 "-Werror",
-                "-pedantic",
+                // "-pedantic",
                 "-g",
                 // "-DDEBUG_MALLOC",
                 // "-DDEBUG_MPC",

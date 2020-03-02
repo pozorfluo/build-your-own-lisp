@@ -16,7 +16,6 @@
  * todo
  *   - [x] Implement basic multiplicative hash function
  *   - [x] Port murmur3 to C to suit your needs
- *   - [ ] Include xxhash
  *   - [ ] Compare and select hash function
  *   - [ ] Consider secondary hash map for collisions
  *     + [ ] See :
@@ -25,6 +24,20 @@
  * 	   + [ ] See :
  * https://stackoverflow.com/questions/22437416/best-way-to-resize-a-hash-table
  * 	   + [ ] See : https://github.com/jamesroutley/write-a-hash-table
+ * 
+ *  - [x] Provide ** mode where user allocate, map points to
+ * 	  + [x] Iterate through entry via doubly linked xor list
+ * 
+ *  - [ ] Provide * mode where map is backed by contiguous array
+ *    + [ ] Alloc map and backing array by chunks on creation and resize only
+ *    + [ ] Map backing array index in (key, size_t value) hashtable !!
+ *    + [ ] Resize by updating hashtable, not backing array
+ *    + [ ] Do not discard backing array chunks, supplement them
+ *    + [ ] Iterate through backing array, skip deleted
+ *  
+ *  - [ ] Allocate collisions^2 slots in buckets
+ *    + [ ] Hash with different function/seed until collision
+ *    + [ ] Store function/seed in bucket
  */
 
 #include <stddef.h> /* size_t */
@@ -212,7 +225,7 @@ HashmapEntry *new_hashmap_entry(const char *key,
                                 void *alloced_value,
                                 ValueDestructor destructor,
                                 const size_t hash)
-                                // const Hash128 hash)
+// const Hash128 hash)
 {
 	HashmapEntry *new_entry;
 	new_entry = malloc(sizeof(HashmapEntry));
@@ -382,9 +395,7 @@ void dump_hashmap(Hashmap *hashmap)
 			//        entry->hash.hi,
 			//        entry->hash.lo,
 			//        entry->key);
-			printf("\t %016lx : %s\n",
-			       entry->hash,
-			       entry->key);
+			printf("\t %016lx : %s\n", entry->hash, entry->key);
 			if (entry->next_in_bucket == NULL) {
 				break;
 			}
@@ -470,13 +481,14 @@ Hashmap *new_hashmap(const unsigned int n,
 //--------------------------------------------------------------------- MAIN ---
 int main(void)
 {
-	uint32_t seed = 31;
-	Hashmap *hashmap = new_hashmap(11, seed, hash_fimur_reduce);
+	uint32_t seed    = 31;
+	size_t n = 22;
+	Hashmap *hashmap = new_hashmap(n, seed, hash_fimur_reduce);
 
 //-------------------------------------------------------------------- setup
 #define KEYPOOL_SIZE 32
 	char random_keys[KEYPOOL_SIZE] = {'\0'};
-	size_t test_count              = 2048;
+	size_t test_count              = (1 << n) / 2;
 	char key[256];
 	char *dummy_value;
 
@@ -511,13 +523,33 @@ int main(void)
 			dump_hashmap(hashmap);
 		}
 		else {
+			//-------------------------------------------- lookup prototype
+			const size_t index =
+			    hashmap->function(key, hashmap->seed, hashmap->n);
+
+			if (hashmap->buckets[index] != NULL) {
+
+				/* Index Exists */
+				HashmapEntry *entry = hashmap->buckets[index];
+
+				do {
+					/* Key Exists */
+					if (strcmp(entry->key, key) == 0) {
+						// todo
+						//   - [ ] Look at values not being written properly
+						//         and/or overwritten
+						printf("%s : %s\n", entry->key, (char *)entry->value);
+						break;
+						goto next_loop;
+					}
+					entry = entry->next_in_bucket;
+				} while (entry != NULL);
+			}
+
 			dummy_value = strdup(key);
-			printf("%s : %s\n", key, dummy_value);
+			// printf("%s : %s\n", key, dummy_value);
 			put_hashmap(hashmap, key, dummy_value, free);
-			// putchar('\n');
-			// printf("%32s : %s\n", hashmap->tail->key, (char
-			// *)hashmap->tail->value);
-			// putchar('\n');
+		next_loop:
 			print_hashmap(hashmap);
 		}
 	}
