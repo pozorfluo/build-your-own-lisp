@@ -546,6 +546,24 @@ double expected_collisions(size_t keys, size_t buckets)
 
 //----------------------------------------------------------------- Function ---
 /**
+ * Pretty print xor_seed for given Hashmap
+ *   -> nothing
+ */
+void print_xor_seed(Hashmap *hashmap)
+{
+	puts("xor_seed            :");
+	for (size_t i = 0; i < 256; i++) {
+		printf("%02lx ", hashmap->xor_seed[i]);
+		if (((i + 1) % 16) == 0) {
+			putchar('\n');
+		}
+	}
+	putchar('\n');
+
+	return;
+}
+//----------------------------------------------------------------- Function ---
+/**
  * Dump given Hashmap content
  *   -> nothing
  *
@@ -592,10 +610,7 @@ void dump_hashmap(Hashmap *hashmap)
 	       empty_bucket,
 	       (double)empty_bucket / (double)hashmap->capacity * 100);
 
-	for (size_t i = 0; i < 256; i++) {
-		printf("%lx ", hashmap->xor_seed[i]);
-	}
-	putchar('\n');
+	print_xor_seed(hashmap);
 }
 
 //----------------------------------------------------------------- Function ---
@@ -622,7 +637,8 @@ Hashmap *new_hashmap(const unsigned int n,
                      ValueDestructor destructor)
 {
 	/* Advertised capacity */
-	const size_t capacity = (1u << n);
+	/* current tab_hash implementation requires a mininum of 256 slots */
+	const size_t capacity = (n < 8) ? (1u << 8) : (1u << n);
 	//---------------------------------------------------- xor_seed init
 	/**
 	 * todo
@@ -670,7 +686,7 @@ int main(void)
 	// uint32_t seed = 31;
 	// todo
 	//   - [ ] Confirm tab_hash should NOT work for n < 8 as it is
-	size_t n = 12;
+	size_t n = 5;
 	// Hashmap *hashmap = new_hashmap(n, seed, hash_fimur_reduce);
 	Hashmap *hashmap = new_hashmap(n, free);
 
@@ -684,7 +700,7 @@ int main(void)
 
 	for (size_t k = 0; k < test_count; k++) {
 		for (size_t i = 0; i < KEYPOOL_SIZE - 1; i++) {
-			random_keys[i] = (char)(rand() % 26 + 0x61); //% 95 + 0x20);
+			random_keys[i] = (char)(rand() % 95 + 0x20);
 			// putchar(random_keys[i]);
 		}
 		// putchar('\n');
@@ -718,6 +734,10 @@ int main(void)
 
 		if ((strcmp(key, "dump")) == 0) {
 			dump_hashmap(hashmap);
+		}
+
+		if ((strcmp(key, "seed")) == 0) {
+			print_xor_seed(hashmap);
 		}
 		else {
 			//-------------------------------------------- lookup prototype
