@@ -3,7 +3,10 @@
         "*.sh": "shellscript",
         ".gdbinit": "shellscript",
         "stddef.h": "c",
-        "*.tcc": "c"
+        "*.tcc": "c",
+        "type_traits": "c",
+        "hash_murmur3_nose.h": "c",
+        "math.h": "c"
     },
     "python.formatting.provider": "black",
     "python.pythonPath": "/home/spagbol/anaconda3/bin/python"
