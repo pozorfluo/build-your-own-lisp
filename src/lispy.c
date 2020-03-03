@@ -5,7 +5,6 @@
 
 #include "linenoise.h"
 #include "mpc.h"
-
 #include "ansi_esc.h"
 
 // #define DEBUG_MALLOC
