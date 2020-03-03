@@ -1,51 +1,25 @@
 //------------------------------------------------------------------ SUMMARY ---
 /**
  * Implement a hash map tuned for lispy / LispEnv
- *
- * Describe the plan for a hash map as I currently understand it :
- *   Generate hashes from a large "hash space" for given key set
- *   Use an "array" big enough relative to key set and desired load factor
- *     but smaller than "hash space" as hash map
- *   Use hash % (map size) as index to ...
- *   Insert/Append KeyValue pairs along with hash in a linked list
- *   Resize map when/if load factor threshold is crossed
- *     this should NOT require to recompute all the hashes
- *   Handle map index collision with search in linked list
- *   Figure out if/how to handle actual hash collision
- *
+ * 
  * todo
- *   - [x] Implement basic multiplicative hash function
- *   - [x] Port murmur3 to C to suit your needs
- *   - [ ] Compare and select hash function
- *   - [ ] Consider secondary hash map for collisions
- *     + [ ] See :
- * http://courses.cs.vt.edu/~cs3114/Fall09/wmcquain/Notes/T17.PerfectHashFunctions.pdf
- *   - [ ] Consider quadratic probing for collisions
- * 	   + [ ] See :
- * https://stackoverflow.com/questions/22437416/best-way-to-resize-a-hash-table
- * 	   + [ ] See : https://github.com/jamesroutley/write-a-hash-table
- *
- *   - [x] Provide ** mode where user allocate, map points to
- * 	   + [x] Iterate through entry via doubly linked xor list
- *
  *   - [ ] Provide * mode where map is backed by contiguous array
- *     + [ ] Alloc map and backing array by chunks on creation and resize only
- *     + [ ] Map backing array index in (key, size_t value) hashtable !!
+ *     + [x] Alloc map and backing array by chunks on creation and resize only
+ *     + [x] Map backing array index in (key, size_t value) hashtable !!
  *     + [ ] Resize by updating hashtable, not backing array
  *     + [ ] Do not discard backing array chunks, supplement them
  *     + [ ] Iterate through backing array, skip deleted
  *     + [ ] Allow replacing table in single atomic step by reassigning *
- *
- *   - [ ] Allocate collisions^2 slots in buckets
- *     + [ ] Hash with different function/seed until collision
- *     + [ ] Store function/seed in bucket
- *
+ * 
  *   - [ ] Move to robin hood collision resolution
- *     + [ ] Discard insertion history list entirely
- *     + [ ] Avoid bound checking by overgrowing backing array by PROBE_LIMIT
+ *     + [x] Discard insertion history list entirely
+ *     + [x] Avoid probe bound checking by overgrowing backing array by PROBE_LIMIT
  *
- *   - [ ] Move ValueDestructor to Hashmap instead of HashmapEntry
- *     + [ ] Consider putting it back only if you need mixed type values
+ *   - [ ] Store bucket states in a separate array, 1 byte per bucket
+ *     - [ ] Probe by vector friendly chunks
+ *     - [ ] Restrict PROBE_LIMIT to a multiple of that chunk size
+ * 
+ *   - [ ] Implement delete procedure using bacward shift approach
  */
 
 #include <math.h>   /* pow() */
@@ -54,7 +28,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-// #include <stdbool.h>
+
+#ifdef _MSC_VER
+#include <intrin.h> /* __rdtsc() */
+#else
+#include <x86intrin.h> /* __rdtsc() */
+#endif
 
 #include "ansi_esc.h"
 
@@ -62,8 +41,9 @@
 // #define DEBUG_MALLOC
 #include "debug_xmalloc.h"
 
+
 //------------------------------------------------------------ MAGIC NUMBERS ---
-#define PROBE_LIMIT 8
+#define PROBE_LIMIT 7
 
 //------------------------------------------------------------------- MACROS ---
 #define ARRAY_LENGTH(_array) (sizeof(_array) / sizeof((_array)[0]))
@@ -137,6 +117,25 @@ static inline size_t hash_tab(const unsigned char *key, const size_t *xor_seed)
 	return hash;
 }
 
+// static inline size_t hash_fimur_reduce(const char *key,
+//                                        const size_t seed,
+//                                        const unsigned int n)
+//    __attribute__((const, always_inline));
+
+// static inline size_t hash_fimur_reduce(const char *key,
+//                                        const size_t seed,
+//                                        const unsigned int n)
+// {
+// 	size_t hash = seed;
+
+// 	while (*key) {
+// 		hash *= 11400714819323198485llu;
+// 		hash *= *(key++) << 15;
+// 		hash = (hash << 7) | (hash >> (32 - 7));
+// 	}
+
+// 	return hash >> (64 - n);
+// }
 //----------------------------------------------------------------- Function ---
 /**
  * Swap given entries
@@ -203,7 +202,7 @@ HashmapEntry *put_hashmap(Hashmap *hashmap, const char *key, void *value)
 	assert(value != NULL);
 
 	size_t hash = hash_tab((unsigned char *)key, hashmap->xor_seed);
-	printf("hash->[%lu]\n", hash);
+	// printf("hash->[%lu]\n", hash);
 	HashmapEntry *bucket = &hashmap->buckets[hash];
 
 	/* Prepare temp entry*/
@@ -227,6 +226,9 @@ HashmapEntry *put_hashmap(Hashmap *hashmap, const char *key, void *value)
 			return bucket;
 		}
 		else {
+			/* Key exist */
+			// todo 
+			//   - [ ] Probe for existing key
 			/* Rich bucket */
 			if (entry.distance > bucket->distance) {
 				swap_entries(&entry, bucket);
@@ -239,8 +241,7 @@ HashmapEntry *put_hashmap(Hashmap *hashmap, const char *key, void *value)
 	return NULL;
 }
 
-//----------------------------------------------------------------- Function
-//---
+//----------------------------------------------------------------- Function ---
 /**
  * Free given HashmapEntry
  *   -> nothing
@@ -254,8 +255,7 @@ static inline void destroy_entry(HashmapEntry *entry)
 	// free(entry);
 	return;
 }
-//----------------------------------------------------------------- Function
-//---
+//----------------------------------------------------------------- Function ---
 /**
  * Locate HasmapEntry for given key in given Hashmap
  * If found
@@ -270,8 +270,7 @@ static inline void destroy_entry(HashmapEntry *entry)
 // 	destroy_entry(hashmap->buckets[index]);
 // }
 
-//----------------------------------------------------------------- Function
-//---
+//----------------------------------------------------------------- Function ---
 /**
  * Free given Hashmap
  *   -> nothing
@@ -283,14 +282,13 @@ void delete_hashmap(Hashmap *hashmap)
 		if (hashmap->buckets[i].key == NULL) {
 			continue;
 		}
-		printf("%s\n", hashmap->buckets[i].key);
+		// printf("%s\n", hashmap->buckets[i].key);
 		destroy_entry(&hashmap->buckets[i]); //, hashmap->destructor);
 	}
 	XFREE(hashmap->buckets, "delete_hashmap");
 	XFREE(hashmap, "delete_hashmap");
 }
-//----------------------------------------------------------------- Function
-//---
+//----------------------------------------------------------------- Function ---
 /**
  * Create Hashmap of capacity equal to 2^(given n),  with given seed
  *
@@ -316,17 +314,15 @@ Hashmap *new_hashmap(const unsigned int n,
 	/* Advertised capacity */
 	/* current tab_hash implementation requires a mininum of 256 slots */
 	const size_t capacity = (n < 8) ? (1u << 8) : (1u << n);
+
 	//---------------------------------------------------- xor_seed init
-	/**
-	 * todo
-	 *   + [ ] Do not discard most of each rand() with % capacity
-	 *     - [ ] Spread enough rand() to fill the table splitting according
-	 * to
-	 *           capacity
-	 */
 	size_t xor_seed_init[256];
+	srand(__rdtsc());
 	for (size_t i = 0; i < 256; i++) {
+		// % capacity is okay-ish as long as its a power of 2
+		// Expect skewed distribution otherwise
 		xor_seed_init[i] = rand() % capacity;
+		// xor_seed_init[i-1] = hash_fimur_reduce((char *)&i, 31, n);
 	}
 
 	//----------------------------------------------------- Hashmap init
@@ -352,8 +348,7 @@ Hashmap *new_hashmap(const unsigned int n,
 
 	return new_hashmap;
 }
-//----------------------------------------------------------------- Function
-//---
+//----------------------------------------------------------------- Function ---
 /**
  * Compute the expected number of entries per bucket for given number of
  * keys,
@@ -364,8 +359,7 @@ double expected_entries_per_bucket(size_t keys, size_t buckets)
 {
 	return (double)keys / (double)buckets;
 }
-//----------------------------------------------------------------- Function
-//---
+//----------------------------------------------------------------- Function ---
 /**
  * Compute the expected number of empty buckets for given number of keys,
  * buckets
@@ -375,8 +369,7 @@ double expected_empty_buckets(size_t keys, size_t buckets)
 {
 	return (double)buckets * pow(1 - (1 / (double)buckets), (double)keys);
 }
-//----------------------------------------------------------------- Function
-//---
+//----------------------------------------------------------------- Function ---
 /**
  * Compute the expected number of filled buckets for given number of keys,
  * buckets
@@ -386,8 +379,7 @@ double expected_filled_buckets(size_t keys, size_t buckets)
 {
 	return (double)buckets - expected_empty_buckets(keys, buckets);
 }
-//----------------------------------------------------------------- Function
-//---
+//----------------------------------------------------------------- Function ---
 /**
  * Compute the expected number of collisions for given number of keys,
  * buckets
@@ -398,8 +390,7 @@ double expected_collisions(size_t keys, size_t buckets)
 	return (double)keys - expected_filled_buckets(keys, buckets);
 }
 
-//----------------------------------------------------------------- Function
-//---
+//----------------------------------------------------------------- Function ---
 /**
  * Pretty print xor_seed for given Hashmap
  *   -> nothing
@@ -408,7 +399,7 @@ void print_xor_seed(Hashmap *hashmap)
 {
 	puts("xor_seed            :");
 	for (size_t i = 0; i < 256; i++) {
-		printf("%02lx ", hashmap->xor_seed[i]);
+		printf("%0*lx ", (int)(hashmap->n / 4), hashmap->xor_seed[i]);
 		if (((i + 1) % 16) == 0) {
 			putchar('\n');
 		}
@@ -417,14 +408,12 @@ void print_xor_seed(Hashmap *hashmap)
 
 	return;
 }
-//----------------------------------------------------------------- Function
-//---
+//----------------------------------------------------------------- Function ---
 /**
  * Dump given Hashmap content
  *   -> nothing
  *
  * todo
- *   - [x] Consider a insertion ordered double-linked list of HashmapEntry
  *   - [ ] Implement list iterator
  *     + [ ] See http://rosettacode.org/wiki/Doubly-linked_list/Traversal#C
  */
@@ -435,6 +424,8 @@ void dump_hashmap(Hashmap *hashmap)
 	for (size_t i = 0; i < hashmap->capacity; i++) {
 		if (hashmap->buckets[i].key == NULL) {
 			empty_bucket++;
+			printf("\x1b[100mhashmap->\x1b[30mbucket[%lu]>> EMPTY <<\x1b[0m\n",
+			       i);
 			continue;
 		}
 		printf("\x1b[10%dmhashmap->\x1b[30mbucket[%lu]\x1b[0m>>%d\n",
@@ -477,8 +468,7 @@ void dump_hashmap(Hashmap *hashmap)
 	print_xor_seed(hashmap);
 }
 
-//--------------------------------------------------------------------- MAIN
-//---
+//--------------------------------------------------------------------- MAIN ---
 int main(void)
 {
 	// uint32_t seed = 31;
@@ -497,26 +487,27 @@ int main(void)
 //-------------------------------------------------------------------- setup
 #define KEYPOOL_SIZE 32
 	char random_keys[KEYPOOL_SIZE] = {'\0'};
-	size_t test_count              = (1 << n) - 1; // 1 << (n - 1);
+	size_t test_count              = (1 << (n - 1)) - 1; // 1 << (n - 1);
 	char key[256];
 	char *dummy_value = NULL;
-	// HashmapEntry *temp_entry;
+
+	srand(__rdtsc());
 
 	for (size_t k = 0; k < test_count; k++) {
 		for (size_t i = 0; i < KEYPOOL_SIZE - 1; i++) {
-			random_keys[i] = (char)(rand() % 95 + 0x20);
+			random_keys[i] = (char)(rand() % 26 + 0x61);//% 95 + 0x20);
 			// putchar(random_keys[i]);
 		}
 		// putchar('\n');
 
 		dummy_value = strdup(&random_keys[rand() % (KEYPOOL_SIZE - 1)]);
-		printf(
-		    "[%lu]key   : %s\n"
-		    "[%lu]value : %s\n",
-		    k,
-		    &random_keys[rand() % (KEYPOOL_SIZE - 1)],
-		    k,
-		    dummy_value);
+		// printf(
+		//     "[%lu]key   : %s\n"
+		//     "[%lu]value : %s\n",
+		//     k,
+		//     &random_keys[rand() % (KEYPOOL_SIZE - 1)],
+		//     k,
+		//     dummy_value);
 
 		put_hashmap(
 		    hashmap, &random_keys[rand() % (KEYPOOL_SIZE - 1)], dummy_value);
@@ -561,74 +552,3 @@ int main(void)
 	delete_hashmap(hashmap);
 	return 0;
 }
-
-//----------------------------------------------------------------- Function ---
-/**
- * Compute modulus division by 2^n - 1 for given integer dividend
- *   -> Remainder
- */
-// static inline size_t mod_2n1(uint_fast64_t dividend, const unsigned int n)
-// {
-// 	const uint_fast64_t divisor = (1u << n) - 1;
-// 	uint64_t remainder;
-
-// 	for (remainder = dividend; dividend > divisor; dividend = remainder) {
-// 		for (remainder = 0; dividend; dividend >>= n) {
-// 			remainder += dividend & divisor;
-// 		}
-// 	}
-// 	return remainder == divisor ? 0 : remainder;
-// }
-
-//----------------------------------------------------------------- Function ---
-/**
- * Compute modulus division by 2^n - 1 for given Hash128
- *   -> Remainder
- */
-// static inline size_t mod_hash128(const Hash128 hash, const unsigned int n)
-// {
-// 	const uint32_t h1 = (hash.hi & 0xFFFFFFFF00000000ul) >> 32;
-// 	const uint32_t h2 = (hash.hi & 0x00000000FFFFFFFFul);
-// 	const uint32_t h3 = (hash.lo & 0xFFFFFFFF00000000ul) >> 32;
-// 	const uint32_t h4 = (hash.lo & 0x00000000FFFFFFFFul);
-
-// 	return mod_2n1(
-// 	    (mod_2n1((mod_2n1((mod_2n1(h1, n) << 32) + h2, n) << 32) + h3, n)
-// 	     << 32) +
-// 	        h4,
-// 	    n);
-// }
-
-//----------------------------------------------------------------- Function ---
-/**
- * Compute a rotated multiplicative style hash mapped to given n power of 2
- * table size for given key
- *   -> Hashmap index
- */
-// static inline size_t hash_fimur_reduce(const char *key,
-//                                        const size_t seed,
-//                                        const unsigned int n)
-// {
-// 	size_t hash = seed;
-
-// 	while (*key) {
-// 		hash *= 11400714819323198485llu;
-// 		hash *= *(key++) << 15;
-// 		hash = (hash << 7) | (hash >> (32 - 7));
-// 	}
-
-// 	return hash >> (64 - n);
-// }
-// struct HashmapEntry;
-// struct Hashmap;
-// typedef struct HashmapEntry HashmapEntry;
-// typedef struct Hashmap Hashmap;
-
-// static inline size_t mod_2n1(uint_fast64_t dividend, const unsigned int n)
-//     __attribute__((const, always_inline));
-// // static size_t mod_hash128(const Hash128 hash, const unsigned int n)
-// //     __attribute__((const, always_inline));
-// static inline size_t hash_fimur_reduce(const char *key,
-//                                        const size_t seed,
-//                                        const unsigned int n)
-//     __attribute__((const, always_inline));
