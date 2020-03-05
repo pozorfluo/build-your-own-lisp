@@ -1,7 +1,7 @@
 //------------------------------------------------------------------ SUMMARY ---
 /**
  * Implement a hash map tuned for lispy / LispEnv
- * 
+ *
  * todo
  *   - [ ] Provide * mode where map is backed by contiguous array
  *     + [x] Alloc map and backing array by chunks on creation and resize only
@@ -10,15 +10,16 @@
  *     + [ ] Do not discard backing array chunks, supplement them
  *     + [ ] Iterate through backing array, skip deleted
  *     + [ ] Allow replacing table in single atomic step by reassigning *
- * 
+ *
  *   - [ ] Move to robin hood collision resolution
  *     + [x] Discard insertion history list entirely
- *     + [x] Avoid probe bound checking by overgrowing backing array by PROBE_LIMIT
+ *     + [x] Avoid probe bound checking by overgrowing backing array by
+ * PROBE_LIMIT
  *
  *   - [ ] Store bucket states in a separate array, 1 byte per bucket
  *     - [ ] Probe by vector friendly chunks
  *     - [ ] Restrict PROBE_LIMIT to a multiple of that chunk size
- * 
+ *
  *   - [ ] Implement delete procedure using bacward shift approach
  */
 
@@ -38,9 +39,8 @@
 #include "ansi_esc.h"
 
 #include <assert.h>
-// #define DEBUG_MALLOC
+#define DEBUG_MALLOC
 #include "debug_xmalloc.h"
-
 
 //------------------------------------------------------------ MAGIC NUMBERS ---
 #define PROBE_LIMIT 7
@@ -62,7 +62,8 @@ static inline size_t hash_tab(const unsigned char *key, const size_t *xor_seed)
 typedef size_t (*HashFunc)(const unsigned char *, const size_t *);
 
 typedef void *(*ValueConstructor)(const void *);
-typedef void (*ValueDestructor)(void *);
+// typedef void (*ValueDestructor)(void *);
+typedef void (*ValueDestructor)(void *, const char *, const char *);
 
 typedef struct HashmapEntry {
 	// bool is_collision;
@@ -227,8 +228,17 @@ HashmapEntry *put_hashmap(Hashmap *hashmap, const char *key, void *value)
 		}
 		else {
 			/* Key exist */
-			// todo 
+			// todo
 			//   - [ ] Probe for existing key
+			//   - [ ] Make sure comparison is necessary and cheap
+			if (strcmp(entry.key, bucket->key) == 0) {
+				XFREE(entry.key, "duplicate key");
+				hashmap->destructor(
+				    bucket->value, "bucket->value", "destructor");
+				bucket->value = entry.value;
+				return bucket;
+			}
+
 			/* Rich bucket */
 			if (entry.distance > bucket->distance) {
 				swap_entries(&entry, bucket);
@@ -277,7 +287,7 @@ static inline void destroy_entry(HashmapEntry *entry)
  */
 void delete_hashmap(Hashmap *hashmap)
 {
-	for (size_t i = 0; i < hashmap->capacity; i++) {
+	for (size_t i = 0; i < (hashmap->capacity + hashmap->probe_limit); i++) {
 
 		if (hashmap->buckets[i].key == NULL) {
 			continue;
@@ -336,15 +346,16 @@ Hashmap *new_hashmap(const unsigned int n,
 
 	// HashmapEntry bucket_init = {0, NULL, NULL};
 	new_hashmap->buckets =
-	    XMALLOC(sizeof(HashmapEntry) * capacity + PROBE_LIMIT,
+	    XMALLOC(sizeof(HashmapEntry) * (capacity + PROBE_LIMIT),
 	            "new_hashmap",
 	            "new_hashmap->buckets");
 	if (new_hashmap->buckets == NULL) {
 		return NULL;
 	}
 
-	memset(
-	    new_hashmap->buckets, 0, sizeof(HashmapEntry) * capacity + PROBE_LIMIT);
+	memset(new_hashmap->buckets,
+	       0,
+	       sizeof(HashmapEntry) * (capacity + PROBE_LIMIT));
 
 	return new_hashmap;
 }
@@ -399,7 +410,7 @@ void print_xor_seed(Hashmap *hashmap)
 {
 	puts("xor_seed            :");
 	for (size_t i = 0; i < 256; i++) {
-		printf("%0*lx ", (int)(hashmap->n / 4), hashmap->xor_seed[i]);
+		printf("%0*lx ", (int)ceil((hashmap->n / 4.0)), hashmap->xor_seed[i]);
 		if (((i + 1) % 16) == 0) {
 			putchar('\n');
 		}
@@ -421,7 +432,7 @@ void dump_hashmap(Hashmap *hashmap)
 {
 	size_t empty_bucket = 0;
 
-	for (size_t i = 0; i < hashmap->capacity; i++) {
+	for (size_t i = 0; i < (hashmap->capacity + hashmap->probe_limit); i++) {
 		if (hashmap->buckets[i].key == NULL) {
 			empty_bucket++;
 			printf("\x1b[100mhashmap->\x1b[30mbucket[%lu]>> EMPTY <<\x1b[0m\n",
@@ -453,7 +464,9 @@ void dump_hashmap(Hashmap *hashmap)
 
 	printf("hashmap->n          : %u\n", hashmap->n);
 	printf("hashmap->probe_lim  : %d\n", hashmap->probe_limit);
-	printf("hashmap->capacity   : %lu\n", hashmap->capacity);
+	printf("hashmap->capacity   : %lu / %lu\n",
+	       hashmap->capacity,
+	       hashmap->capacity + hashmap->probe_limit);
 	printf("hashmap->count      : %lu \t-> %f%%\n",
 	       hashmap->count,
 	       (double)hashmap->count / (double)hashmap->capacity * 100);
@@ -483,7 +496,7 @@ int main(void)
 	      stdout);
 	scanf("%lu", &n);
 
-	Hashmap *hashmap = new_hashmap(n, free);
+	Hashmap *hashmap = new_hashmap(n, xfree);
 //-------------------------------------------------------------------- setup
 #define KEYPOOL_SIZE 32
 	char random_keys[KEYPOOL_SIZE] = {'\0'};
@@ -495,7 +508,7 @@ int main(void)
 
 	for (size_t k = 0; k < test_count; k++) {
 		for (size_t i = 0; i < KEYPOOL_SIZE - 1; i++) {
-			random_keys[i] = (char)(rand() % 26 + 0x61);//% 95 + 0x20);
+			random_keys[i] = (char)(rand() % 26 + 0x61); //% 95 + 0x20);
 			// putchar(random_keys[i]);
 		}
 		// putchar('\n');
@@ -509,16 +522,14 @@ int main(void)
 		//     k,
 		//     dummy_value);
 
-		put_hashmap(
-		    hashmap, &random_keys[rand() % (KEYPOOL_SIZE - 1)], dummy_value);
-		// if (temp_entry == NULL) {
-		// 	XFREE(dummy_value, "main : setup");
-		// }
+		if (put_hashmap(hashmap,
+		                &random_keys[rand() % (KEYPOOL_SIZE - 1)],
+		                dummy_value) == NULL) {
+			XFREE(dummy_value, "main : setup");
+		}
 	}
 
 	//----------------------------------------------------------- input loop
-	// dump_hashmap(hashmap);
-
 	for (;;) {
 		fputs("\x1b[102m > \x1b[0m", stdout);
 		scanf("%s", key);
@@ -539,16 +550,13 @@ int main(void)
 		//-------------------------------------------- lookup prototype
 		// const size_t index =
 		//     hash_tab((unsigned char *)key, hashmap->xor_seed);
-		put_hashmap(hashmap, key, strdup(key));
-		// if (temp_entry == NULL) {
-		// 	XFREE(dummy_value, "main : input loop");
-		// }
+		dummy_value = strdup(key);
+		if (put_hashmap(hashmap, key, dummy_value) == NULL) {
+			XFREE(dummy_value, "main : setup");
+		}
 	}
 
 	//-------------------------------------------------------------- cleanup
-	if (dummy_value != NULL) {
-		XFREE(dummy_value, "main : input loop");
-	}
 	delete_hashmap(hashmap);
 	return 0;
 }
