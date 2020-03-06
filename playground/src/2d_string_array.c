@@ -14,10 +14,10 @@ int main(void)
 	// // individual string NOT \0 terminated, whole array only
 	// two_d_string_array = malloc(sizeof(char) * (row_count * col_count) + 1);
 
-	// // individual string \0 terminated, better get row_count at 2^n - 1
+	// // individual string \0 terminated, better
 	// two_d_string_array = malloc(sizeof(char) * (row_count + 1) * col_count);
 
-	// individual string \0 terminated, restrict strings to row_count - 1 size !
+	// individual string \0 terminated, restrict strings to col_count - 1 size !
 	// two_d_string_array = malloc(sizeof(char) * row_count * col_count);
 
 	char buffer[16];
