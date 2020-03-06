@@ -36,38 +36,51 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* __rdtsc() _mm_set1_epi8 _mm_movemask_epi8 _mm_cmpeq_epi8 */
 #ifdef _MSC_VER
-#include <intrin.h> /* __rdtsc() */
+#include <intrin.h> 
 #else
-#include <x86intrin.h> /* __rdtsc() */
+// #include <x86intrin.h>
+#include <immintrin.h> 
 #endif
 
 #include "ansi_esc.h"
 
 #include <assert.h>
-#define DEBUG_MALLOC
+// #define DEBUG_MALLOC
 #include "debug_xmalloc.h"
 
 //------------------------------------------------------------ MAGIC NUMBERS ---
-#define PROBE_LIMIT 7
+#define PROBE_LIMIT 16
 
 //------------------------------------------------------------------- MACROS ---
 #define ARRAY_LENGTH(_array) (sizeof(_array) / sizeof((_array)[0]))
 
+//----------------------------------------------------- FORWARD DECLARATIONS ---
+static inline size_t hash_tab(const unsigned char *key, const size_t *xor_seed)
+    __attribute__((const, always_inline));
+
+static inline size_t hash_index(const size_t hash)
+    __attribute__((const, always_inline));
+
+static inline ctrl_bit hash_meta(const size_t hash)
+    __attribute__((const, always_inline));
+
+void stats_hashmap(struct hmap *hashmap);
 //------------------------------------------------------------- DECLARATIONS ---
-/**
- * todo
- *   - [x] Consider a wrapper Hash type to deal with different hash bit depth
- */
-// typedef Hash128 (*HashFunc)(const void *, const size_t, const uint32_t);
-// typedef size_t (*HashFunc)(const char *, const size_t, const unsigned int);
 typedef size_t (*HashFunc)(const unsigned char *, const size_t *);
 
 typedef void *(*ValueConstructor)(const void *);
-// typedef void (*ValueDestructor)(void *);
-typedef void (*ValueDestructor)(void *, const char *, const char *);
+typedef void (*ValueDestructor)(void *);
+// typedef void (*ValueDestructor)(void *, const char *, const char *);
 
-typedef struct HashmapStat {
+typedef enum ctrl_bit {
+	EMPTY     = -128,
+	DELETED   = -2,
+	TOMBSTONE = -1,
+} ctrl_bit;
+
+struct hmap_stats {
 	size_t hashes_tally_or;
 	size_t hashes_tally_and;
 	size_t put_count;
@@ -76,49 +89,37 @@ typedef struct HashmapStat {
 	size_t del_count;
 	size_t find_count;
 	size_t collision_count;
-} HashmapStat;
+};
 
-typedef struct HashmapEntry {
-	// bool is_collision;
-	// size_t hash;
-	int distance; /* to initial bucket */
-	char *key;
-	void *value;
-} HashmapEntry;
+struct hmap_buckets {
+	// Try SoA setup for buckets :
+	unsigned char *metas;
+	int *distances;
+	char **keys;
+	void **values;
+};
 
-typedef struct Hashmap {
-	// const uint32_t seed;
-	// HashFunc function;
+struct hmap {
 	const size_t xor_seed[256];
-	// ValueConstructor constructor;
 	ValueDestructor destructor;
 	unsigned int n;
 	int probe_limit;
 	size_t capacity;
 	size_t count;
-	HashmapStat stats;
-	HashmapEntry *buckets;
-} Hashmap;
+	struct hmap_stats stats;
+	struct hmap_buckets buckets;
+};
 
-typedef struct HashmapInit {
-	// const uint32_t seed;
-	// HashFunc function;
+struct hmap_init {
 	size_t xor_seed[256];
-	// ValueConstructor constructor;
 	ValueDestructor destructor;
 	unsigned int n;
 	int probe_limit;
 	size_t capacity;
 	size_t count;
-	HashmapStat stats;
-	HashmapEntry *buckets;
-} HashmapInit;
-
-//----------------------------------------------------- FORWARD DECLARATIONS ---
-static inline size_t hash_tab(const unsigned char *key, const size_t *xor_seed)
-    __attribute__((const, always_inline));
-
-void stats_hashmap(Hashmap *hashmap);
+	struct hmap_stats stats;
+	struct hmap_buckets buckets;
+};
 
 //----------------------------------------------------------------- Function ---
 /**
@@ -137,54 +138,56 @@ static inline size_t hash_tab(const unsigned char *key, const size_t *xor_seed)
 	return hash;
 }
 
-// static inline size_t hash_fimur_reduce(const char *key,
-//                                        const size_t seed,
-//                                        const unsigned int n)
-//    __attribute__((const, always_inline));
+static inline size_t hash_index(const size_t hash) { return hash >> 8; }
 
-// static inline size_t hash_fimur_reduce(const char *key,
-//                                        const size_t seed,
-//                                        const unsigned int n)
-// {
-// 	size_t hash = seed;
-
-// 	while (*key) {
-// 		hash *= 11400714819323198485llu;
-// 		hash *= *(key++) << 15;
-// 		hash = (hash << 7) | (hash >> (32 - 7));
-// 	}
-
-// 	return hash >> (64 - n);
-// }
+static inline ctrl_bit hash_meta(const size_t hash) { return hash & 0xFF; }
 //----------------------------------------------------------------- Function ---
 /**
  * Swap given entries
  *   -> nothing
  */
-static inline void swap_entries(HashmapEntry *a, HashmapEntry *b)
+static inline void swap_entries(struct hmap *hashmap, size_t a, size_t b)
 {
-	HashmapEntry temp;
-	temp.distance = a->distance;
-	temp.key      = a->key;
-	temp.value    = a->value;
+	unsigned char tmp_meta;
+	int tmp_distance;
+	char *tmp_key;
+	void *tmp_value;
 
-	a->distance = b->distance;
-	a->key      = b->key;
-	a->value    = b->value;
+	tmp_meta     = hashmap->buckets.metas[a];
+	tmp_distance = hashmap->buckets.distances[a];
+	tmp_key      = hashmap->buckets.keys[a];
+	tmp_value    = hashmap->buckets.values[a];
 
-	b->distance = temp.distance;
-	b->key      = temp.key;
-	b->value    = temp.value;
+	hashmap->buckets.metas[a]     = hashmap->buckets.metas[b];
+	hashmap->buckets.distances[a] = hashmap->buckets.distances[b];
+	hashmap->buckets.keys[a]      = hashmap->buckets.keys[b];
+	hashmap->buckets.values[a]    = hashmap->buckets.values[b];
 
-	// a->distance ^= b->distance;
-	// b->distance ^= a->distance;
-	// a->distance ^= b->distance;
-	// a->key = (char *) ((uintptr_t)a->key ^ (uintptr_t)b->key);
-	// b->key = (char *) ((uintptr_t)a->key ^ (uintptr_t)b->key);
-	// a->key = (char *) ((uintptr_t)a->key ^ (uintptr_t)b->key);
-	// a->key = (void *) ((uintptr_t)a->value ^ (uintptr_t)b->value);
-	// b->key = (void *) ((uintptr_t)a->value ^ (uintptr_t)b->value);
-	// a->key = (void *) ((uintptr_t)a->value ^ (uintptr_t)b->value);
+	hashmap->buckets.metas[a]     = tmp_meta;
+	hashmap->buckets.distances[a] = tmp_distance;
+	hashmap->buckets.keys[a]      = tmp_key;
+	hashmap->buckets.values[a]    = tmp_value;
+
+	/**
+	 * todo
+	 *   - [ ] Check if this compile to something different
+	 */
+	// tmp_meta                  = hashmap->buckets.metas[a];
+	// hashmap->buckets.metas[a] = hashmap->buckets.metas[b];
+	// hashmap->buckets.metas[a] = tmp_meta;
+
+	// tmp_distance                  = hashmap->buckets.distances[a];
+	// hashmap->buckets.distances[a] = hashmap->buckets.distances[b];
+	// hashmap->buckets.distances[a] = tmp_distance;
+
+	// tmp_key                  = hashmap->buckets.keys[a];
+	// hashmap->buckets.keys[a] = hashmap->buckets.keys[b];
+
+	// hashmap->buckets.keys[a]   = tmp_key;
+	// tmp_value                  = hashmap->buckets.values[a];
+	// hashmap->buckets.values[a] = hashmap->buckets.values[b];
+	// hashmap->buckets.values[a] = tmp_value;
+
 	return;
 }
 //----------------------------------------------------------------- Function ---
@@ -192,9 +195,9 @@ static inline void swap_entries(HashmapEntry *a, HashmapEntry *b)
  * Check if given HashmapEntry
  *   -> True if HashmapEntry.distance < 0
  */
-static inline int is_empty(HashmapEntry *entry)
+static inline int is_empty(struct hmap *hashmap, size_t entry)
 {
-	return (entry->distance < 0);
+	return (hashmap->buckets.distances[entry] < 0);
 }
 
 //----------------------------------------------------------------- Function ---
@@ -216,7 +219,7 @@ static inline int is_empty(HashmapEntry *entry)
  *   Increment Hashmap entry count ( Check Hashmap fitness )
  *     -> nothing
  */
-HashmapEntry *put_hashmap(Hashmap *hashmap, const char *key, void *value)
+size_t put_hashmap(struct hmap *hashmap, const char *key, void *value)
 {
 	assert(key != NULL);
 	assert(value != NULL);
@@ -227,10 +230,24 @@ HashmapEntry *put_hashmap(Hashmap *hashmap, const char *key, void *value)
 	hashmap->stats.hashes_tally_and &= hash;
 
 	// printf("hash->[%lu]\n", hash);
-	HashmapEntry *bucket = &hashmap->buckets[hash];
+	// HashmapEntry *bucket = &hashmap->buckets[hash];
+	/**
+	 * todo
+	 *   - [ ] Check if this compile to something different
+	 */
+	// unsigned char *meta;
+	// int * distance;
+	// char **key;
+	// void **value;
+
+	unsigned char entry_meta = hash_meta(hash);
+	size_t entry_index       = hash_index(hash);
+
+	__m128i filter = _mm_set1_epi8(entry_meta);
+	int match_mask = _mm_movemask_epi8(_mm_cmpeq_epi8(filter), );
 
 	/* Prepare temp entry*/
-	HashmapEntry entry;
+	struct hmap_buckets entry;
 	entry.distance = 0;
 	entry.key      = XMALLOC(strlen(key) + 1, "put_hashmap", "temp_entry.key");
 	strcpy(entry.key, key);
@@ -260,17 +277,17 @@ HashmapEntry *put_hashmap(Hashmap *hashmap, const char *key, void *value)
 			if (strcmp(entry.key, bucket->key) == 0) {
 				XFREE(entry.key, "duplicate key");
 				hashmap->destructor(
-				    bucket->value, "bucket->value", "destructor");
+				    bucket->value); //, "bucket->value", "destructor");
 				bucket->value = entry.value;
 				hashmap->stats.put_count++;
 				return bucket;
 			}
 
-			/* Rich bucket */
-			if (entry.distance > bucket->distance) {
-				swap_entries(&entry, bucket);
-				hashmap->stats.swap_count++;
-			}
+			// /* Rich bucket */
+			// if (entry.distance > bucket->distance) {
+			// 	swap_entries(&entry, bucket);
+			// 	hashmap->stats.swap_count++;
+			// }
 		}
 	}
 
@@ -478,7 +495,7 @@ void stats_hashmap(Hashmap *hashmap)
 	printf("hashmap->count      : %lu \t-> %f%%\n",
 	       hashmap->count,
 	       (double)hashmap->count / (double)hashmap->capacity * 100);
-	printf("hashmap->stats.collision_count : %lu \t-> %lf%%\n",
+	printf("hashmap->stats.collision_count  : %lu \t-> %lf%%\n",
 	       hashmap->stats.collision_count,
 	       (double)hashmap->stats.collision_count / (double)hashmap->count *
 	           100);
@@ -554,7 +571,7 @@ int main(void)
 	      stdout);
 	scanf("%lu", &n);
 
-	Hashmap *hashmap = new_hashmap(n, xfree);
+	Hashmap *hashmap = new_hashmap(n, free); // xfree);
 //-------------------------------------------------------------------- setup
 #define KEYPOOL_SIZE 32
 	char random_keys[KEYPOOL_SIZE] = {'\0'};
@@ -566,7 +583,7 @@ int main(void)
 
 	for (size_t k = 0; k < test_count; k++) {
 		for (size_t i = 0; i < KEYPOOL_SIZE - 1; i++) {
-			random_keys[i] = (char)(rand() % 26 + 0x61); //% 95 + 0x20);
+			random_keys[i] = (char)(rand() % 95 + 0x20); // % 26 + 0x61);
 			// putchar(random_keys[i]);
 		}
 		// putchar('\n');
@@ -627,3 +644,23 @@ int main(void)
 	delete_hashmap(hashmap);
 	return 0;
 }
+
+// static inline size_t hash_fimur_reduce(const char *key,
+//                                        const size_t seed,
+//                                        const unsigned int n)
+//    __attribute__((const, always_inline));
+
+// static inline size_t hash_fimur_reduce(const char *key,
+//                                        const size_t seed,
+//                                        const unsigned int n)
+// {
+// 	size_t hash = seed;
+
+// 	while (*key) {
+// 		hash *= 11400714819323198485llu;
+// 		hash *= *(key++) << 15;
+// 		hash = (hash << 7) | (hash >> (32 - 7));
+// 	}
+
+// 	return hash >> (64 - n);
+// }

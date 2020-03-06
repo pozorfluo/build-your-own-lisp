@@ -100,20 +100,6 @@ git add -A
 
 
 # commit, push
-git commit -m 'Fix allocation size mistake for buckets
-
-	Fix precedence error in size calculation when allocating 
-	buckets memory.
-
-	Display both advertised and real capacity after data dumps.
-	Display entries existing beyond advertised capacity in data
-	dumps.
-	Delete entries existing beyond advertised capacity when deleting
-	Hashmap.
-	
-	Prevent double free by checking if put_hashmap return NULL in
-	main test loop'
-
 git commit -m 'Make builtins variable immutable for chapter 11 : Bonus Marks
 
 	Return an error if def is used with a symbol used for builtins or
