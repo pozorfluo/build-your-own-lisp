@@ -41,7 +41,7 @@
 #include <intrin.h> 
 #else
 // #include <x86intrin.h>
-#include <immintrin.h> 
+#include <immintrin.h>
 #endif
 
 #include "ansi_esc.h"
