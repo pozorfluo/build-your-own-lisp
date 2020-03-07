@@ -26,6 +26,9 @@
  *       * [ ] Find group?? for given key with first
  *       * [ ] Probe inside group with second
  *
+ *   - [ ] Use fast range instead of modulo if tab_hash isn't fit, bitmask if
+ *         desperate
+ *
  *   - [ ] Implement delete procedure using backward shift approach
  */
 
@@ -38,16 +41,16 @@
 
 /* __rdtsc() _mm_set1_epi8 _mm_movemask_epi8 _mm_cmpeq_epi8 */
 #ifdef _MSC_VER
-#include <intrin.h> 
+#include <intrin.h>
 #else
-// #include <x86intrin.h>
-#include <immintrin.h>
+// #include <immintrin.h>
+#include <x86intrin.h>
 #endif
 
 #include "ansi_esc.h"
 
 #include <assert.h>
-// #define DEBUG_MALLOC
+#define DEBUG_MALLOC
 #include "debug_xmalloc.h"
 
 //------------------------------------------------------------ MAGIC NUMBERS ---
@@ -56,17 +59,6 @@
 //------------------------------------------------------------------- MACROS ---
 #define ARRAY_LENGTH(_array) (sizeof(_array) / sizeof((_array)[0]))
 
-//----------------------------------------------------- FORWARD DECLARATIONS ---
-static inline size_t hash_tab(const unsigned char *key, const size_t *xor_seed)
-    __attribute__((const, always_inline));
-
-static inline size_t hash_index(const size_t hash)
-    __attribute__((const, always_inline));
-
-static inline ctrl_bit hash_meta(const size_t hash)
-    __attribute__((const, always_inline));
-
-void stats_hashmap(struct hmap *hashmap);
 //------------------------------------------------------------- DECLARATIONS ---
 typedef size_t (*HashFunc)(const unsigned char *, const size_t *);
 
@@ -83,6 +75,7 @@ typedef enum ctrl_bit {
 struct hmap_stats {
 	size_t hashes_tally_or;
 	size_t hashes_tally_and;
+	size_t hashes_ctrl_collision_count;
 	size_t put_count;
 	size_t swap_count;
 	size_t putfail_count;
@@ -121,10 +114,33 @@ struct hmap_init {
 	struct hmap_buckets buckets;
 };
 
+//----------------------------------------------------- FORWARD DECLARATIONS ---
+static inline size_t hash_tab(const unsigned char *key, const size_t *xor_seed)
+    __attribute__((const, always_inline));
+
+static inline size_t hash_index(const size_t hash)
+    __attribute__((const, always_inline));
+
+static inline ctrl_bit hash_meta(const size_t hash)
+    __attribute__((const, always_inline));
+
+static inline void destroy_entry(struct hmap *hashmap, size_t entry)
+    __attribute__((always_inline));
+
+// void stats_hashmap(const struct hmap *hashmap);
+
 //----------------------------------------------------------------- Function ---
 /**
- * Compute a tabulation style hash table size for given key, xor_seed table
- *   -> Hashmap index
+ * Compute a tabulation style hash for given key, xor_seed table
+ *   -> hmap index
+ *
+ * todo
+ *   - [ ] Assess hash function fitness
+ *     + [x] Track stuck bits with hashes_tally_or, hashes_tally_and
+       + [ ] Track control group collisions likelyhood with
+             hashes_ctrl_collision_count
+       + [ ] Look at SMHasher for more ways to assess fitness
+         * [ ] See : https://github.com/aappleby/smhasher/wiki/SMHasher
  */
 static inline size_t hash_tab(const unsigned char *key, const size_t *xor_seed)
 {
@@ -137,6 +153,16 @@ static inline size_t hash_tab(const unsigned char *key, const size_t *xor_seed)
 
 	return hash;
 }
+// static inline size_t hash_tab_sse(const unsigned char *key,
+//                                   const size_t *xor_seed)
+// {
+// 	size_t hash = 0;
+// 	/**
+// 	 * todo
+// 	 *   + [ ] Try N bytes at a time sse version of hash_tab
+// 	 */
+// 	return hash;
+// }
 
 static inline size_t hash_index(const size_t hash) { return hash >> 8; }
 
@@ -219,103 +245,106 @@ static inline int is_empty(struct hmap *hashmap, size_t entry)
  *   Increment Hashmap entry count ( Check Hashmap fitness )
  *     -> nothing
  */
-size_t put_hashmap(struct hmap *hashmap, const char *key, void *value)
-{
-	assert(key != NULL);
-	assert(value != NULL);
+// size_t put_hashmap(struct hmap *hashmap, const char *key, void *value)
+// {
+// 	assert(key != NULL);
+// 	assert(value != NULL);
 
-	// todo - [ ] Split find logic to find function !
-	size_t hash = hash_tab((unsigned char *)key, hashmap->xor_seed);
-	hashmap->stats.hashes_tally_or |= hash;
-	hashmap->stats.hashes_tally_and &= hash;
+// 	// todo - [ ] Split find logic to find function !
+// 	size_t hash = hash_tab((unsigned char *)key, hashmap->xor_seed);
+// 	hashmap->stats.hashes_tally_or |= hash;
+// 	hashmap->stats.hashes_tally_and &= hash;
 
-	// printf("hash->[%lu]\n", hash);
-	// HashmapEntry *bucket = &hashmap->buckets[hash];
-	/**
-	 * todo
-	 *   - [ ] Check if this compile to something different
-	 */
-	// unsigned char *meta;
-	// int * distance;
-	// char **key;
-	// void **value;
+// 	// printf("hash->[%lu]\n", hash);
+// 	// HashmapEntry *bucket = &hashmap->buckets[hash];
+// 	/**
+// 	 * todo
+// 	 *   - [ ] Check if this compile to something different
+// 	 */
+// 	// unsigned char *meta;
+// 	// int * distance;
+// 	// char **key;
+// 	// void **value;
 
-	unsigned char entry_meta = hash_meta(hash);
-	size_t entry_index       = hash_index(hash);
+// 	unsigned char entry_meta = hash_meta(hash);
+// 	size_t entry_index       = hash_index(hash);
 
-	__m128i filter = _mm_set1_epi8(entry_meta);
-	int match_mask = _mm_movemask_epi8(_mm_cmpeq_epi8(filter), );
+// 	__m128i filter = _mm_set1_epi8(entry_meta);
+// 	int match_mask = _mm_movemask_epi8(_mm_cmpeq_epi8(filter), );
 
-	/* Prepare temp entry*/
-	struct hmap_buckets entry;
-	entry.distance = 0;
-	entry.key      = XMALLOC(strlen(key) + 1, "put_hashmap", "temp_entry.key");
-	strcpy(entry.key, key);
-	entry.value = value;
+// 	/* Prepare temp entry*/
+// 	struct hmap_buckets entry;
+// 	entry.distance = 0;
+// 	entry.key      = XMALLOC(strlen(key) + 1, "put_hashmap", "temp_entry.key");
+// 	strcpy(entry.key, key);
+// 	entry.value = value;
 
-	for (; entry.distance < hashmap->probe_limit; entry.distance++, bucket++) {
-		/* Empty bucket */
-		if (bucket->key == NULL) {
-			bucket->key      = entry.key;
-			bucket->value    = entry.value;
-			bucket->distance = entry.distance;
-			// check_hashmap(hashmap);
-			hashmap->count++;
+// 	for (; entry.distance < hashmap->probe_limit; entry.distance++, bucket++) {
+// 		/* Empty bucket */
+// 		if (bucket->key == NULL) {
+// 			bucket->key      = entry.key;
+// 			bucket->value    = entry.value;
+// 			bucket->distance = entry.distance;
+// 			// check_hashmap(hashmap);
+// 			hashmap->count++;
 
-			/* Solved collision */
-			if (entry.distance > 0) {
-				hashmap->stats.collision_count++;
-			}
-			hashmap->stats.put_count++;
-			return bucket;
-		}
-		else {
-			/* Key exist */
-			// todo
-			//   - [ ] Probe for existing key
-			//   - [ ] Make sure comparison is necessary and cheap
-			if (strcmp(entry.key, bucket->key) == 0) {
-				XFREE(entry.key, "duplicate key");
-				hashmap->destructor(
-				    bucket->value); //, "bucket->value", "destructor");
-				bucket->value = entry.value;
-				hashmap->stats.put_count++;
-				return bucket;
-			}
+// 			/* Solved collision */
+// 			if (entry.distance > 0) {
+// 				hashmap->stats.collision_count++;
+// 			}
+// 			hashmap->stats.put_count++;
+// 			return bucket;
+// 		}
+// 		else {
+// 			/* Key exist */
+// 			// todo
+// 			//   - [ ] Probe for existing key
+// 			//   - [ ] Make sure comparison is necessary and cheap
+// 			if (strcmp(entry.key, bucket->key) == 0) {
+// 				XFREE(entry.key, "duplicate key");
+// 				hashmap->destructor(
+// 				    bucket->value); //, "bucket->value", "destructor");
+// 				bucket->value = entry.value;
+// 				hashmap->stats.put_count++;
+// 				return bucket;
+// 			}
 
-			// /* Rich bucket */
-			// if (entry.distance > bucket->distance) {
-			// 	swap_entries(&entry, bucket);
-			// 	hashmap->stats.swap_count++;
-			// }
-		}
-	}
+// 			// /* Rich bucket */
+// 			// if (entry.distance > bucket->distance) {
+// 			// 	swap_entries(&entry, bucket);
+// 			// 	hashmap->stats.swap_count++;
+// 			// }
+// 		}
+// 	}
 
-	/* Past probe limit, trigger resize */
-	XFREE(entry.key, "past probe limit");
-	hashmap->stats.putfail_count++;
-	return NULL;
-}
+// 	/* Past probe limit, trigger resize */
+// 	XFREE(entry.key, "past probe limit");
+// 	hashmap->stats.putfail_count++;
+// 	return NULL;
+// }
 
 //----------------------------------------------------------------- Function ---
 /**
  * Free given HashmapEntry
  *   -> nothing
+ *
+ * note
+ *   Require user to allocate for given value to be inserted in the hashmap
+ *   Require user to provide destructor for given value
+ *   Free value with given destructor
  */
-static inline void destroy_entry(HashmapEntry *entry)
-//, ValueDestructor destructor)
+static inline void destroy_entry(struct hmap *hashmap, size_t entry)
 {
-	XFREE(entry->key, entry->key);
-	// destructor(entry->value);
-	XFREE(entry->value, "destroy_entry");
-	// free(entry);
+	// Use XFREE macro instead of destructor while hmap is a WIP
+	XFREE(hashmap->buckets.keys[entry], hashmap->buckets.keys[entry]);
+	// destructor(hashmap->buckets.keys[entry]);
+	XFREE(hashmap->buckets.values[entry], "destroy_entry");
 	return;
 }
 //----------------------------------------------------------------- Function ---
 /**
  * Locate HasmapEntry for given key in given Hashmap
  * If found
- *   Remove HashmapEntry from insertion list
  *   Free HashmapEntry
  *   -> nothing
  */
@@ -330,26 +359,38 @@ static inline void destroy_entry(HashmapEntry *entry)
 /**
  * Free given Hashmap
  *   -> nothing
+ *
+ * todo
+ *   - [ ] Consider a clear_hashmap func : destroy entries only
+ *   - [ ] Consider a reset_hashmap func : destroy entries, reset hashmap to
+ *         given new size
  */
-void delete_hashmap(Hashmap *hashmap)
+void delete_hashmap(struct hmap *hashmap)
 {
-	for (size_t i = 0; i < (hashmap->capacity + hashmap->probe_limit); i++) {
+	size_t actual_capacity = hashmap->capacity + hashmap->probe_limit;
+	for (size_t entry = 0; entry < actual_capacity;
+	     entry++) {
 
-		if (hashmap->buckets[i].key == NULL) {
+		if (hashmap->buckets.keys[entry] == NULL) {
 			continue;
 		}
 		// printf("%s\n", hashmap->buckets[i].key);
-		destroy_entry(&hashmap->buckets[i]); //, hashmap->destructor);
+		destroy_entry(hashmap, entry);
 		hashmap->stats.del_count++;
 	}
-	stats_hashmap(hashmap);
-	XFREE(hashmap->buckets, "delete_hashmap");
+	// stats_hashmap(hashmap);
+	XFREE(hashmap->buckets.metas, "delete_hashmap hashmap->buckets.metas");
+	XFREE(hashmap->buckets.distances,
+	      "delete_hashmap hashmap->buckets.distances");
+	XFREE(hashmap->buckets.keys, "delete_hashmap hashmap->buckets.keys");
+	XFREE(hashmap->buckets.values, "delete_hashmap hashmap->buckets.value");
 	XFREE(hashmap, "delete_hashmap");
 }
 //----------------------------------------------------------------- Function ---
 /**
  * Create Hashmap of capacity equal to 2^(given n),  with given seed
  *
+ *   Enforce capacity >= 256
  *   Init a dummy xor_seed
  *   Init a dummy HashmapInit
  * 	 Copy dummy xor_seed in dummy HashmapInit
@@ -364,12 +405,18 @@ void delete_hashmap(Hashmap *hashmap)
  *   - [ ] Replace parameter n with requested_capacity
  *     + [ ] Compute next 2^(n) - 1 from requested_capacity
  *     + [ ] Store n
+ *   - [ ] Make sure hashmap_init cannot blow up the stack on HUGE sizes
+ *     + [ ] Handle such cases if any with branching to an alloc
+ *     + [ ] Consider dropping the whole hashmap_init step and the const
+ *           qualifier on xor_seed_init as workaround
+ *   - [ ] Consider one big alloc of
+ *         sizeof(metas + distances +  keys + values ) * actual_capacity
+ *     + [ ] Consider setting pointers inside the struct accordingly
+ *           after the one big alloc
  */
-Hashmap *new_hashmap(const unsigned int n,
-                     //  ValueConstructor constructor,
-                     ValueDestructor destructor)
+struct hmap *new_hashmap(const unsigned int n, const ValueDestructor destructor)
 {
-	/* Advertised capacity */
+	//---------------------------------------------- advertised capacity
 	/* current tab_hash implementation requires a mininum of 256 slots */
 	const size_t capacity = (n < 8) ? (1u << 8) : (1u << n);
 
@@ -379,34 +426,81 @@ Hashmap *new_hashmap(const unsigned int n,
 	for (size_t i = 0; i < 256; i++) {
 		// % capacity is okay-ish as long as its a power of 2
 		// Expect skewed distribution otherwise
-		xor_seed_init[i] = rand() % (capacity); // + PROBE_LIMIT * PROBE_LIMIT);
-		// xor_seed_init[i-1] = hash_fimur_reduce((char *)&i, 31, n);
+		xor_seed_init[i] = rand() % (capacity);
 	}
 
 	//----------------------------------------------------- Hashmap init
-	HashmapStat stats_init   = {0, SIZE_MAX, 0, 0, 0, 0, 0, 0};
-	HashmapInit hashmap_init = {
-	    {0}, destructor, n, PROBE_LIMIT, capacity, 0, stats_init, NULL};
+	const size_t actual_capacity = capacity + PROBE_LIMIT;
+
+	struct hmap_stats stats_init = {0, SIZE_MAX, 0, 0, 0, 0, 0, 0, 0};
+	struct hmap_init hashmap_init = {
+	    {0}, destructor, n, PROBE_LIMIT, capacity, 0, stats_init, {NULL}};
+
 	memcpy(hashmap_init.xor_seed, xor_seed_init, sizeof(xor_seed_init));
 
-	Hashmap *new_hashmap =
-	    XMALLOC(sizeof(Hashmap), "new_hashmap", "new_hashmap");
-	memcpy(new_hashmap, &hashmap_init, sizeof(Hashmap));
-
-	// HashmapEntry bucket_init = {0, NULL, NULL};
-	new_hashmap->buckets =
-	    XMALLOC(sizeof(HashmapEntry) * (capacity + PROBE_LIMIT),
-	            "new_hashmap",
-	            "new_hashmap->buckets");
-	if (new_hashmap->buckets == NULL) {
-		return NULL;
+	struct hmap *new_hashmap =
+	    XMALLOC(sizeof(struct hmap), "new_hashmap", "new_hashmap");
+	memcpy(new_hashmap, &hashmap_init, sizeof(struct hmap));
+	if (new_hashmap == NULL) {
+		goto err_free_hashmap;
 	}
 
-	memset(new_hashmap->buckets,
+	new_hashmap->buckets.metas =
+	    XMALLOC(sizeof(new_hashmap->buckets.metas) * actual_capacity,
+	            "new_hashmap",
+	            "new_hashmap->buckets.metas");
+	if (new_hashmap->buckets.metas == NULL) {
+		goto err_free_buckets;
+	}
+	new_hashmap->buckets.distances =
+	    XMALLOC(sizeof(new_hashmap->buckets.distances) * actual_capacity,
+	            "new_hashmap",
+	            "new_hashmap->buckets.distances");
+	if (new_hashmap->buckets.metas == NULL) {
+		goto err_free_buckets;
+	}
+	new_hashmap->buckets.keys =
+	    XMALLOC(sizeof(new_hashmap->buckets.keys) * actual_capacity,
+	            "new_hashmap",
+	            "new_hashmap->buckets.keys");
+	if (new_hashmap->buckets.metas == NULL) {
+		goto err_free_buckets;
+	}
+	new_hashmap->buckets.values =
+	    XMALLOC(sizeof(new_hashmap->buckets.values) * actual_capacity,
+	            "new_hashmap",
+	            "new_hashmap->buckets.values");
+	if (new_hashmap->buckets.metas == NULL) {
+		goto err_free_buckets;
+	}
+
+	/* The value is passed as an int, but the function fills the block of
+	 * memory using the unsigned char conversion of this value */
+	memset(new_hashmap->buckets.metas,
+	       EMPTY,
+	       sizeof(new_hashmap->buckets.metas) * actual_capacity);
+	/* Is this enough to be able to check if ptr == NULL ? */
+	memset(new_hashmap->buckets.distances,
 	       0,
-	       sizeof(HashmapEntry) * (capacity + PROBE_LIMIT));
+	       sizeof(new_hashmap->buckets.distances) * actual_capacity);
+	memset(new_hashmap->buckets.keys,
+	       0,
+	       sizeof(new_hashmap->buckets.keys) * actual_capacity);
+	memset(new_hashmap->buckets.values,
+	       0,
+	       sizeof(new_hashmap->buckets.values) * actual_capacity);
 
 	return new_hashmap;
+
+/* free(NULL) is ok, correct ? */
+err_free_buckets:
+	XFREE(new_hashmap->buckets.metas, "new_hashmap->buckets.metas");
+	XFREE(new_hashmap->buckets.distances, "new_hashmap->buckets.distances");
+	XFREE(new_hashmap->buckets.keys, "new_hashmap->buckets.keys");
+	XFREE(new_hashmap->buckets.values, "new_hashmap->buckets.values");
+err_free_hashmap:
+	XFREE(new_hashmap, "new_hashmap");
+	return NULL;
 }
 //----------------------------------------------------------------- Function ---
 /**
@@ -455,7 +549,7 @@ double expected_collisions(size_t keys, size_t buckets)
  * Pretty print xor_seed for given Hashmap
  *   -> nothing
  */
-void print_xor_seed(Hashmap *hashmap)
+void print_xor_seed(const struct hmap *hashmap)
 {
 	puts("xor_seed            :");
 	for (size_t i = 0; i < 256; i++) {
@@ -474,47 +568,47 @@ void print_xor_seed(Hashmap *hashmap)
  * Print given Hashmap stats
  *   -> nothing
  */
-void stats_hashmap(Hashmap *hashmap)
-{
-	printf("EV entries / bucket = %f\n",
-	       expected_entries_per_bucket(hashmap->count, hashmap->capacity));
-	printf("EV collisions = %f \t-> %f%%\n",
-	       expected_collisions(hashmap->count, hashmap->capacity),
-	       expected_collisions(hashmap->count, hashmap->capacity) /
-	           (double)hashmap->count * 100);
-	printf("EV empty = %f \t-> %f%%\n",
-	       expected_empty_buckets(hashmap->count, hashmap->capacity),
-	       expected_empty_buckets(hashmap->count, hashmap->capacity) /
-	           (double)hashmap->capacity * 100);
+// void stats_hashmap(const struct hmap *hashmap)
+// {
+// 	printf("EV entries / bucket = %f\n",
+// 	       expected_entries_per_bucket(hashmap->count, hashmap->capacity));
+// 	printf("EV collisions = %f \t-> %f%%\n",
+// 	       expected_collisions(hashmap->count, hashmap->capacity),
+// 	       expected_collisions(hashmap->count, hashmap->capacity) /
+// 	           (double)hashmap->count * 100);
+// 	printf("EV empty = %f \t-> %f%%\n",
+// 	       expected_empty_buckets(hashmap->count, hashmap->capacity),
+// 	       expected_empty_buckets(hashmap->count, hashmap->capacity) /
+// 	           (double)hashmap->capacity * 100);
 
-	printf("hashmap->n          : %u\n", hashmap->n);
-	printf("hashmap->probe_lim  : %d\n", hashmap->probe_limit);
-	printf("hashmap->capacity   : %lu / %lu\n",
-	       hashmap->capacity,
-	       hashmap->capacity + hashmap->probe_limit);
-	printf("hashmap->count      : %lu \t-> %f%%\n",
-	       hashmap->count,
-	       (double)hashmap->count / (double)hashmap->capacity * 100);
-	printf("hashmap->stats.collision_count  : %lu \t-> %lf%%\n",
-	       hashmap->stats.collision_count,
-	       (double)hashmap->stats.collision_count / (double)hashmap->count *
-	           100);
+// 	printf("hashmap->n          : %u\n", hashmap->n);
+// 	printf("hashmap->probe_lim  : %d\n", hashmap->probe_limit);
+// 	printf("hashmap->capacity   : %lu / %lu\n",
+// 	       hashmap->capacity,
+// 	       hashmap->capacity + hashmap->probe_limit);
+// 	printf("hashmap->count      : %lu \t-> %f%%\n",
+// 	       hashmap->count,
+// 	       (double)hashmap->count / (double)hashmap->capacity * 100);
+// 	printf("hashmap->stats.collision_count  : %lu \t-> %lf%%\n",
+// 	       hashmap->stats.collision_count,
+// 	       (double)hashmap->stats.collision_count / (double)hashmap->count *
+// 	           100);
 
-	printf("hashmap->stats.hashes_tally_or  : %lu\n",
-	       hashmap->stats.hashes_tally_or);
-	printf("hashmap->stats.hashes_tally_and : %lu\n",
-	       hashmap->stats.hashes_tally_and);
-	printf("hashmap->stats.put_count        : %lu\n", hashmap->stats.put_count);
-	printf("hashmap->stats.swap_count       : %lu\n",
-	       hashmap->stats.swap_count);
-	printf("hashmap->stats.putfail_count    : %lu\n",
-	       hashmap->stats.putfail_count);
-	printf("hashmap->stats.del_count        : %lu\n", hashmap->stats.del_count);
-	printf("hashmap->stats.find_count       : %lu\n",
-	       hashmap->stats.find_count);
-	printf("hashmap->stats.collision_count  : %lu\n",
-	       hashmap->stats.collision_count);
-}
+// 	printf("hashmap->stats.hashes_tally_or  : %lu\n",
+// 	       hashmap->stats.hashes_tally_or);
+// 	printf("hashmap->stats.hashes_tally_and : %lu\n",
+// 	       hashmap->stats.hashes_tally_and);
+// 	printf("hashmap->stats.put_count        : %lu\n", hashmap->stats.put_count);
+// 	printf("hashmap->stats.swap_count       : %lu\n",
+// 	       hashmap->stats.swap_count);
+// 	printf("hashmap->stats.putfail_count    : %lu\n",
+// 	       hashmap->stats.putfail_count);
+// 	printf("hashmap->stats.del_count        : %lu\n", hashmap->stats.del_count);
+// 	printf("hashmap->stats.find_count       : %lu\n",
+// 	       hashmap->stats.find_count);
+// 	printf("hashmap->stats.collision_count  : %lu\n",
+// 	       hashmap->stats.collision_count);
+// }
 //----------------------------------------------------------------- Function ---
 /**
  * Dump given Hashmap content
@@ -524,37 +618,37 @@ void stats_hashmap(Hashmap *hashmap)
  *   - [ ] Implement list iterator
  *     + [ ] See http://rosettacode.org/wiki/Doubly-linked_list/Traversal#C
  */
-void dump_hashmap(Hashmap *hashmap)
-{
-	size_t empty_bucket = 0;
+// void dump_hashmap(const struct hmap *hashmap)
+// {
+// 	size_t empty_bucket = 0;
 
-	for (size_t i = 0; i < (hashmap->capacity + hashmap->probe_limit); i++) {
-		if (hashmap->buckets[i].key == NULL) {
-			empty_bucket++;
-			printf("\x1b[100mhashmap->\x1b[30mbucket[%lu]>> EMPTY <<\x1b[0m\n",
-			       i);
-			continue;
-		}
-		printf("\x1b[10%dmhashmap->\x1b[30mbucket[%lu]\x1b[0m>>%d\n",
-		       hashmap->buckets[i].distance,
-		       i,
-		       hashmap->buckets[i].distance);
+// 	for (size_t i = 0; i < (hashmap->capacity + hashmap->probe_limit); i++) {
+// 		if (hashmap->buckets[i].key == NULL) {
+// 			empty_bucket++;
+// 			printf("\x1b[100mhashmap->\x1b[30mbucket[%lu]>> EMPTY <<\x1b[0m\n",
+// 			       i);
+// 			continue;
+// 		}
+// 		printf("\x1b[10%dmhashmap->\x1b[30mbucket[%lu]\x1b[0m>>%d\n",
+// 		       hashmap->buckets[i].distance,
+// 		       i,
+// 		       hashmap->buckets[i].distance);
 
-		// printf("\t %016lx : %s\n",
-		printf("\t        %lu : %s\n",
-		       hash_tab((unsigned char *)hashmap->buckets[i].key,
-		                hashmap->xor_seed),
-		       hashmap->buckets[i].key);
-	}
+// 		// printf("\t %016lx : %s\n",
+// 		printf("\t        %lu : %s\n",
+// 		       hash_tab((unsigned char *)hashmap->buckets[i].key,
+// 		                hashmap->xor_seed),
+// 		       hashmap->buckets[i].key);
+// 	}
 
-	printf("empty_buckets       : %lu \t-> %f%%\n",
-	       empty_bucket,
-	       (double)empty_bucket / (double)hashmap->capacity * 100);
+// 	printf("empty_buckets       : %lu \t-> %f%%\n",
+// 	       empty_bucket,
+// 	       (double)empty_bucket / (double)hashmap->capacity * 100);
 
-	stats_hashmap(hashmap);
+// 	stats_hashmap(hashmap);
 
-	print_xor_seed(hashmap);
-}
+// 	print_xor_seed(hashmap);
+// }
 
 //--------------------------------------------------------------------- MAIN ---
 int main(void)
@@ -571,38 +665,38 @@ int main(void)
 	      stdout);
 	scanf("%lu", &n);
 
-	Hashmap *hashmap = new_hashmap(n, free); // xfree);
+	struct hmap *hashmap = new_hashmap(n, free); // xfree);
 //-------------------------------------------------------------------- setup
 #define KEYPOOL_SIZE 32
-	char random_keys[KEYPOOL_SIZE] = {'\0'};
-	size_t test_count              = (1 << (n - 2)) - 1; // 1 << (n - 1);
+	// char random_keys[KEYPOOL_SIZE] = {'\0'};
+	// size_t test_count              = (1 << (n - 2)) - 1; // 1 << (n - 1);
 	char key[256];
-	char *dummy_value = NULL;
+	// char *dummy_value = NULL;
 
-	srand(__rdtsc());
+	// srand(__rdtsc());
 
-	for (size_t k = 0; k < test_count; k++) {
-		for (size_t i = 0; i < KEYPOOL_SIZE - 1; i++) {
-			random_keys[i] = (char)(rand() % 95 + 0x20); // % 26 + 0x61);
-			// putchar(random_keys[i]);
-		}
-		// putchar('\n');
+	// for (size_t k = 0; k < test_count; k++) {
+	// 	for (size_t i = 0; i < KEYPOOL_SIZE - 1; i++) {
+	// 		random_keys[i] = (char)(rand() % 95 + 0x20); // % 26 + 0x61);
+	// 		// putchar(random_keys[i]);
+	// 	}
+	// 	// putchar('\n');
 
-		dummy_value = strdup(&random_keys[rand() % (KEYPOOL_SIZE - 1)]);
-		// printf(
-		//     "[%lu]key   : %s\n"
-		//     "[%lu]value : %s\n",
-		//     k,
-		//     &random_keys[rand() % (KEYPOOL_SIZE - 1)],
-		//     k,
-		//     dummy_value);
+	// 	dummy_value = strdup(&random_keys[rand() % (KEYPOOL_SIZE - 1)]);
+	// 	// printf(
+	// 	//     "[%lu]key   : %s\n"
+	// 	//     "[%lu]value : %s\n",
+	// 	//     k,
+	// 	//     &random_keys[rand() % (KEYPOOL_SIZE - 1)],
+	// 	//     k,
+	// 	//     dummy_value);
 
-		if (put_hashmap(hashmap,
-		                &random_keys[rand() % (KEYPOOL_SIZE - 1)],
-		                dummy_value) == NULL) {
-			XFREE(dummy_value, "main : setup");
-		}
-	}
+	// 	if (put_hashmap(hashmap,
+	// 	                &random_keys[rand() % (KEYPOOL_SIZE - 1)],
+	// 	                dummy_value) == NULL) {
+	// 		XFREE(dummy_value, "main : setup");
+	// 	}
+	// }
 
 	//----------------------------------------------------------- input loop
 	for (;;) {
@@ -613,19 +707,19 @@ int main(void)
 			break;
 		}
 
-		if ((strcmp(key, "dump")) == 0) {
-			dump_hashmap(hashmap);
-			continue;
-		}
+		// if ((strcmp(key, "dump")) == 0) {
+		// 	dump_hashmap(hashmap);
+		// 	continue;
+		// }
 
 		if ((strcmp(key, "seed")) == 0) {
 			print_xor_seed(hashmap);
 			continue;
 		}
-		if ((strcmp(key, "stats")) == 0) {
-			stats_hashmap(hashmap);
-			continue;
-		}
+		// if ((strcmp(key, "stats")) == 0) {
+		// 	stats_hashmap(hashmap);
+		// 	continue;
+		// }
 
 		if ((strcmp(key, "add")) == 0) {
 			printf("todo\n");
@@ -634,10 +728,10 @@ int main(void)
 		//-------------------------------------------- lookup prototype
 		// const size_t index =
 		//     hash_tab((unsigned char *)key, hashmap->xor_seed);
-		dummy_value = strdup(key);
-		if (put_hashmap(hashmap, key, dummy_value) == NULL) {
-			XFREE(dummy_value, "main : setup");
-		}
+		// dummy_value = strdup(key);
+		// if (put_hashmap(hashmap, key, dummy_value) == NULL) {
+		// 	XFREE(dummy_value, "main : setup");
+		// }
 	}
 
 	//-------------------------------------------------------------- cleanup
@@ -645,6 +739,12 @@ int main(void)
 	return 0;
 }
 
+/**
+ * todo
+ *   - [ ] Consider 'fast range' reduce
+ *     + [ ] See :
+ * https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
+ */
 // static inline size_t hash_fimur_reduce(const char *key,
 //                                        const size_t seed,
 //                                        const unsigned int n)
