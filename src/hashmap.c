@@ -11,10 +11,11 @@
  *     + [ ] Iterate through backing array, skip deleted
  *     + [ ] Allow replacing table in single atomic step by reassigning *
  *
- *   - [ ] Move to robin hood collision resolution
+ *   - [x] Move to robin hood collision resolution
  *     + [x] Discard insertion history list entirely
  *     + [x] Avoid probe bound checking by overgrowing backing array by
  *           PROBE_LIMIT
+ *     + [x] Implement delete procedure using backward shift approach
  *
  *   - [ ] Store bucket states in a separate array, 1 byte per bucket
  *     + [ ] Restrict PROBE_LIMIT to a multiple of that chunk size
@@ -23,13 +24,13 @@
  *       * [ ] Use MSpart matched to Capacity
  *       * [ ] Use LSpart matched to PROBE_LIMIT SQUARED
  *             you are not using it to index, but to check for match
- *       * [ ] Find group?? for given key with first
- *       * [ ] Probe inside group with second
+ *       * [ ] Find chunk?? for given key with first
+ *       * [ ] Probe inside chunk with second
+ *     + [ ] Discard robin hood swapping entirely
  *
  *   - [ ] Use fast range instead of modulo if tab_hash isn't fit, bitmask if
  *         desperate
  *
- *   - [ ] Implement delete procedure using backward shift approach
  */
 
 #include <math.h>   /* pow() */
@@ -134,6 +135,12 @@ static inline size_t hash_index(const size_t hash)
 static inline ctrl_byte hash_meta(const size_t hash)
     __attribute__((const, always_inline));
 
+static inline int compare_keys(const char *const key_a, const char *const key_b)
+    __attribute__((const, always_inline));
+
+static inline uint16_t probe_chunk(const ctrl_byte pattern,
+                                   const ctrl_byte *entry)
+    __attribute__((const, always_inline));
 // inline size_t hmap_find(const struct hmap *hashmap, const char *key)
 //     __attribute__((const, always_inline));
 
@@ -150,7 +157,7 @@ static inline void destroy_entry(struct hmap *hashmap, size_t entry)
  * todo
  *   - [ ] Assess hash function fitness
  *     + [x] Track stuck bits with hashes_tally_or, hashes_tally_and
-       + [ ] Track control group collisions likelyhood with
+       + [ ] Track control chunk collisions likelyhood with
              hashes_ctrl_collision_count
        + [ ] Look at SMHasher for more ways to assess fitness
          * [ ] See : https://github.com/aappleby/smhasher/wiki/SMHasher
@@ -351,10 +358,51 @@ static inline int hmap_is_empty(struct hmap *hashmap, size_t entry)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Locate given key in given hmap
- *   -> entry index
+ * Compare given '\0' terminated string keys
+ *   If length of given keys does NOT match
+ *     -> -1
+ *   Else
+ *     If bytes comparison matches over length + 1
+ *       -> 0
+ *     Else
+ *       -> difference
  */
+static inline int compare_keys(const char *const key_a, const char *const key_b)
+{
+	size_t size_a  = strlen(key_a);
+	size_t size_b  = strlen(key_b);
+	int difference = -1;
+
+	// do not bother with switch & jump, gcc outputs the same assembly
+	// see : https://godbolt.org/z/suQQMk
+	if (size_a == size_b) {
+		difference = memcmp(key_a, key_b, size_a + 1);
+	}
+	return difference;
+}
+
 #ifdef DEBUG_HMAP
+//----------------------------------------------------------------- Function ---
+/**
+ * Pretty print bits for given n bytes at given data pointer
+ *   Handle little endian only
+ *   -> nothing
+ */
+void print_bits(const size_t n, void const *const data)
+{
+	unsigned char *bit = (unsigned char *)data;
+	unsigned char byte;
+
+	for (int i = n - 1; i >= 0; i--) {
+		for (int j = 7; j >= 0; j--) {
+			byte = (bit[i] >> j) & 1;
+			printf("%u", byte);
+		}
+	}
+
+	putchar('\n');
+}
+
 void print_m128i(const __m128i value)
 {
 	printf("%016llx%016llx\n", value[1], value[0]);
@@ -386,47 +434,88 @@ void print_m128i_hexu8(const __m128i value)
 	    vec[15]);
 }
 #endif /* DEBUG_HMAP */
-
-size_t hmap_find(const struct hmap *hashmap, const char *key)
+//----------------------------------------------------------------- Function ---
+/**
+ * Probe metadata chunk of 16 bytes for given ctrl_byte pattern starting at
+ * given metadata entry
+ *   -> Matches bitmask
+ */
+static inline uint16_t probe_chunk(const ctrl_byte pattern,
+                                   const ctrl_byte *entry)
 {
-	size_t hash    = hash_tab((unsigned char *)key, hashmap->xor_seed);
-	size_t index   = hash_index(hash);
-	ctrl_byte meta = hash_meta(hash);
-	// size_t entry;
-	int match_mask;
+	/* setup filter */
+	const __m128i filter = _mm_set1_epi8(pattern);
 
-	//----------------------------------------------------- setup filter
-	const __m128i filter = _mm_set1_epi8(meta);
+	/* filter chunks */
+	const __m128i chunk = _mm_loadu_si128((__m128i *)(entry));
+	const __m128i match = _mm_cmpeq_epi8(filter, chunk);
+
 #ifdef DEBUG_HMAP
 	puts("filter :");
 	print_m128i_hexu8(filter);
+	print_m128i_hexu8(chunk);
 #endif /* DEBUG_HMAP */
 
-	//---------------------------------------------------- filter groups
-	for (size_t i = 0;; i += 16) {
-		__m128i group =
-		    _mm_loadu_si128((__m128i *)(hashmap->buckets.metas + index));
-#ifdef DEBUG_HMAP
-		print_m128i_hexu8(group);
-#endif /* DEBUG_HMAP */
-		__m128i match = _mm_cmpeq_epi8(filter, group);
-		match_mask    = _mm_movemask_epi8(match);
+	return _mm_movemask_epi8(match);
+}
 
-		//-------------------------------- use bitmask to access matches
-		while (match_mask != 0) {
-			// int least_significant_set_bit_only = match_mask & -match_mask;
-			size_t offset = __builtin_ctzl(match_mask);
-			if ((strcmp(hashmap->buckets.keys[index + offset], key)) == 0) {
+//----------------------------------------------------------------- Function ---
+/**
+ * Locate given key in given hmap
+ *   -> entry index
+ */
+size_t hmap_find(const struct hmap *hashmap, const char *key)
+{
+	size_t hash  = hash_tab((unsigned char *)key, hashmap->xor_seed);
+	size_t index = hash_index(hash);
+	// ctrl_byte meta = hash_meta(hash);
+
+	uint16_t match_mask =
+	    probe_chunk(CTRL_EMPTY, hashmap->buckets.metas + index);
+	print_bits(2, &match_mask);
+
+	/* loop through set bit in bitmask to access matches */
+	while (match_mask != 0) {
+		const size_t offset = __builtin_ctz(match_mask);
+
 #ifdef DEBUG_HMAP
-				printf("\t%x -> %d match @ [%lu]\n",
-				       meta,
-				       _mm_popcnt_u32((unsigned int)match_mask),
-				       offset);
+		printf("%s vs %s\n", hashmap->buckets.keys[index + offset], key);
 #endif /* DEBUG_HMAP */
-				return index + offset;
-			}
-			match_mask ^= match_mask & -match_mask;
+
+		/**
+		 * todo
+		 *   - [ ] Make sure hmap_find is never called to find empty slots or
+		 *     + [ ] Have a separate hmap_find_empty
+		 *   - [ ] Assert that matched entry key is NOT NULL before comparing
+		 */
+		const char * probed_key = hashmap->buckets.keys[index + offset];
+
+		if ((probed_key != NULL) && (compare_keys(probed_key, key)) == 0) {
+#ifdef DEBUG_HMAP
+			printf("                          -> found %s @ %lu + %lu \n",
+			       hashmap->buckets.keys[index + offset],
+			       index,
+			       offset);
+#endif      /* DEBUG_HMAP */
+			// return index + offset;
 		}
+		else {
+#ifdef DEBUG_HMAP
+			printf("                          -> %s collision @ %lu + %lu \n",
+			       hashmap->buckets.keys[index + offset],
+			       index,
+			       offset);
+#endif /* DEBUG_HMAP */
+		}
+#ifdef DEBUG_HMAP
+		printf("offset                    : %lu\n", offset);
+		printf("match_mask                : %d 0b", match_mask);
+		print_bits(2, &match_mask);
+		putchar('\n');
+#endif /* DEBUG_HMAP */
+
+		/* remove least significant set bit */
+		match_mask ^= match_mask & (-match_mask);
 	}
 	/**
 	 * todo
@@ -832,9 +921,29 @@ int main(void)
 	hashmap->buckets.values[index] = strdup("mock value");
 	hashmap->count++;
 
-	hashmap->buckets.metas[index + 3]  = meta;
+	hashmap->buckets.metas[index + 15]  = meta ^ 0x01;
+	hashmap->buckets.keys[index + 15]   = strdup("mokk");
+	hashmap->buckets.values[index + 15] = strdup("mokk value");
+	hashmap->count++;
+
+	hashmap->buckets.metas[index + 3]  = meta ^ 0x01;
 	hashmap->buckets.keys[index + 3]   = strdup("mock");
 	hashmap->buckets.values[index + 3] = strdup("mock value");
+	hashmap->count++;
+
+	hashmap->buckets.metas[index + 4]  = meta;
+	hashmap->buckets.keys[index + 4]   = strdup("mock");
+	hashmap->buckets.values[index + 4] = strdup("mock value");
+	hashmap->count++;
+
+	hashmap->buckets.metas[index + 11]  = meta;
+	hashmap->buckets.keys[index + 11]   = strdup("pock");
+	hashmap->buckets.values[index + 11] = strdup("pock value");
+	hashmap->count++;
+
+	hashmap->buckets.metas[index + 8]  = meta;
+	hashmap->buckets.keys[index + 8]   = strdup("mokk");
+	hashmap->buckets.values[index + 8] = strdup("mokk value");
 	hashmap->count++;
 
 	hmap_find(hashmap, "mock");

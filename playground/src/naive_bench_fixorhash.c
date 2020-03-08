@@ -13,6 +13,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <x86intrin.h>
+
 #define LOOP_SIZE 10000000
 
 #define START_BENCH(start) start = (float)clock() / CLOCKS_PER_SEC
@@ -37,7 +39,23 @@ size_t xor_table[256];
 
 inline size_t hash_tab(const unsigned char *key)
     __attribute__((const, always_inline));
+
+static inline size_t hash_tab_r(const unsigned char *key,
+                                const size_t *xor_seed)
+    __attribute__((const, always_inline));
 //----------------------------------------------------------------- Function ---
+static inline size_t hash_tab_r(const unsigned char *key,
+                                const size_t *xor_seed)
+{
+	size_t hash = 0;
+
+	while (*key) {
+		hash ^= xor_seed[(*key + hash) & 0xFF] ^ *key;
+		key++;
+	}
+
+	return hash;
+}
 
 inline size_t hash_tab(const unsigned char *key)
 {
@@ -336,6 +354,25 @@ int main(void)
 	STOP_BENCH(start, stop, diff, bench_time);
 	printf("bench hash_tab   \t: %f \n", bench_time);
 	printf("%016lx\n", hash);
+
+	//--------------------------------------------------------- bench F
+	size_t xor_seed_init[256];
+	srand(__rdtsc());
+	for (size_t i = 0; i < 256; i++) {
+		// % capacity is okay-ish as long as its a power of 2
+		// Expect skewed distribution otherwise
+		xor_seed_init[i] = rand() % (1u << 16);
+	}
+
+	START_BENCH(start);
+	for (size_t i = 0; i < test_count; i++) {
+		for (size_t i = 0; i < KEYPOOL_SIZE; i++) {
+			hash = hash_tab_r((unsigned char *)&random_keys[i], xor_seed_init);
+		}
+	}
+	STOP_BENCH(start, stop, diff, bench_time);
+	printf("bench hash_tab_r   \t: %f \n", bench_time);
+	printf("%016lx\n", hash);
 	//---------------------------------------------------------- bench E
 	int cmp;
 	START_BENCH(start);
@@ -364,12 +401,106 @@ int main(void)
 		for (size_t i = 0; i < KEYPOOL_SIZE - 1; i++) {
 			src = strlen(&random_keys[i]);
 			dst = strlen(&random_keys[i + 1]);
-			cmp = memcmp(
-			    &random_keys[i], &random_keys[i + 1], (src > dst) ? dst : src);
+			cmp = memcmp(&random_keys[i],
+			             &random_keys[i + 1],
+			             ((src > dst) ? dst : src) + 1);
+			// printf(
+			//     "%d : %s vs %s\n", cmp, &random_keys[i], &random_keys[i +
+			//     1]);
 		}
 	}
 	STOP_BENCH(start, stop, diff, bench_time);
 	printf("bench bounded str_len+memcmp \t: %f \n", bench_time);
+	printf("%016x\n", cmp);
+	//---------------------------------------------------------- bench E
+	START_BENCH(start);
+	for (size_t i = 0; i < test_count; i++) {
+		for (size_t i = 0; i < KEYPOOL_SIZE - 1; i++) {
+			src = strlen(&random_keys[i]);
+			dst = strlen(&random_keys[i + 1]);
+			if (dst != src) {
+				cmp = -1;
+			}
+			else {
+				cmp = memcmp(&random_keys[i], &random_keys[i + 1], src);
+			}
+			// printf(
+			//     "%d : %s vs %s\n", cmp, &random_keys[i], &random_keys[i +
+			//     1]);
+		}
+	}
+	STOP_BENCH(start, stop, diff, bench_time);
+	printf("bench best bounded early abort str_len+memcmp \t: %f \n",
+	       bench_time);
+	printf("%016x\n", cmp);
+	//---------------------------------------------------------- bench E
+	START_BENCH(start);
+	for (size_t i = 0; i < test_count; i++) {
+		for (size_t i = 0; i < KEYPOOL_SIZE - 1; i++) {
+			src = strlen(&random_keys[i]);
+			dst = strlen(&random_keys[i]);
+			if (dst != src) {
+				cmp = -1;
+			}
+			else {
+				cmp = memcmp(&random_keys[i], &random_keys[i + 1], src + 1);
+			}
+			// printf(
+			//     "%d : %s vs %s\n", cmp, &random_keys[i], &random_keys[i +
+			//     1]);
+		}
+	}
+	STOP_BENCH(start, stop, diff, bench_time);
+	printf("bench worst bounded early abort str_len+memcmp \t: %f \n",
+	       bench_time);
+	printf("%016x\n", cmp);
+	//---------------------------------------------------------- bench E
+	START_BENCH(start);
+	for (size_t i = 0; i < test_count; i++) {
+		for (size_t i = 0; i < KEYPOOL_SIZE - 1; i++) {
+			src = strlen(&random_keys[i]);
+			dst = strlen(&random_keys[i + 1]);
+			cmp = -1;
+
+			switch (src - dst) {
+			case 0:
+				cmp = memcmp(&random_keys[i], &random_keys[i + 1], src + 1);
+			/* FALL THROUGH */
+			default:
+				// printf(
+				//     "%d : %s vs %s\n", cmp, &random_keys[i], &random_keys[i +
+				//     1]);
+				break;
+			}
+		}
+	}
+	STOP_BENCH(start, stop, diff, bench_time);
+	printf("bench best bounded early switchabort str_len+memcmp \t: %f \n",
+	       bench_time);
+	printf("%016x\n", cmp);
+	//---------------------------------------------------------- bench E
+	START_BENCH(start);
+	for (size_t i = 0; i < test_count; i++) {
+		for (size_t i = 0; i < KEYPOOL_SIZE - 1; i++) {
+			src = strlen(&random_keys[i]);
+			dst = strlen(&random_keys[i]);
+			cmp = -1;
+
+			switch (src - dst) {
+			case 0:
+				cmp = memcmp(&random_keys[i], &random_keys[i + 1], src + 1);
+			/* FALL THROUGH */
+			default:
+				// printf(
+				//     "%d : %s vs %s\n", cmp, &random_keys[i], &random_keys[i +
+				//     1]);
+				break;
+			}
+		}
+	}
+	STOP_BENCH(start, stop, diff, bench_time);
+	printf("bench worst bounded early switchabort str_len+memcmp \t: %f \n",
+	       bench_time);
 	printf("%016x\n", cmp);
 	//---------------------------------------------------------- cleanup
 

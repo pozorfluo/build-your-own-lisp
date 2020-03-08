@@ -8,7 +8,7 @@ EXCLUDE = hashmap.c
 IFLAGS = -iquote$(HEADERDIR)
 CFLAGS = -Wall -Wextra -Werror -pedantic -g #-fsanitize=address -static-libasan
 OFLAG = -Og
-DEBUGFLAGS = -DVALGRIND #-DDEBUG_MALLOC
+DEBUGFLAGS = -DVALGRIND #-DDEBUG_MALLOC -DDEBUG_HMAP
 LIBFLAGS = -lm
 
 # := is important to avoid running find every time SRC is inspected
