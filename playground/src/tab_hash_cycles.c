@@ -24,30 +24,30 @@
  *   - [ ] Explore simd hash function
  *     + [ ] See : https://arxiv.org/pdf/1202.4961.pdf
  */
-#include <x86intrin.h>
-uint32_t hash_gfml_hmfast(uint32_t *m, uint32_t *p, uint32_t *endp)
-{
-	__m128i z   = _mm_setzero_si128();
-	__m128i sum = _mm_set_epi64x(0, *m);
-	m += 4;
+// #include <x86intrin.h>
+// uint32_t hash_gfml_hmfast(uint32_t *m, uint32_t *p, uint32_t *endp)
+// {
+// 	__m128i z   = _mm_setzero_si128();
+// 	__m128i sum = _mm_set_epi64x(0, *m);
+// 	m += 4;
 
-	__m128i t, u, t1, t2, ts, c1, c2;
+// 	__m128i t, u, t1, t2, ts, c1, c2;
 
-	for(; p!= endp; m +=4, p+=4){
-		t1 = _mm_load_si128((__m128i *)m);
-		t2 = _mm_load_si128((__m128i *)p);
-		ts = _mm_xor_si128(t1, t2);
-		t = _mm_unpacklo_epi32(ts, z);
-		c1 = _mm_clmulepi64_si128(t, t, 0x10);
-		sum = _mm_xor_si128(c1, sum);
-		u = _mm_unpackhi_epi32(ts, z);
-		c2 = _mm_clmulepi64_si128(u, u, 0x10);
-		sum = _mm_xor_si128(c2, sum);
-	}
+// 	for(; p!= endp; m +=4, p+=4){
+// 		t1 = _mm_load_si128((__m128i *)m);
+// 		t2 = _mm_load_si128((__m128i *)p);
+// 		ts = _mm_xor_si128(t1, t2);
+// 		t = _mm_unpacklo_epi32(ts, z);
+// 		c1 = _mm_clmulepi64_si128(t, t, 0x10);
+// 		sum = _mm_xor_si128(c1, sum);
+// 		u = _mm_unpackhi_epi32(ts, z);
+// 		c2 = _mm_clmulepi64_si128(u, u, 0x10);
+// 		sum = _mm_xor_si128(c2, sum);
+// 	}
 
-	// return reduce_barret(sum);
-	return sum[0];
-}
+// 	// return reduce_barret(sum);
+// 	return sum[0];
+// }
 
 
 #define RDTSC_START(cycles)                                                    \
@@ -143,7 +143,8 @@ size_t hash_tab(const unsigned char *key)
 		// printf("byte       = %u\n", *key);
 		// printf("xor table  = %lu\n", xor_table[*key]);
 		// printf("xored byte = %lu\n", xor_table[*key] ^ *key);
-		hash ^= xor_table[*key] ^ *key;
+		hash ^= xor_table[(*key + hash) & 0xFF] ^ *key;
+		// hash ^= xor_table[(unsigned char)(*key + hash)] ^ *key;
 		key++;
 		// printf("i          = %lu\n", i);
 		// printf("hash       = %lu\n", hash);

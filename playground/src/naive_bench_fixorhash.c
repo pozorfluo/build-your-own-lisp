@@ -70,10 +70,19 @@ inline size_t hash_tab(const unsigned char *key)
 	// 1180,  24418, 38082, 64862, 64087, 50749};
 
 	size_t hash = 0;
+	// int i = xor_table[*key];
+	// int i = 0;
 
 	while (*key) {
-		hash ^= xor_table[*key] ^ *key;
+		// hash ^= xor_table[(*key - i)& 0xFF] ^ *key;
+		// hash ^= xor_table[(unsigned char)(*key + hash)] ^ *key;
+		hash ^= xor_table[(*key + hash) & 0xFF] ^ *key;
+		// hash ^= xor_table[(unsigned char)(*key - i)] ^ *key;
+		// hash ^= (xor_table[*key] ^ *key) + i;
 		key++;
+		// i++;
+		// i+=(unsigned char)xor_table[i];
+		// i+=xor_table[i & 0xFF];
 	}
 
 	return hash;
@@ -165,7 +174,7 @@ int main(void)
 
 	size_t n = 1 << 24;
 	for (size_t i = 0; i < 256; i++) {
-		xor_table[i] = rand() % n;
+		xor_table[i] = rand() % (n << 7);
 	}
 //------------------------------------------------------------ setup
 #define KEYPOOL_SIZE 4096
@@ -200,8 +209,8 @@ int main(void)
 
 	puts("\nhash tests :\n");
 	size_t hash;
-	// uint_fast32_t hash32;
-	// Hash128 hash128;
+	uint_fast32_t hash32;
+	Hash128 hash128;
 
 	uint_fast16_t seed = 41;
 
@@ -225,64 +234,64 @@ int main(void)
 	printf("bench hash_multiplicative   \t: %f \n", bench_time);
 	printf("%016lx\n", hash);
 
-	// //---------------------------------------------------------- bench B
-	// START_BENCH(start);
-	// for (size_t i = 0; i < test_count; i++) {
-	// 	for (size_t i = 0; i < KEYPOOL_SIZE; i++) {
-	// 		hash32 = murmurhash3_x86_32(
-	// 		    &random_keys[i], strlen(&random_keys[i]), seed);
-	// 		hash = mod_2n1(hash32, 11);
-	// 		// printf("%08lx : %s\n", hash32, &random_keys[i]);
-	// 	}
-	// }
-	// STOP_BENCH(start, stop, diff, bench_time);
-	// printf("bench murmurhash3_x86_32   \t: %f \n", bench_time);
-	// printf("%08lx %08lx\n", hash32, hash);
+	//---------------------------------------------------------- bench B
+	START_BENCH(start);
+	for (size_t i = 0; i < test_count; i++) {
+		for (size_t i = 0; i < KEYPOOL_SIZE; i++) {
+			hash32 = murmurhash3_x86_32(
+			    &random_keys[i], strlen(&random_keys[i]), seed);
+			hash = mod_2n1(hash32, 11);
+			// printf("%08lx : %s\n", hash32, &random_keys[i]);
+		}
+	}
+	STOP_BENCH(start, stop, diff, bench_time);
+	printf("bench murmurhash3_x86_32   \t: %f \n", bench_time);
+	printf("%08lx %08lx\n", hash32, hash);
 
-	// //---------------------------------------------------------- bench C
-	// START_BENCH(start);
-	// for (size_t i = 0; i < test_count; i++) {
-	// 	for (size_t i = 0; i < KEYPOOL_SIZE; i++) {
-	// 		hash128 =
-	// 		    murmurhash3_x64(&random_keys[i], strlen(&random_keys[i]), seed);
-	// 			hash = mod_hash128(hash128, 11);
-	// 		// printf(
-	// 		//     "%016lx %016lx: %s\n", hash128.hi, hash128.lo,
-	// 		//     &random_keys[i]);
-	// 	}
-	// }
-	// STOP_BENCH(start, stop, diff, bench_time);
-	// printf("bench murmurhash3_x64   \t: %f \n", bench_time);
-	// printf("%016lx %016lx : %08lx\n", hash128.hi, hash128.lo, hash);
+	//---------------------------------------------------------- bench C
+	START_BENCH(start);
+	for (size_t i = 0; i < test_count; i++) {
+		for (size_t i = 0; i < KEYPOOL_SIZE; i++) {
+			hash128 =
+			    murmurhash3_x64(&random_keys[i], strlen(&random_keys[i]), seed);
+				hash = mod_hash128(hash128, 11);
+			// printf(
+			//     "%016lx %016lx: %s\n", hash128.hi, hash128.lo,
+			//     &random_keys[i]);
+		}
+	}
+	STOP_BENCH(start, stop, diff, bench_time);
+	printf("bench murmurhash3_x64   \t: %f \n", bench_time);
+	printf("%016lx %016lx : %08lx\n", hash128.hi, hash128.lo, hash);
 
-	// //---------------------------------------------------------- bench D
-	// char *dummy_key;
-	// size_t hash_fimur = seed;
-	// START_BENCH(start);
-	// for (size_t i = 0; i < test_count; i++) {
-	// 	for (size_t i = 0; i < KEYPOOL_SIZE; i++) {
-	// 		dummy_key = &random_keys[i];
-	// 		while (*dummy_key) {
-	// 			hash_fimur *= 11400714819323198485llu * (*(dummy_key++) << 15);
-	// 			hash_fimur = (hash_fimur << 7) | (hash_fimur >> (32 - 7));
-	// 		}
-	// 		// printf("%016lx : %s\n", hash_xor, &random_keys[i]);
-	// 	}
-	// }
-	// STOP_BENCH(start, stop, diff, bench_time);
-	// printf("bench hash_fimur           \t: %f \n", bench_time);
-	// printf("%016lx\n", hash_fimur);
+	//---------------------------------------------------------- bench D
+	char *dummy_key;
+	size_t hash_fimur = seed;
+	START_BENCH(start);
+	for (size_t i = 0; i < test_count; i++) {
+		for (size_t i = 0; i < KEYPOOL_SIZE; i++) {
+			dummy_key = &random_keys[i];
+			while (*dummy_key) {
+				hash_fimur *= 11400714819323198485llu * (*(dummy_key++) << 15);
+				hash_fimur = (hash_fimur << 7) | (hash_fimur >> (32 - 7));
+			}
+			// printf("%016lx : %s\n", hash_xor, &random_keys[i]);
+		}
+	}
+	STOP_BENCH(start, stop, diff, bench_time);
+	printf("bench hash_fimur           \t: %f \n", bench_time);
+	printf("%016lx\n", hash_fimur);
 
-	// //---------------------------------------------------------- bench E
-	// START_BENCH(start);
-	// for (size_t i = 0; i < test_count; i++) {
-	// 	for (size_t i = 0; i < KEYPOOL_SIZE; i++) {
-	// 		hash_fimur = hash_fimur_reduce(&random_keys[i], seed, 11);
-	// 	}
-	// }
-	// STOP_BENCH(start, stop, diff, bench_time);
-	// printf("bench hash_fimur_reduce        \t: %f \n", bench_time);
-	// printf("%016lx\n", hash_fimur);
+	//---------------------------------------------------------- bench E
+	START_BENCH(start);
+	for (size_t i = 0; i < test_count; i++) {
+		for (size_t i = 0; i < KEYPOOL_SIZE; i++) {
+			hash_fimur = hash_fimur_reduce(&random_keys[i], seed, 11);
+		}
+	}
+	STOP_BENCH(start, stop, diff, bench_time);
+	printf("bench hash_fimur_reduce        \t: %f \n", bench_time);
+	printf("%016lx\n", hash_fimur);
 
 	//---------------------------------------------------------- bench F
 	START_BENCH(start);

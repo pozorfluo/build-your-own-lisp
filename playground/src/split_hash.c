@@ -7,15 +7,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef enum ctrl_bit {
-	EMPTY     = -128,
-	DELETED   = -2,
-	TOMBSTONE = -1,
-} ctrl_bit;
+enum ctrl_bit { CTRL_EMPTY = -128, CTRL_DELETED = -1, CTRL_TOMBSTONE = -2 };
+
+typedef signed char ctrl_byte;
 
 static inline size_t hash_index(const size_t hash) { return hash >> 8; }
 
-static inline ctrl_bit hash_meta(const size_t hash) { return hash & 0xFF; }
+static inline ctrl_byte hash_meta(const size_t hash) { return hash & 0xFF; }
 
 void print_m128i(const __m128i value)
 {
