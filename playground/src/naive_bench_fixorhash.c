@@ -170,7 +170,7 @@ int main(void)
 {
 
 	//------------------------------------------------------------ xor_table
-	//setup
+	// setup
 
 	size_t n = 1 << 24;
 	for (size_t i = 0; i < 256; i++) {
@@ -254,7 +254,7 @@ int main(void)
 		for (size_t i = 0; i < KEYPOOL_SIZE; i++) {
 			hash128 =
 			    murmurhash3_x64(&random_keys[i], strlen(&random_keys[i]), seed);
-				hash = mod_hash128(hash128, 11);
+			hash = mod_hash128(hash128, 11);
 			// printf(
 			//     "%016lx %016lx: %s\n", hash128.hi, hash128.lo,
 			//     &random_keys[i]);
@@ -336,6 +336,41 @@ int main(void)
 	STOP_BENCH(start, stop, diff, bench_time);
 	printf("bench hash_tab   \t: %f \n", bench_time);
 	printf("%016lx\n", hash);
+	//---------------------------------------------------------- bench E
+	int cmp;
+	START_BENCH(start);
+	for (size_t i = 0; i < test_count; i++) {
+		for (size_t i = 0; i < KEYPOOL_SIZE; i++) {
+			cmp = strcmp(&random_keys[i], "hello yup");
+		}
+	}
+	STOP_BENCH(start, stop, diff, bench_time);
+	printf("bench str_cmp   \t: %f \n", bench_time);
+	printf("%016x\n", cmp);
+	//---------------------------------------------------------- bench E
+	START_BENCH(start);
+	for (size_t i = 0; i < test_count; i++) {
+		for (size_t i = 0; i < KEYPOOL_SIZE; i++) {
+			cmp = memcmp(&random_keys[i], "hello yup", strlen(&random_keys[i]));
+		}
+	}
+	STOP_BENCH(start, stop, diff, bench_time);
+	printf("bench str_len+memcmp \t: %f \n", bench_time);
+	printf("%016x\n", cmp);
+	//---------------------------------------------------------- bench E
+	size_t src, dst;
+	START_BENCH(start);
+	for (size_t i = 0; i < test_count; i++) {
+		for (size_t i = 0; i < KEYPOOL_SIZE - 1; i++) {
+			src = strlen(&random_keys[i]);
+			dst = strlen(&random_keys[i + 1]);
+			cmp = memcmp(
+			    &random_keys[i], &random_keys[i + 1], (src > dst) ? dst : src);
+		}
+	}
+	STOP_BENCH(start, stop, diff, bench_time);
+	printf("bench bounded str_len+memcmp \t: %f \n", bench_time);
+	printf("%016x\n", cmp);
 	//---------------------------------------------------------- cleanup
 
 	return 0;

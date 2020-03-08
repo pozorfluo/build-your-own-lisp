@@ -9,7 +9,9 @@
 		"math.h": "c",
 		"split_hash.C": "cpp",
 		"x86intrin.h": "c",
-		"ansi_esc.h": "c"
+		"ansi_esc.h": "c",
+		"typeinfo": "cpp",
+		"debug_xmalloc.h": "c"
 	},
     "python.formatting.provider": "black",
     "python.pythonPath": "/home/spagbol/anaconda3/bin/python"

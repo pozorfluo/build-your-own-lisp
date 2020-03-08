@@ -50,9 +50,13 @@
 #include "ansi_esc.h"
 
 #include <assert.h>
-#define DEBUG_MALLOC
+// #define DEBUG_HMAP
+
 #include "debug_xmalloc.h"
 
+#ifdef DEBUG_HMAP
+#define DEBUG_MALLOC
+#endif /* DEBUG_HMAP */
 //------------------------------------------------------------ MAGIC NUMBERS ---
 #define PROBE_LIMIT 16
 
@@ -62,14 +66,17 @@
 //------------------------------------------------------------- DECLARATIONS ---
 typedef signed char ctrl_byte;
 
-enum ctrl_bit { CTRL_EMPTY = -128, CTRL_DELETED = -1, CTRL_TOMBSTONE = -2 };
+enum ctrl_bit { CTRL_EMPTY = -128, CTRL_DELETED = -1 };
 
-typedef size_t (*HashFunc)(const unsigned char *, const size_t *);
+// typedef size_t (*HashFunc)(const unsigned char *, const size_t *);
 
-typedef void *(*ValueConstructor)(const void *);
-typedef void (*ValueDestructor)(void *);
-// typedef void (*ValueDestructor)(void *, const char *, const char *);
+struct hmap_allocator {
+	void *(*malloc)(size_t size);
+	void (*free)(void *);
+	// typedef void (*ValueDestructor)(void *, const char *, const char *);
+};
 
+#ifdef DEBUG_HMAP
 struct hmap_stats {
 	size_t hashes_tally_or;
 	size_t hashes_tally_and;
@@ -81,10 +88,11 @@ struct hmap_stats {
 	size_t del_count;
 	size_t find_count;
 };
+#endif /* DEBUG_HMAP */
 
 struct hmap_buckets {
 	// Try SoA setup for buckets :
-	unsigned char *metas;
+	ctrl_byte *metas;
 	int *distances;
 	char **keys;
 	void **values;
@@ -93,23 +101,27 @@ struct hmap_buckets {
 struct hmap {
 	const size_t xor_seed[256];
 	struct hmap_buckets buckets;
-	ValueDestructor destructor;
+	const struct hmap_allocator allocator;
 	unsigned int n;
 	int probe_limit;
 	size_t capacity;
 	size_t count;
+#ifdef DEBUG_HMAP
 	struct hmap_stats stats;
+#endif /* DEBUG_HMAP */
 };
 
 struct hmap_init {
 	size_t xor_seed[256];
 	struct hmap_buckets buckets;
-	ValueDestructor destructor;
+	struct hmap_allocator allocator;
 	unsigned int n;
 	int probe_limit;
 	size_t capacity;
 	size_t count;
+#ifdef DEBUG_HMAP
 	struct hmap_stats stats;
+#endif /* DEBUG_HMAP */
 };
 
 //----------------------------------------------------- FORWARD DECLARATIONS ---
@@ -149,6 +161,7 @@ static inline size_t hash_tab(const unsigned char *key, const size_t *xor_seed)
 
 	while (*key) {
 		hash ^= xor_seed[(*key + hash) & 0xFF] ^ *key;
+#ifdef DEBUG_HMAP
 		printf(
 		    "partial hash : %lu\n"
 		    "char         : %c\n"
@@ -156,6 +169,7 @@ static inline size_t hash_tab(const unsigned char *key, const size_t *xor_seed)
 		    hash,
 		    (char)*key,
 		    xor_seed[*key]);
+#endif /* DEBUG_HMAP */
 		key++;
 	}
 
@@ -175,55 +189,56 @@ static inline size_t hash_tab(const unsigned char *key, const size_t *xor_seed)
 static inline size_t hash_index(const size_t hash) { return hash >> 7; }
 
 static inline ctrl_byte hash_meta(const size_t hash) { return hash & 0x7F; }
-//----------------------------------------------------------------- Function ---
-/**
- * Swap given entries
- *   -> nothing
- */
-static inline void swap_entries(struct hmap *hashmap, size_t a, size_t b)
-{
-	unsigned char tmp_meta;
-	int tmp_distance;
-	char *tmp_key;
-	void *tmp_value;
+// //----------------------------------------------------------------- Function
+// ---
+// /**
+//  * Swap given entries
+//  *   -> nothing
+//  */
+// static inline void swap_entries(struct hmap *hashmap, size_t a, size_t b)
+// {
+// 	unsigned char tmp_meta;
+// 	int tmp_distance;
+// 	char *tmp_key;
+// 	void *tmp_value;
 
-	tmp_meta     = hashmap->buckets.metas[a];
-	tmp_distance = hashmap->buckets.distances[a];
-	tmp_key      = hashmap->buckets.keys[a];
-	tmp_value    = hashmap->buckets.values[a];
+// 	tmp_meta     = hashmap->buckets.metas[a];
+// 	tmp_distance = hashmap->buckets.distances[a];
+// 	tmp_key      = hashmap->buckets.keys[a];
+// 	tmp_value    = hashmap->buckets.values[a];
 
-	hashmap->buckets.metas[a]     = hashmap->buckets.metas[b];
-	hashmap->buckets.distances[a] = hashmap->buckets.distances[b];
-	hashmap->buckets.keys[a]      = hashmap->buckets.keys[b];
-	hashmap->buckets.values[a]    = hashmap->buckets.values[b];
+// 	hashmap->buckets.metas[a]     = hashmap->buckets.metas[b];
+// 	hashmap->buckets.distances[a] = hashmap->buckets.distances[b];
+// 	hashmap->buckets.keys[a]      = hashmap->buckets.keys[b];
+// 	hashmap->buckets.values[a]    = hashmap->buckets.values[b];
 
-	hashmap->buckets.metas[a]     = tmp_meta;
-	hashmap->buckets.distances[a] = tmp_distance;
-	hashmap->buckets.keys[a]      = tmp_key;
-	hashmap->buckets.values[a]    = tmp_value;
+// 	hashmap->buckets.metas[a]     = tmp_meta;
+// 	hashmap->buckets.distances[a] = tmp_distance;
+// 	hashmap->buckets.keys[a]      = tmp_key;
+// 	hashmap->buckets.values[a]    = tmp_value;
 
-	/**
-	 * todo
-	 *   - [ ] Check if this compile to something different
-	 */
-	// tmp_meta                  = hashmap->buckets.metas[a];
-	// hashmap->buckets.metas[a] = hashmap->buckets.metas[b];
-	// hashmap->buckets.metas[a] = tmp_meta;
+// 	/**
+// 	 * todo
+// 	 *   - [ ] Check if this compile to something different
+// 	 */
+// 	// tmp_meta                  = hashmap->buckets.metas[a];
+// 	// hashmap->buckets.metas[a] = hashmap->buckets.metas[b];
+// 	// hashmap->buckets.metas[a] = tmp_meta;
 
-	// tmp_distance                  = hashmap->buckets.distances[a];
-	// hashmap->buckets.distances[a] = hashmap->buckets.distances[b];
-	// hashmap->buckets.distances[a] = tmp_distance;
+// 	// tmp_distance                  = hashmap->buckets.distances[a];
+// 	// hashmap->buckets.distances[a] = hashmap->buckets.distances[b];
+// 	// hashmap->buckets.distances[a] = tmp_distance;
 
-	// tmp_key                  = hashmap->buckets.keys[a];
-	// hashmap->buckets.keys[a] = hashmap->buckets.keys[b];
+// 	// tmp_key                  = hashmap->buckets.keys[a];
+// 	// hashmap->buckets.keys[a] = hashmap->buckets.keys[b];
 
-	// hashmap->buckets.keys[a]   = tmp_key;
-	// tmp_value                  = hashmap->buckets.values[a];
-	// hashmap->buckets.values[a] = hashmap->buckets.values[b];
-	// hashmap->buckets.values[a] = tmp_value;
+// 	// hashmap->buckets.keys[a]   = tmp_key;
+// 	// tmp_value                  = hashmap->buckets.values[a];
+// 	// hashmap->buckets.values[a] = hashmap->buckets.values[b];
+// 	// hashmap->buckets.values[a] = tmp_value;
 
-	return;
-}
+// 	return;
+// }
 //----------------------------------------------------------------- Function ---
 /**
  * Check if given entry in given hashmap is empty
@@ -235,7 +250,6 @@ static inline int is_empty(const ctrl_byte control)
 }
 static inline int hmap_is_empty(struct hmap *hashmap, size_t entry)
 {
-	// return (hashmap->buckets.distances[entry] < 0);
 	return is_empty(hashmap->buckets.metas[entry]);
 }
 
@@ -340,7 +354,7 @@ static inline int hmap_is_empty(struct hmap *hashmap, size_t entry)
  * Locate given key in given hmap
  *   -> entry index
  */
-
+#ifdef DEBUG_HMAP
 void print_m128i(const __m128i value)
 {
 	printf("%016llx%016llx\n", value[1], value[0]);
@@ -371,6 +385,7 @@ void print_m128i_hexu8(const __m128i value)
 	    vec[14],
 	    vec[15]);
 }
+#endif /* DEBUG_HMAP */
 
 size_t hmap_find(const struct hmap *hashmap, const char *key)
 {
@@ -382,14 +397,18 @@ size_t hmap_find(const struct hmap *hashmap, const char *key)
 
 	//----------------------------------------------------- setup filter
 	const __m128i filter = _mm_set1_epi8(meta);
+#ifdef DEBUG_HMAP
 	puts("filter :");
 	print_m128i_hexu8(filter);
+#endif /* DEBUG_HMAP */
 
 	//---------------------------------------------------- filter groups
 	for (size_t i = 0;; i += 16) {
 		__m128i group =
 		    _mm_loadu_si128((__m128i *)(hashmap->buckets.metas + index));
+#ifdef DEBUG_HMAP
 		print_m128i_hexu8(group);
+#endif /* DEBUG_HMAP */
 		__m128i match = _mm_cmpeq_epi8(filter, group);
 		match_mask    = _mm_movemask_epi8(match);
 
@@ -398,10 +417,12 @@ size_t hmap_find(const struct hmap *hashmap, const char *key)
 			// int least_significant_set_bit_only = match_mask & -match_mask;
 			size_t offset = __builtin_ctzl(match_mask);
 			if ((strcmp(hashmap->buckets.keys[index + offset], key)) == 0) {
+#ifdef DEBUG_HMAP
 				printf("\t%x -> %d match @ [%lu]\n",
 				       meta,
 				       _mm_popcnt_u32((unsigned int)match_mask),
 				       offset);
+#endif /* DEBUG_HMAP */
 				return index + offset;
 			}
 			match_mask ^= match_mask & -match_mask;
@@ -473,7 +494,9 @@ void hmap_delete_hashmap(struct hmap *hashmap)
 		}
 		// printf("%s\n", hashmap->buckets[i].key);
 		destroy_entry(hashmap, entry);
+#ifdef DEBUG_HMAP
 		hashmap->stats.del_count++;
+#endif /* DEBUG_HMAP */
 	}
 	// stats_hashmap(hashmap);
 	XFREE(hashmap->buckets.metas, "delete_hashmap hashmap->buckets.metas");
@@ -521,11 +544,24 @@ void hmap_delete_hashmap(struct hmap *hashmap)
  *     + [ ] Consider setting pointers inside the struct accordingly
  *           after the one big alloc
  */
-struct hmap *hmap_new(const unsigned int n, const ValueDestructor destructor)
+struct hmap *hmap_new(const unsigned int n,
+                      const struct hmap_allocator *const allocator)
 {
+	//--------------------------------------------------- allocator init
+	struct hmap_allocator allocator_init;
+
+	if (allocator == NULL) {
+		allocator_init.malloc = malloc;
+		allocator_init.free   = free;
+	}
+	else {
+		allocator_init = *allocator;
+	}
 	//---------------------------------------------- advertised capacity
 	/* current tab_hash implementation requires a mininum of 256 slots */
-	const size_t capacity   = (n < 8) ? (1u << 8) : (1u << n);
+	// const size_t capacity   = (n < 8) ? (1u << 8) : (1u << n);
+	/* the 7 extra bits are required anyway for ctrl_byte */
+	const size_t capacity   = 1u << n;
 	const size_t hash_depth = capacity << 7;
 	//---------------------------------------------------- xor_seed init
 	size_t xor_seed_init[256];
@@ -539,9 +575,14 @@ struct hmap *hmap_new(const unsigned int n, const ValueDestructor destructor)
 	//-------------------------------------------------------- hmap init
 	const size_t actual_capacity = capacity + PROBE_LIMIT;
 
+#ifdef DEBUG_HMAP
 	struct hmap_stats stats_init  = {0, SIZE_MAX, 0, 0, 0, 0, 0, 0, 0};
 	struct hmap_init hashmap_init = {
-	    {0}, {NULL}, destructor, n, PROBE_LIMIT, capacity, 0, stats_init};
+	    {0}, {NULL}, allocator_init, n, PROBE_LIMIT, capacity, 0, stats_init};
+#else
+	struct hmap_init hashmap_init = {
+	    {0}, {NULL}, allocator_init, n, PROBE_LIMIT, capacity, 0};
+#endif /* DEBUG_HMAP */
 
 	memcpy(hashmap_init.xor_seed, xor_seed_init, sizeof(xor_seed_init));
 
@@ -677,6 +718,7 @@ void print_xor_seed(const struct hmap *hashmap)
  * Print given Hashmap stats
  *   -> nothing
  */
+#ifdef DEBUG_HMAP
 void stats_hashmap(const struct hmap *hashmap)
 {
 	printf("EV entries / bucket = %f\n",
@@ -722,6 +764,7 @@ void stats_hashmap(const struct hmap *hashmap)
 
 	return;
 }
+#endif /* DEBUG_HMAP */
 //----------------------------------------------------------------- Function ---
 /**
  * Dump given Hashmap content
@@ -743,9 +786,7 @@ void dump_hashmap(const struct hmap *hashmap)
 			continue;
 		}
 
-		printf("\x1b[10%dmhashmap->\x1b[30mbucket[%lu]\x1b[0m>>\n",
-		       4,
-		       i);
+		printf("\x1b[10%dmhashmap->\x1b[30mbucket[%lu]\x1b[0m>>\n", 4, i);
 
 		// printf("\t %016lx : %s\n",
 		printf("\t        %lu : %s\n",
@@ -758,7 +799,9 @@ void dump_hashmap(const struct hmap *hashmap)
 	       empty_bucket,
 	       (double)empty_bucket / (double)hashmap->capacity * 100);
 
+#ifdef DEBUG_HMAP
 	stats_hashmap(hashmap);
+#endif /* DEBUG_HMAP */
 
 	print_xor_seed(hashmap);
 }
@@ -779,7 +822,7 @@ int main(void)
 	      stdout);
 	scanf("%lu", &n);
 
-	struct hmap *hashmap = hmap_new(n, free); // xfree);
+	struct hmap *hashmap = hmap_new(n, NULL);
 	//----------------------------------------------------------- mock entry
 	hash           = hash_tab((unsigned char *)"mock", hashmap->xor_seed);
 	size_t index   = hash_index(hash);
@@ -847,10 +890,12 @@ int main(void)
 			print_xor_seed(hashmap);
 			continue;
 		}
+#ifdef DEBUG_HMAP
 		if ((strcmp(key, "stats")) == 0) {
 			stats_hashmap(hashmap);
 			continue;
 		}
+#endif /* DEBUG_HMAP */
 
 		if ((strcmp(key, "add")) == 0) {
 			printf("todo\n");
