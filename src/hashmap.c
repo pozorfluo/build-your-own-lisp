@@ -72,7 +72,8 @@ enum meta_ctrl {
 	META_EMPTY   = -128, /* 0b10000000 */
 	META_DELETED = -2,   /* 0b11111110 */
 	META_MARKED  = -1,   /* 0b11111111 */
-	/* Think of META_OCCUPIED as anything like 0b0xxxxxxx aka < 128 */
+	/* Think of META_OCCUPIED as anything like 0b0xxxxxxx */ 
+	/* aka 0 <= META_OCCUPIED < 128 */
 };
 
 struct hmap_allocator {
