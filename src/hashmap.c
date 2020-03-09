@@ -4,6 +4,7 @@
  * Peter Kankowski.
  *
  * Implement a hash map tuned for lispy / LispEnv
+ * 
  *
  * todo
  *   - [ ] Provide * mode where map is backed by contiguous array
@@ -19,13 +20,11 @@
  *     + [x] Probe by vector friendly chunks
  *     + [x] Use a overgrown hash_depth xor_seed to match capacity + 7bits of
  *           metadata
- *     + [x] Discard robin hood swapping entirely
  *
  *   - [ ] Use fast range instead of modulo if tab_hash isn't fit, bitmask if
  *         desperate
- *
- */
-
+ */ 
+ 
 #include <stddef.h> /* size_t */
 #include <stdint.h> /* uint32_t, uint64_t */
 #include <stdio.h>
@@ -207,6 +206,7 @@ static inline int is_entry_empty(struct hmap *hashmap, size_t entry)
 }
 
 static inline int is_full(const meta_byte meta) { return (meta == META_EMPTY); }
+
 //----------------------------------------------------------------- Function ---
 /**
  * Create a new entry in given Hashmap for given key, value pair
@@ -226,82 +226,82 @@ static inline int is_full(const meta_byte meta) { return (meta == META_EMPTY); }
  *   Increment Hashmap entry count ( Check Hashmap fitness )
  *     -> nothing
  */
-// size_t put_hashmap(struct hmap *hashmap, const char *key, void *value)
-// {
-// 	assert(key != NULL);
-// 	assert(value != NULL);
+size_t put_hashmap(struct hmap *hashmap, const char *key, void *value)
+{
+	assert(key != NULL);
+	assert(value != NULL);
 
-// 	size_t hash = hash_tab((unsigned char *)key, hashmap->xor_seed);
-// 	hashmap->stats.hashes_tally_or |= hash;
-// 	hashmap->stats.hashes_tally_and &= hash;
+	size_t hash = hash_tab((unsigned char *)key, hashmap->xor_seed);
+	hashmap->stats.hashes_tally_or |= hash;
+	hashmap->stats.hashes_tally_and &= hash;
 
-// 	// printf("hash->[%lu]\n", hash);
-// 	// HashmapEntry *bucket = &hashmap->buckets[hash];
-// 	/**
-// 	 * todo
-// 	 *   - [ ] Check if this compile to something different
-// 	 */
-// 	// unsigned char *meta;
-// 	// int * distance;
-// 	// char **key;
-// 	// void **value;
+	// printf("hash->[%lu]\n", hash);
+	// HashmapEntry *bucket = &hashmap->buckets[hash];
+	/**
+	 * todo
+	 *   - [ ] Check if this compile to something different
+	 */
+	// unsigned char *meta;
+	// int * distance;
+	// char **key;
+	// void **value;
 
-// 	unsigned char entry_meta = hash_meta(hash);
-// 	size_t entry_index       = hash_index(hash);
+	unsigned char entry_meta = hash_meta(hash);
+	size_t entry_index       = hash_index(hash);
 
-// 	__m128i filter = _mm_set1_epi8(entry_meta);
-// 	int match_mask = _mm_movemask_epi8(_mm_cmpeq_epi8(filter), );
+	__m128i filter = _mm_set1_epi8(entry_meta);
+	int match_mask = _mm_movemask_epi8(_mm_cmpeq_epi8(filter), );
 
-// 	/* Prepare temp entry*/
-// 	struct hmap_buckets entry;
-// 	entry.distance = 0;
-// 	entry.key      = XMALLOC(strlen(key) + 1, "put_hashmap", "temp_entry.key");
-// 	strcpy(entry.key, key);
-// 	entry.value = value;
+	/* Prepare temp entry*/
+	struct hmap_buckets entry;
+	entry.distance = 0;
+	entry.key      = XMALLOC(strlen(key) + 1, "put_hashmap", "temp_entry.key");
+	strcpy(entry.key, key);
+	entry.value = value;
 
-// 	for (; entry.distance < hashmap->probe_limit; entry.distance++, bucket++) {
-// 		/* Empty bucket */
-// 		if (bucket->key == NULL) {
-// 			bucket->key      = entry.key;
-// 			bucket->value    = entry.value;
-// 			bucket->distance = entry.distance;
-// 			// check_hashmap(hashmap);
-// 			hashmap->count++;
+	for (; entry.distance < hashmap->probe_limit; entry.distance++, bucket++) {
+		/* Empty bucket */
+		if (bucket->key == NULL) {
+			bucket->key      = entry.key;
+			bucket->value    = entry.value;
+			bucket->distance = entry.distance;
+			// check_hashmap(hashmap);
+			hashmap->count++;
 
-// 			/* Solved collision */
-// 			if (entry.distance > 0) {
-// 				hashmap->stats.collision_count++;
-// 			}
-// 			hashmap->stats.put_count++;
-// 			return bucket;
-// 		}
-// 		else {
-// 			/* Key exist */
-// 			// todo
-// 			//   - [ ] Probe for existing key
-// 			//   - [ ] Make sure comparison is necessary and cheap
-// 			if (strcmp(entry.key, bucket->key) == 0) {
-// 				XFREE(entry.key, "duplicate key");
-// 				hashmap->destructor(
-// 				    bucket->value); //, "bucket->value", "destructor");
-// 				bucket->value = entry.value;
-// 				hashmap->stats.put_count++;
-// 				return bucket;
-// 			}
+			/* Solved collision */
+			if (entry.distance > 0) {
+				hashmap->stats.collision_count++;
+			}
+			hashmap->stats.put_count++;
+			return bucket;
+		}
+		else {
+			/* Key exist */
+			// todo
+			//   - [ ] Probe for existing key
+			//   - [ ] Make sure comparison is necessary and cheap
+			if (strcmp(entry.key, bucket->key) == 0) {
+				XFREE(entry.key, "duplicate key");
+				hashmap->destructor(
+				    bucket->value); //, "bucket->value", "destructor");
+				bucket->value = entry.value;
+				hashmap->stats.put_count++;
+				return bucket;
+			}
 
-// 			// /* Rich bucket */
-// 			// if (entry.distance > bucket->distance) {
-// 			// 	swap_entries(&entry, bucket);
-// 			// 	hashmap->stats.swap_count++;
-// 			// }
-// 		}
-// 	}
+			// /* Rich bucket */
+			// if (entry.distance > bucket->distance) {
+			// 	swap_entries(&entry, bucket);
+			// 	hashmap->stats.swap_count++;
+			// }
+		}
+	}
 
-// 	/* Past probe limit, trigger resize */
-// 	XFREE(entry.key, "past probe limit");
-// 	hashmap->stats.putfail_count++;
-// 	return NULL;
-// }
+	/* Past probe limit, trigger resize */
+	XFREE(entry.key, "past probe limit");
+	hashmap->stats.putfail_count++;
+	return NULL;
+}
 
 //----------------------------------------------------------------- Function ---
 /**
@@ -413,6 +413,9 @@ static inline uint16_t probe_chunk(const meta_byte pattern,
  *   -> entry index
  * Else
  *   -> out of bound value ( > actual_capacity)
+ * 
+ * Current implementation :
+ *   Probe
  */
 size_t hmap_find(const struct hmap *hashmap, const char *key)
 {
