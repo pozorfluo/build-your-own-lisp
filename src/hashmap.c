@@ -60,7 +60,7 @@
 //------------------------------------------------------------- DECLARATIONS ---
 typedef signed char ctrl_byte;
 
-enum meta_ctrl { CTRL_EMPTY = -128, CTRL_DELETED = -1 };
+enum meta_ctrl { CTRL_EMPTY = -128, CTRL_DELETED = -1, CTRL_NOT_FOUND = -2 };
 
 struct hmap_allocator {
 	void *(*malloc)(size_t size);
@@ -138,7 +138,6 @@ static inline void xor_seed_fill(size_t *xor_seed, size_t hash_depth)
 
 static inline void destroy_entry(struct hmap *hashmap, size_t entry)
     __attribute__((always_inline));
-
 
 //----------------------------------------------------------------- Function ---
 /**
@@ -394,13 +393,17 @@ static inline uint16_t probe_chunk(const ctrl_byte pattern,
 //----------------------------------------------------------------- Function ---
 /**
  * Locate given key in given hmap
+ * If given key exists
  *   -> entry index
+ * Else
+ *   -> out of bound value ( > actual_capacity)
  */
 size_t hmap_find(const struct hmap *hashmap, const char *key)
 {
 	size_t hash  = hash_tab((unsigned char *)key, hashmap->xor_seed);
 	size_t index = hash_index(hash);
 	// ctrl_byte meta = hash_meta(hash);
+	size_t entry = hashmap->capacity + hashmap->probe_limit;
 
 	uint16_t match_mask =
 	    probe_chunk(CTRL_EMPTY, hashmap->buckets.metas + index);
@@ -409,53 +412,81 @@ size_t hmap_find(const struct hmap *hashmap, const char *key)
 	/* loop through set bit in bitmask to access matches */
 	while (match_mask != 0) {
 		const size_t offset = __builtin_ctz(match_mask);
-
-#ifdef DEBUG_HMAP
-		printf("%s vs %s\n", hashmap->buckets.keys[index + offset], key);
-#endif /* DEBUG_HMAP */
-
-		/**
-		 * todo
-		 *   - [ ] Make sure hmap_find is never called to find empty slots or
-		 *     + [ ] Have a separate hmap_find_empty
-		 *   - [ ] Assert that matched entry key is NOT NULL before comparing
-		 */
 		const char *probed_key = hashmap->buckets.keys[index + offset];
 
 		if ((probed_key != NULL) && (compare_keys(probed_key, key)) == 0) {
-#ifdef DEBUG_HMAP
-			printf("                          -> found %s @ %lu + %lu \n",
-			       hashmap->buckets.keys[index + offset],
-			       index,
-			       offset);
-#endif      /* DEBUG_HMAP */
-			// return index + offset;
+			// hashmap->stats.find_count++;
+			entry = index + offset;
 		}
-		else {
-#ifdef DEBUG_HMAP
-			printf("                          -> %s collision @ %lu + %lu \n",
-			       hashmap->buckets.keys[index + offset],
-			       index,
-			       offset);
-#endif /* DEBUG_HMAP */
-		}
-#ifdef DEBUG_HMAP
-		printf("offset                    : %lu\n", offset);
-		printf("match_mask                : %d 0b", match_mask);
-		print_bits(2, &match_mask);
-		putchar('\n');
-#endif /* DEBUG_HMAP */
-
+		// else {
+			// hashmap->stats.hashes_ctrl_collision_count++;
+		// }
 		/* remove least significant set bit */
 		match_mask ^= match_mask & (-match_mask);
 	}
-	/**
-	 * todo
-	 *   - [ ] fix silly return value
-	 */
-	return -1;
+
+	return entry;
 }
 
+// size_t hmap_find(const struct hmap *hashmap, const char *key)
+// {
+// 	size_t hash  = hash_tab((unsigned char *)key, hashmap->xor_seed);
+// 	size_t index = hash_index(hash);
+// 	// ctrl_byte meta = hash_meta(hash);
+	
+// 	uint16_t match_mask =
+// 	    probe_chunk(CTRL_EMPTY, hashmap->buckets.metas + index);
+// 	print_bits(2, &match_mask);
+
+// 	/* loop through set bit in bitmask to access matches */
+// 	while (match_mask != 0) {
+// 		const size_t offset = __builtin_ctz(match_mask);
+
+// #ifdef DEBUG_HMAP
+// 		printf("%s vs %s\n", hashmap->buckets.keys[index + offset], key);
+// #endif /* DEBUG_HMAP */
+
+// 		/**
+// 		 * todo
+// 		 *   - [ ] Make sure hmap_find is never called to find empty slots or
+// 		 *     + [ ] Have a separate hmap_find_empty
+// 		 *   - [ ] Assert that matched entry key is NOT NULL before comparing
+// 		 */
+// 		const char *probed_key = hashmap->buckets.keys[index + offset];
+
+// 		if ((probed_key != NULL) && (compare_keys(probed_key, key)) == 0) {
+// #ifdef DEBUG_HMAP
+// 			printf("                          -> found %s @ %lu + %lu \n",
+// 			       hashmap->buckets.keys[index + offset],
+// 			       index,
+// 			       offset);
+// #endif      /* DEBUG_HMAP */
+// 			// return index + offset;
+// 		}
+// 		else {
+// #ifdef DEBUG_HMAP
+// 			printf("                          -> %s collision @ %lu + %lu \n",
+// 			       hashmap->buckets.keys[index + offset],
+// 			       index,
+// 			       offset);
+// #endif /* DEBUG_HMAP */
+// 		}
+// #ifdef DEBUG_HMAP
+// 		printf("offset                    : %lu\n", offset);
+// 		printf("match_mask                : %d 0b", match_mask);
+// 		print_bits(2, &match_mask);
+// 		putchar('\n');
+// #endif /* DEBUG_HMAP */
+
+// 		/* remove least significant set bit */
+// 		match_mask ^= match_mask & (-match_mask);
+// 	}
+// 	/**
+// 	 * todo
+// 	 *   - [ ] fix silly return value
+// 	 */
+// 	return NULL;
+// }
 //----------------------------------------------------------------- Function ---
 /**
  * Locate given value for given key in given hmap
@@ -486,17 +517,27 @@ static inline void destroy_entry(struct hmap *hashmap, size_t entry)
  * Look for given key in given hmap
  * If given key exists
  *   Destroy entry associated to given key
+ *   Mark metadata associated to given key as CTRL_DELETED
  *   Update given hmap stats
  *   -> destroyed entry index
  * Else
- *   -> -1
+ *   -> out of bound value ( > actual_capacity)
  */
-// void delete_hashmap_entry(Hashmap *hashmap, const char *key)
-// {
-// 	const Hash128 hash = hashmap->function(key, strlen(key), hashmap->seed);
-// 	const size_t index = mod_hash128(hash, hashmap->n);
-// 	destroy_entry(hashmap->buckets[index]);
-// }
+size_t delete_hashmap_entry(struct hmap *hashmap, const char *key)
+{
+	size_t entry = hmap_find(hashmap, key);
+
+	if( entry > (hashmap->capacity + hashmap->probe_limit)) {
+	destroy_entry(hashmap, entry);
+	hashmap->buckets.metas[entry] = CTRL_DELETED; //|=CTRL_DELETED; useful ?
+	hashmap->count--;
+	}
+
+#ifdef DEBUG_HMAP
+	hashmap->stats.del_count++;
+#endif /* DEBUG_HMAP */
+	return entry;
+}
 
 //----------------------------------------------------------------- Function ---
 /**
