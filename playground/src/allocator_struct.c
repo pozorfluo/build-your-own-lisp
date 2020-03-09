@@ -2,7 +2,7 @@
 
 typedef signed char ctrl_byte;
 
-enum ctrl_bit { CTRL_EMPTY = -128, CTRL_DELETED = -1};
+enum meta_ctrl { CTRL_EMPTY = -128, CTRL_DELETED = -1};
 
 // typedef size_t (*HashFunc)(const unsigned char *, const size_t *);
 

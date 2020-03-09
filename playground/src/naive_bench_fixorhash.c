@@ -506,3 +506,29 @@ int main(void)
 
 	return 0;
 }
+
+/**
+ * todo
+ *   - [ ] Consider 'fast range' reduce
+ *     + [ ] See :
+ * https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
+ */
+// static inline size_t hash_fimur_reduce(const char *key,
+//                                        const size_t seed,
+//                                        const unsigned int n)
+//    __attribute__((const, always_inline));
+
+// static inline size_t hash_fimur_reduce(const char *key,
+//                                        const size_t seed,
+//                                        const unsigned int n)
+// {
+// 	size_t hash = seed;
+
+// 	while (*key) {
+// 		hash *= 11400714819323198485llu;
+// 		hash *= *(key++) << 15;
+// 		hash = (hash << 7) | (hash >> (32 - 7));
+// 	}
+
+// 	return hash >> (64 - n);
+// }

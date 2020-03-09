@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum ctrl_bit { CTRL_EMPTY = -128, CTRL_DELETED = -1, CTRL_TOMBSTONE = -2 };
+enum meta_ctrl { CTRL_EMPTY = -128, CTRL_DELETED = -1, CTRL_TOMBSTONE = -2 };
 
 typedef signed char ctrl_byte;
 
@@ -178,3 +178,4 @@ int main(void)
 	free(metas);
 	return 0;
 }
+
