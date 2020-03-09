@@ -9,11 +9,11 @@
 
 enum meta_ctrl { CTRL_EMPTY = -128, CTRL_DELETED = -1, CTRL_TOMBSTONE = -2 };
 
-typedef signed char ctrl_byte;
+typedef signed char meta_byte;
 
 static inline size_t hash_index(const size_t hash) { return hash >> 8; }
 
-static inline ctrl_byte hash_meta(const size_t hash) { return hash & 0xFF; }
+static inline meta_byte hash_meta(const size_t hash) { return hash & 0xFF; }
 
 void print_m128i(const __m128i value)
 {

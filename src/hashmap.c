@@ -58,9 +58,22 @@
 #define ARRAY_LENGTH(_array) (sizeof(_array) / sizeof((_array)[0]))
 
 //------------------------------------------------------------- DECLARATIONS ---
-typedef signed char ctrl_byte;
-
-enum meta_ctrl { CTRL_EMPTY = -128, CTRL_DELETED = -1, CTRL_NOT_FOUND = -2 };
+typedef signed char meta_byte;
+/**
+ * | bit 7 | bit 6 | bit 5 | bit 4 | bit 3 | bit 2 | bit 1 | bit 0 |
+ * |-------|-------|-------|-------|-------|-------|-------|-------|
+ * |   0   |  hash |  hash |  hash |  hash |  hash |  hash |  hash |
+ * |   1   | state | state | state | state | state | state | state |
+ *
+ *    MSB is 0 -> entry is OCCUPIED,     use 7 bits remaining as hash
+ *    MSB is 1 -> entry is NOT OCCUPIED, use 7 bits remaining as state
+ */
+enum meta_ctrl {
+	META_EMPTY   =  -128, /* 0b10000000 */
+	META_DELETED =    -2, /* 0b11111110 */
+	META_MARKED  =    -1, /* 0b11111111 */
+	/* Think of META_OCCUPIED as anything like 0b0xxxxxxx aka < 128 */
+};
 
 struct hmap_allocator {
 	void *(*malloc)(size_t size);
@@ -82,7 +95,7 @@ struct hmap_stats {
 #endif /* DEBUG_HMAP */
 
 struct hmap_buckets {
-	ctrl_byte *metas;
+	meta_byte *metas;
 	char **keys;
 	void **values;
 };
@@ -120,14 +133,14 @@ static inline size_t hash_tab(const unsigned char *key, const size_t *xor_seed)
 static inline size_t hash_index(const size_t hash)
     __attribute__((const, always_inline));
 
-static inline ctrl_byte hash_meta(const size_t hash)
+static inline meta_byte hash_meta(const size_t hash)
     __attribute__((const, always_inline));
 
 static inline int compare_keys(const char *const key_a, const char *const key_b)
     __attribute__((const, always_inline));
 
-static inline uint16_t probe_chunk(const ctrl_byte pattern,
-                                   const ctrl_byte *entry)
+static inline uint16_t probe_chunk(const meta_byte pattern,
+                                   const meta_byte *entry)
     __attribute__((const, always_inline));
 
 // static inline size_t hmap_find(const struct hmap *hashmap, const char *key)
@@ -175,22 +188,23 @@ static inline size_t hash_tab(const unsigned char *key, const size_t *xor_seed)
 
 static inline size_t hash_index(const size_t hash) { return hash >> 7; }
 
-static inline ctrl_byte hash_meta(const size_t hash) { return hash & 0x7F; }
+static inline meta_byte hash_meta(const size_t hash) { return hash & 0x7F; }
 
 //----------------------------------------------------------------- Function ---
 /**
  * Check if given entry in given hashmap is empty
  *   -> Truth value of predicate
  */
-static inline int is_empty(const ctrl_byte control)
+static inline int is_empty(const meta_byte meta)
 {
-	return (control == CTRL_EMPTY);
+	return (meta == META_EMPTY);
 }
-static inline int hmap_is_empty(struct hmap *hashmap, size_t entry)
+static inline int is_entry_empty(struct hmap *hashmap, size_t entry)
 {
 	return is_empty(hashmap->buckets.metas[entry]);
 }
 
+static inline int is_full(const meta_byte meta) { return (meta == META_EMPTY); }
 //----------------------------------------------------------------- Function ---
 /**
  * Create a new entry in given Hashmap for given key, value pair
@@ -371,8 +385,8 @@ void print_m128i_hexu8(const __m128i value)
  * given metadata entry
  *   -> Matches bitmask
  */
-static inline uint16_t probe_chunk(const ctrl_byte pattern,
-                                   const ctrl_byte *entry)
+static inline uint16_t probe_chunk(const meta_byte pattern,
+                                   const meta_byte *entry)
 {
 	/* setup filter */
 	const __m128i filter = _mm_set1_epi8(pattern);
@@ -402,16 +416,16 @@ size_t hmap_find(const struct hmap *hashmap, const char *key)
 {
 	size_t hash  = hash_tab((unsigned char *)key, hashmap->xor_seed);
 	size_t index = hash_index(hash);
-	// ctrl_byte meta = hash_meta(hash);
+	meta_byte meta = hash_meta(hash);
 	size_t entry = hashmap->capacity + hashmap->probe_limit;
 
 	uint16_t match_mask =
-	    probe_chunk(CTRL_EMPTY, hashmap->buckets.metas + index);
+	    probe_chunk(meta, hashmap->buckets.metas + index);
 	print_bits(2, &match_mask);
 
 	/* loop through set bit in bitmask to access matches */
 	while (match_mask != 0) {
-		const size_t offset = __builtin_ctz(match_mask);
+		const size_t offset    = __builtin_ctz(match_mask);
 		const char *probed_key = hashmap->buckets.keys[index + offset];
 
 		if ((probed_key != NULL) && (compare_keys(probed_key, key)) == 0) {
@@ -419,7 +433,7 @@ size_t hmap_find(const struct hmap *hashmap, const char *key)
 			entry = index + offset;
 		}
 		// else {
-			// hashmap->stats.hashes_ctrl_collision_count++;
+		// hashmap->stats.hashes_ctrl_collision_count++;
 		// }
 		/* remove least significant set bit */
 		match_mask ^= match_mask & (-match_mask);
@@ -433,7 +447,7 @@ size_t hmap_find(const struct hmap *hashmap, const char *key)
 // 	size_t hash  = hash_tab((unsigned char *)key, hashmap->xor_seed);
 // 	size_t index = hash_index(hash);
 // 	// ctrl_byte meta = hash_meta(hash);
-	
+
 // 	uint16_t match_mask =
 // 	    probe_chunk(CTRL_EMPTY, hashmap->buckets.metas + index);
 // 	print_bits(2, &match_mask);
@@ -527,10 +541,10 @@ size_t delete_hashmap_entry(struct hmap *hashmap, const char *key)
 {
 	size_t entry = hmap_find(hashmap, key);
 
-	if( entry > (hashmap->capacity + hashmap->probe_limit)) {
-	destroy_entry(hashmap, entry);
-	hashmap->buckets.metas[entry] = CTRL_DELETED; //|=CTRL_DELETED; useful ?
-	hashmap->count--;
+	if (entry > (hashmap->capacity + hashmap->probe_limit)) {
+		destroy_entry(hashmap, entry);
+		hashmap->buckets.metas[entry] = META_DELETED; //|=META_DELETED; useful ?
+		hashmap->count--;
 	}
 
 #ifdef DEBUG_HMAP
@@ -686,7 +700,7 @@ struct hmap *hmap_new(const unsigned int n,
 	/* The value is passed as an int, but the function fills the block of
 	 * memory using the unsigned char conversion of this value */
 	memset(new_hashmap->buckets.metas,
-	       CTRL_EMPTY,
+	       META_EMPTY,
 	       sizeof(*(new_hashmap->buckets.metas)) * actual_capacity);
 	/* Is this enough to be able to check if ptr == NULL ? */
 	memset(new_hashmap->buckets.keys,
@@ -883,7 +897,7 @@ int main(void)
 	//----------------------------------------------------------- mock entry
 	hash           = hash_tab((unsigned char *)"mock", hashmap->xor_seed);
 	size_t index   = hash_index(hash);
-	ctrl_byte meta = hash_meta(hash);
+	meta_byte meta = hash_meta(hash);
 	hashmap->buckets.metas[index]  = meta;
 	hashmap->buckets.keys[index]   = strdup("mock");
 	hashmap->buckets.values[index] = strdup("mock value");

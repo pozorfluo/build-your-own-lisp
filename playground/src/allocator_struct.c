@@ -1,6 +1,6 @@
 #include <stddef.h>
 
-typedef signed char ctrl_byte;
+typedef signed char meta_byte;
 
 enum meta_ctrl { CTRL_EMPTY = -128, CTRL_DELETED = -1};
 
@@ -27,7 +27,7 @@ struct hmap_stats {
 
 struct hmap_buckets {
 	// Try SoA setup for buckets :
-	ctrl_byte *metas;
+	meta_byte *metas;
 	int *distances;
 	char **keys;
 	void **values;
