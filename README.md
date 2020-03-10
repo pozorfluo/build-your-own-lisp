@@ -53,8 +53,8 @@ Implement a hash map for lispy / LispEnv
 
 #### Use
 - open adressing
-- linear probing, on chunks of metadata, once per find
-- robin hood style entry shifting
+- linear probing, on chunks of metadata, once per find operation
+- ~~robin hood~~ hopscotch style entry shifting
 - power of two advertised capacity
 - overgrown actual capacity to account for probe chunk size
 - structure of array layout for the buckets
@@ -67,6 +67,10 @@ Implement a hash map for lispy / LispEnv
 - embed the pseudo-random hash function seed in the table
 - take arbitrary size, c string style, '\0' terminated byte sequence as key
 - take any pointer as value
+- resize if probing fails to find an eligible spot where to insert
+- alloc backing arrays by chunks on creation and resize only
+- NOT use a linked list of entries to iterate through the table
+- iterate through backing arrays, skip empty by probing metadata chunks
 
 #### Require
 - user to allocate for the keys and values to insert in the table
@@ -78,10 +82,26 @@ Implement a hash map for lispy / LispEnv
 - access to stats and verbose mode with -DDEBUG_HMAP compiler flag
 
 ### implementation WIP
-- Split hash(key) into hash_index and hash_meta
-  + hash_meta  is hash 7 least significant bits
-  + hash_index is hash >> 7  
 
+#### vocabulary
+
+bucket : a slot in the table backing array. It can contain an entry. 
+Its state is tracked in a metadata byte 'shared' with the entry it may hold.
+
+entry : a key, value pointer pair and 7 bits of secondary hash stored in a metadata byte.
+
+#### metadata
+Use 1 byte of metadata for each bucket
+  - Use 1 bit (MSB) to switch state the way the remaining bits are read
+  - Use 7 remaining bits to encode state or secondary hash
+
+  - Split hash(key)
+    + Take hash 7 least significant bits  
+    + Store it in the metadata byte
+    + Shift hash >> 7 to index in table backing arrays
+      * Think of this value as the @home of entry
+
+```
   | bit 7 | bit 6 | bit 5 | bit 4 | bit 3 | bit 2 | bit 1 | bit 0 |
   |-------|-------|-------|-------|-------|-------|-------|-------|
   |   0   |  hash |  hash |  hash |  hash |  hash |  hash |  hash |
@@ -96,19 +116,18 @@ Implement a hash map for lispy / LispEnv
 
       Think of OCCUPIED as anything like 0b0xxxxxxx
       aka 0 <= OCCUPIED < 128
-
 ```
-         hash_index(hash) ─┐                    capacity + PROBE_LIMIT ─┐    
+#### buckets
+```
+         hash_index(hash) ─┐                   capacity + probe length ─┐    
 ┌─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─ ─ ─ ─ ┬─┬─┬─┬─┬─┬─┐
 │ │ │█│ │ │ │ │█│ │x│ │ │ │█│x│█│█│ │x│█│ │█│ │ │█│ │        │ │x│█│ │ │ │
 └─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─┴─ ─ ─ ─ ┴─┴─┴─┴─┴─┴─┘
                            └─── ─ ─ ─ ───┘ probe length
 ┌─┐                       ┌─┐                    ┌─┐
-│█│ occupied entry        │ │ empty entry        │x│ marked entry
+│█│ occupied bucket       │ │ empty bucket       │x│ marked bucket
 └─┘                       └─┘                    └─┘
 ```
-
-
 
 ## `[todo]`
 ### Observe that :
@@ -118,10 +137,50 @@ Implement a hash map for lispy / LispEnv
       * occupied @home
       * occupied displaced
 
-  Contrary to robin hood hashing distance from home is NOT tracked in 
-  current implementation
- 
-Can one assert 
+  - @home means the entry is in the bucket it exactly hashes to
+  - displaced means the entry is some distance away from @home
+  - contrary to robin hood hashing distance from home is NOT tracked in 
+    current implementation
+  - probing can happen from any bucket
+  - think of probing as a sliding window of probe length
+  - each bucket can appear in up to (probe length) different probe origins
+  - entries unrelated to the current bucket of concern will be found inside
+    probe length
+  - unrelated entries have different @home !!
+
+#### Insertion
+  - case : @home bucket is empty
+    + reckon key should NOT exist
+    + insert entry @home where it exactly hashes to
+  - case : @home bucket is marked
+    + reckon key may exist and be displaced
+    + probe a chunk of metadata
+    +
+  - case : @home bucket is occupied
+    + reckon key may exist and be displaced
+    + probe a chunk of metadata, looking for given key
+      * compare matches with given key
+      * update value if key exists -> return match index
+    + probe same chunk of metadata, looking for empty bucket
+      * insert entry in empty bucket -> return match index
+    + probe NEXT chunk of metadata, looking for empty bucket
+      * try to swap first empty bucket found with the furthest bucket
+        upstream that could still be found from its @home bucket, in a 
+        single probe, were it be relocated in that empty bucket
+
+  ### Questions
+  - How likely are false positive when probing ?
+    + Is it low enough that matches can be thought of related to 
+      @home bucket ?
+  - How bad is it to probe beyond metadata allocated space ?
+    + Is it ok if buckets is a single arena of memory, allocated in one
+      piece, knowing that what immediately follows is part of the struct ?
+    + Provided it is 'ok' and does not break things, how usable would a 
+      probe be over partially garbage data ?
+    + At what point does it become easier to just check boundaries or wrap
+      to the beginning of the table ?
+
+  - ok this seems to be called hopscotch hashing -> need more reading
 
 ## `SNAIC`
 ![alt text][nvrstap]

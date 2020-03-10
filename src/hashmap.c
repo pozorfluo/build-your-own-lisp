@@ -7,20 +7,6 @@
  * 
  *
  * todo
- *   - [ ] Provide * mode where map is backed by contiguous array
- *     + [x] Alloc map and backing array by chunks on creation and resize only
- *     + [x] Map backing array index in (key, size_t value) hashtable !!
- *     + [ ] Resize by updating hashtable, not backing array
- *     + [ ] Do not discard backing array chunks, supplement them
- *     + [ ] Iterate through backing array, skip deleted
- *     + [ ] Allow replacing table in single atomic step by reassigning *
- *
- *   - [x] Store bucket states in a separate array, 1 byte per bucket
- *     + [x] Restrict PROBE_LIMIT to a multiple of that chunk size
- *     + [x] Probe by vector friendly chunks
- *     + [x] Use a overgrown hash_depth xor_seed to match capacity + 7bits of
- *           metadata
- *
  *   - [ ] Use fast range instead of modulo if tab_hash isn't fit, bitmask if
  *         desperate
  */ 
@@ -223,7 +209,6 @@ static inline int is_full(const meta_byte meta) { return (meta == META_EMPTY); }
  *       Delete value
  *       Replace with copy of given value
  * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- *   Increment Hashmap entry count ( Check Hashmap fitness )
  *     -> nothing
  */
 size_t put_hashmap(struct hmap *hashmap, const char *key, void *value)
