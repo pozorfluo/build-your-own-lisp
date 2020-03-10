@@ -46,8 +46,9 @@ currently at bonus marks of chapter 11 of http://www.buildyourownlisp.com/
 
 ---
 ## hmap.c
-> Based on the work and publications of the Abseil Team, Daniel Lemire,
-> Peter Kankowski, Malte Skarupke.
+> Based on the work of the Abseil Team and publications of Daniel Lemire,
+> Peter Kankowski, Malte Skarupke, Maurice Herlihy, Nir Shavit, 
+> Moran Tzafrir.
 
 Implement a hash map for lispy / LispEnv
 
@@ -73,7 +74,8 @@ Implement a hash map for lispy / LispEnv
 - iterate through backing arrays, skip empty by probing metadata chunks
 
 #### Require
-- user to allocate for the keys and values to insert in the table
+- user to allocate for the keys and values and pass pointer to insert 
+  in the table
 
 #### Provide
 - default allocator for keys, values delete operations
@@ -85,10 +87,12 @@ Implement a hash map for lispy / LispEnv
 
 #### vocabulary
 
-bucket : a slot in the table backing array. It can contain an entry. 
-Its state is tracked in a metadata byte 'shared' with the entry it may hold.
+bucket : a slot in the table backing array. It can contain an entry. Its 
+         state is tracked in a metadata byte 'shared' with the entry it may 
+         hold.
 
-entry : a key, value pointer pair and 7 bits of secondary hash stored in a metadata byte.
+entry : a key, value pointer pair and 7 bits of secondary hash stored in a
+        metadata byte.
 
 #### metadata
 Use 1 byte of metadata for each bucket
@@ -161,14 +165,27 @@ Use 1 byte of metadata for each bucket
     + probe a chunk of metadata, looking for given key
       * compare matches with given key
       * update value if key exists -> return match index
-    + probe same chunk of metadata, looking for empty bucket
+    + probe SAME chunk of metadata, looking for empty bucket
       * insert entry in empty bucket -> return match index
     + probe NEXT chunk of metadata, looking for empty bucket
+      * plan as if, but do NOT swap yet (eg. store successive swap pairs
+        indexes in a buffer)
       * try to swap first empty bucket found with the furthest bucket
-        upstream that could still be found from its @home bucket, in a 
-        single probe, were it be relocated in that empty bucket
+        upstream that could still be found in a single probe from its @home 
+        bucket, were it be relocated in that empty bucket
+      * keep swapping the empty bucket upstream until reachable in a single
+        probe from @home bucket of key to be inserted
+      * execute necessary swaps if valid plan is reached
+      * resize, rehash the table if no valid plan can be formulated
 
-  ### Questions
+### Possible trade-offs
+|   | space | time |
+|---|-------|------|
+| swapping | keep track of distance to @home | recompute hash |
+
+
+
+### Questions
   - How likely are false positive when probing ?
     + Is it low enough that matches can be thought of related to 
       @home bucket ?
@@ -180,7 +197,16 @@ Use 1 byte of metadata for each bucket
     + At what point does it become easier to just check boundaries or wrap
       to the beginning of the table ?
 
-  - ok this seems to be called hopscotch hashing -> need more reading
+  - Can the state bit of metadata be refactored to encode hop information as
+    well ? eg.,
+    + MSB set to 1 would not be enough to assert empty
+    + it would require comparing the whole metadata byte to 0b10000000
+    + occupied would be when any of the other 7 bits is set
+    + _mm_movemask_epi8 a probe chunk worth of metadata byte would yield
+      a hop bitmap of swapping candidate ( because if there was a empty slot
+      upstream we would not be there planning swaps, correct ?)
+    + marked and deleted would be superfluous
+
 
 ## `SNAIC`
 ![alt text][nvrstap]
