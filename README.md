@@ -55,7 +55,7 @@ Implement a hash map for lispy / LispEnv
 #### Use
 - open adressing
 - linear probing, on chunks of metadata, once per find operation
-- ~~robin hood~~ hopscotch style entry shifting
+- robin hood style entry shifting
 - power of two advertised capacity
 - overgrown actual capacity to account for probe chunk size
 - structure of array layout for the buckets
@@ -72,6 +72,7 @@ Implement a hash map for lispy / LispEnv
 - alloc backing arrays by chunks on creation and resize only
 - NOT use a linked list of entries to iterate through the table
 - iterate through backing arrays, skip empty by probing metadata chunks
+- touch keys, values as late as possible, work with metadata
 
 #### Require
 - user to allocate for the keys and values and pass pointer to insert 
@@ -105,6 +106,7 @@ Use 1 byte of metadata for each bucket
     + Shift hash >> 7 to index in table backing arrays
       * Think of this value as the @home of entry
 
+
 ```
   | bit 7 | bit 6 | bit 5 | bit 4 | bit 3 | bit 2 | bit 1 | bit 0 |
   |-------|-------|-------|-------|-------|-------|-------|-------|
@@ -120,7 +122,12 @@ Use 1 byte of metadata for each bucket
 
       Think of OCCUPIED as anything like 0b0xxxxxxx
       aka 0 <= OCCUPIED < 128
+
+Use another 1 byte of metadata for each bucket
+  - Keep track of distance from @home
 ```
+
+
 #### buckets
 ```
          hash_index(hash) ─┐                   capacity + probe length ─┐    
@@ -143,45 +150,18 @@ Use 1 byte of metadata for each bucket
 
   - @home means the entry is in the bucket it exactly hashes to
   - displaced means the entry is some distance away from @home
-  - contrary to robin hood hashing distance from home is NOT tracked in 
-    current implementation
   - probing can happen from any bucket
   - think of probing as a sliding window of probe length
   - each bucket can appear in up to (probe length) different probe origins
   - entries unrelated to the current bucket of concern will be found inside
     probe length
-  - unrelated entries have different @home !!
+  - unrelated entries have different @home
 
-#### Insertion
-  - case : @home bucket is empty
-    + reckon key should NOT exist
-    + insert entry @home where it exactly hashes to
-  - case : @home bucket is marked
-    + reckon key may exist and be displaced
-    + probe a chunk of metadata
-    +
-  - case : @home bucket is occupied
-    + reckon key may exist and be displaced
-    + probe a chunk of metadata, looking for given key
-      * compare matches with given key
-      * update value if key exists -> return match index
-    + probe SAME chunk of metadata, looking for empty bucket
-      * insert entry in empty bucket -> return match index
-    + probe NEXT chunk of metadata, looking for empty bucket
-      * plan as if, but do NOT swap yet (eg. store successive swap pairs
-        indexes in a buffer)
-      * try to swap first empty bucket found with the furthest bucket
-        upstream that could still be found in a single probe from its @home 
-        bucket, were it be relocated in that empty bucket
-      * keep swapping the empty bucket upstream until reachable in a single
-        probe from @home bucket of key to be inserted
-      * execute necessary swaps if valid plan is reached
-      * resize, rehash the table if no valid plan can be formulated
 
 ### Possible trade-offs
-|   | space | time |
-|---|-------|------|
-| swapping | keep track of distance to @home | recompute hash |
+|          | space                           | time                        |
+|----------|---------------------------------|-----------------------------|
+| swapping | keep track of distance to @home | recompute hash              |
 
 
 
@@ -196,17 +176,6 @@ Use 1 byte of metadata for each bucket
       probe be over partially garbage data ?
     + At what point does it become easier to just check boundaries or wrap
       to the beginning of the table ?
-
-  - Can the state bit of metadata be refactored to encode hop information as
-    well ? eg.,
-    + MSB set to 1 would not be enough to assert empty
-    + it would require comparing the whole metadata byte to 0b10000000
-    + occupied would be when any of the other 7 bits is set
-    + _mm_movemask_epi8 a probe chunk worth of metadata byte would yield
-      a hop bitmap of swapping candidate ( because if there was a empty slot
-      upstream we would not be there planning swaps, correct ?)
-    + marked and deleted would be superfluous
-
 
 ## `SNAIC`
 ![alt text][nvrstap]
