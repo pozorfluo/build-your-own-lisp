@@ -126,8 +126,8 @@ static inline meta_byte hash_meta(const size_t hash)
 static inline int compare_keys(const char *const key_a, const char *const key_b)
     __attribute__((const, always_inline));
 
-static inline uint16_t probe_chunk(const meta_byte pattern,
-                                   const meta_byte *entry)
+static inline uint16_t probe_pattern(const meta_byte pattern,
+                                     const meta_byte *entry)
     __attribute__((const, always_inline));
 
 // static inline size_t hmap_find(const struct hmap *hashmap, const char *key)
@@ -445,8 +445,8 @@ void print_m128i_hexu8(const __m128i value)
  * given metadata entry
  *   -> Matches bitmask
  */
-static inline uint16_t probe_chunk(const meta_byte pattern,
-                                   const meta_byte *const entry_meta)
+static inline uint16_t probe_pattern(const meta_byte pattern,
+                                     const meta_byte *const entry_meta)
 {
 	/* setup filter */
 	const __m128i filter = _mm_set1_epi8(pattern);
@@ -456,13 +456,35 @@ static inline uint16_t probe_chunk(const meta_byte pattern,
 	const __m128i match = _mm_cmpeq_epi8(filter, chunk);
 
 #ifdef DEBUG_HMAP
-	puts("filter :");
+	puts("probe_pattern filter :");
 	print_m128i_hexu8(filter);
 	print_m128i_hexu8(chunk);
 #endif /* DEBUG_HMAP */
 
 	return _mm_movemask_epi8(match);
-	// _bit_scan_forward()
+}
+//----------------------------------------------------------------- Function ---
+/**
+ * Probe metadata chunk of 16 bytes for META_EMPTY slots starting at given
+ * metadata entry
+ *   -> Matches bitmask
+ */
+static inline uint16_t probe_empty(const meta_byte *const entry_meta)
+{
+	/* setup filter */
+	const __m128i filter = _mm_set1_epi8(META_EMPTY);
+
+	/* filter chunks */
+	const __m128i chunk = _mm_loadu_si128((__m128i *)(entry_meta));
+	const __m128i match = _mm_cmpeq_epi8(filter, chunk);
+
+#ifdef DEBUG_HMAP
+	puts("probe_empty filter :");
+	print_m128i_hexu8(filter);
+	print_m128i_hexu8(chunk);
+#endif /* DEBUG_HMAP */
+
+	return _mm_movemask_epi8(match);
 }
 //----------------------------------------------------------------- Function ---
 /**
@@ -472,11 +494,11 @@ static inline uint16_t probe_chunk(const meta_byte pattern,
  *
  *   Build a filter of the projected distances from start of the probe
  *   Load a PROBE_LENGTH sized chunk of distance data from given entry
- *   Apply filter
+ *   Apply filter comparing if greater than
  *   Reduce to 16 bits bitmask
  *     ->  Matches bitmask
  */
-static inline uint16_t robin_chunk(const meta_byte *const entry_distance)
+static inline uint16_t probe_robin(const meta_byte *const entry_distance)
 {
 	/* setup filter */
 	/* 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f */
@@ -487,7 +509,36 @@ static inline uint16_t robin_chunk(const meta_byte *const entry_distance)
 	const __m128i match = _mm_cmpgt_epi8(filter, chunk);
 
 #ifdef DEBUG_HMAP
-	puts("filter :");
+	puts("probe_robin filter :");
+	print_m128i_hexu8(filter);
+	print_m128i_hexu8(chunk);
+#endif /* DEBUG_HMAP */
+	return _mm_movemask_epi8(match);
+}
+//----------------------------------------------------------------- Function ---
+/**
+ * Probe distances chunk of 16 bytes for entries related to given
+ * entry, ie., entries with distances that exactly points back to given entry
+ *   -> Matches bitmask
+ *
+ *   Build a filter of the projected distances from start of the probe
+ *   Load a PROBE_LENGTH sized chunk of distance data from given entry
+ *   Apply filter comparing if equal
+ *   Reduce to 16 bits bitmask
+ *     ->  Matches bitmask
+ */
+static inline uint16_t probe_related(const meta_byte *const entry_distance)
+{
+	/* setup filter */
+	/* 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f */
+	const __m128i filter = {0x0706050403020100, 0x0f0e0d0c0b0a0908};
+
+	/* filter chunks */
+	const __m128i chunk = _mm_loadu_si128((__m128i *)(entry_distance));
+	const __m128i match = _mm_cmpeq_epi8(filter, chunk);
+
+#ifdef DEBUG_HMAP
+	puts("probe_related filter :");
 	print_m128i_hexu8(filter);
 	print_m128i_hexu8(chunk);
 #endif /* DEBUG_HMAP */
@@ -521,14 +572,15 @@ size_t hmap_find(const struct hmap *const hashmap, const char *const key)
 
 	do {
 		chunk      = hashmap->buckets.metas + index;
-		match_mask = probe_chunk(meta, chunk);
+		match_mask = probe_pattern(meta, chunk);
 
 #ifdef DEBUG_HMAP
 		print_bits(2, &match_mask);
 #endif /* DEBUG_HMAP */
 
 		/* loop through set bit in bitmask to access matches */
-		while (match_mask != 0) {
+		do{
+		// while (match_mask != 0) {
 			// const size_t offset    = __builtin_ctz(match_mask);
 			const size_t offset    = _bit_scan_forward(match_mask);
 			const char *probed_key = hashmap->buckets.keys[index + offset];
@@ -540,7 +592,7 @@ size_t hmap_find(const struct hmap *const hashmap, const char *const key)
 			}
 			/* remove least significant set bit */
 			match_mask ^= match_mask & (-match_mask);
-		}
+		} while (match_mask != 0);
 		/* no match in current chunk */
 		/* chunk done */
 		chunk_count++;
@@ -548,7 +600,7 @@ size_t hmap_find(const struct hmap *const hashmap, const char *const key)
 		/* if there is any empty slot in the chunk that was probed */
 		/* no need to check the next */
 		/* -> key does NOT exist */
-		if (probe_chunk(META_EMPTY, chunk)) {
+		if (probe_pattern(META_EMPTY, chunk)) {
 			break;
 		};
 

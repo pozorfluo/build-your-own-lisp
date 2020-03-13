@@ -306,6 +306,9 @@ static void delete_lispvalue(LispValue *value)
 /**
  * Free given LispEnv ressources
  *   -> nothing
+ * 
+ * todo
+ *   - [ ] see : things like Morris Traversal if this blows up
  */
 static void delete_lispenv(LispEnv *env)
 {
