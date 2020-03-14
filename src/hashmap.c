@@ -30,12 +30,12 @@
 #include <assert.h>
 // #define DEBUG_HMAP
 
-#include "debug_xmalloc.h"
-
 #ifdef DEBUG_HMAP
 #include <math.h> /* pow() */
 #define DEBUG_MALLOC
 #endif /* DEBUG_HMAP */
+
+#include "debug_xmalloc.h"
 //------------------------------------------------------------ MAGIC NUMBERS ---
 #define PROBE_LENGTH 16
 
@@ -114,8 +114,9 @@ struct hmap_init {
 };
 
 //----------------------------------------------------- FORWARD DECLARATIONS ---
-static inline size_t hash_tab(const unsigned char *key, const size_t *xor_seed)
-    __attribute__((const, always_inline));
+static inline size_t hash_tab(const unsigned char *key,
+                              const size_t *const xor_seed)
+    __attribute__((pure, always_inline));
 
 static inline size_t hash_index(const size_t hash)
     __attribute__((const, always_inline));
@@ -124,19 +125,20 @@ static inline meta_byte hash_meta(const size_t hash)
     __attribute__((const, always_inline));
 
 static inline int compare_keys(const char *const key_a, const char *const key_b)
-    __attribute__((const, always_inline));
+    __attribute__((pure, always_inline));
 
 static inline uint16_t probe_pattern(const meta_byte pattern,
-                                     const meta_byte *entry)
-    __attribute__((const, always_inline));
+                                     const meta_byte *const entry)
+    __attribute__((pure, always_inline));
 
 // static inline size_t hmap_find(const struct hmap *hashmap, const char *key)
 //     __attribute__((const, always_inline));
 
-static inline void xor_seed_fill(size_t *xor_seed, size_t hash_depth)
+static inline void xor_seed_fill(size_t *const xor_seed,
+                                 const size_t hash_depth)
     __attribute__((always_inline));
 
-static inline void destroy_entry(struct hmap *hashmap, size_t entry)
+static inline void destroy_entry(struct hmap *const hashmap, const size_t entry)
     __attribute__((always_inline));
 
 //----------------------------------------------------------------- Function ---
@@ -275,91 +277,65 @@ static inline void swap_entries(struct hmap *const hashmap,
 }
 //----------------------------------------------------------------- Function ---
 /**
- * Create a new entry in given Hashmap for given key, value pair
+ * Clobber given destination bucket with given source bucket
+ *   -> nothing
  *
- *   Get hash for given key
- *   Locate bucket for that hash
- *   If bucket is empty
- * 	   Create new entry
- *     Insert entry in bucket
- *     Increment Hashmap entry count ( Check Hashmap fitness )
- * 		-> nothing
- *   Else !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- *     If key found
- *       Delete value
- *       Replace with copy of given value
- * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- *     -> nothing
+ * No questions asked !
  *
- *  - [ ] Insert entry at first empty bucket
- *  - [ ] Plan swaps chain
- *  - [ ] Execute swaps
+ * todo
+ *   - [ ] Decide if macros are worth the trouble
+ *     + [ ] See : https://godbolt.org/z/ydwsK5
  */
-// size_t hmap_put(struct hmap *const hashmap, const char *const key, void
-// *value)
-// {
-// 	assert(key != NULL);
-// 	assert(value != NULL);
+static inline void clobber_bucket(struct hmap *const hashmap,
+                                  const size_t dst,
+                                  const size_t src)
+{
+	hashmap->buckets.metas[dst]     = hashmap->buckets.metas[src];
+	hashmap->buckets.distances[dst] = hashmap->buckets.distances[src];
+	hashmap->buckets.keys[dst]      = hashmap->buckets.keys[src];
+	hashmap->buckets.values[dst]    = hashmap->buckets.values[src];
 
-// 	size_t hash = hash_tab((unsigned char *)key, hashmap->xor_seed);
-// 	size_t index   = hash_index(hash);
-// 	meta_byte meta = hash_meta(hash);
-// 	meta_byte distance = 0;
+	return;
+}
+/*
+// #define CLOBBER_ENTRY(_hmap, _dst, _src) \
+// 	do {                                                                       \
+// 		_hmap->buckets.metas[_dst]     = _hmap->buckets.metas[_src];           \
+// 		_hmap->buckets.distances[_dst] = _hmap->buckets.distances[_src];       \
+// 		_hmap->buckets.keys[_dst]      = _hmap->buckets.keys[_src];            \
+// 		_hmap->buckets.values[_dst]    = _hmap->buckets.values[_src];          \
+// 	} while (0)
+*/
+//----------------------------------------------------------------- Function ---
+/**
+ * Clobber given destination bucket with given meta, distance, key, value
+ *   -> nothing
+ *
+ * No questions asked !
+ */
+static inline void clobber_bucket_with(struct hmap *const hashmap,
+                                       const size_t dst,
+                                       const meta_byte meta,
+                                       const meta_byte distance,
+                                       char *const key,
+                                       void *const value)
+{
+	hashmap->buckets.metas[dst]     = meta;
+	hashmap->buckets.distances[dst] = distance;
+	hashmap->buckets.keys[dst]      = key;
+	hashmap->buckets.values[dst]    = value;
 
-// #ifdef DEBUG_HMAP
-// 	hashmap->stats.hashes_tally_or |= hash;
-// 	hashmap->stats.hashes_tally_and &= hash;
-// #endif /* DEBUG_HMAP */
-
-// 	/* Prepare temp entry*/
-
-// 	for (; entry.distance < hashmap->probe_limit; entry.distance++, bucket++) {
-// 		/* Empty bucket */
-// 		if (bucket->key == NULL) {
-// 			bucket->key      = entry.key;
-// 			bucket->value    = entry.value;
-// 			bucket->distance = entry.distance;
-// 			// check_hashmap(hashmap);
-// 			hashmap->count++;
-
-// 			/* Solved collision */
-// 			if (entry.distance > 0) {
-// 				hashmap->stats.collision_count++;
-// 			}
-// 			hashmap->stats.put_count++;
-// 			return bucket;
-// 		}
-// 		else {
-// 			/* Key exist */
-// 			// todo
-// 			//   - [ ] Probe for existing key
-// 			//   - [ ] Make sure comparison is necessary and cheap
-// 			if (strcmp(entry.key, bucket->key) == 0) {
-// 				XFREE(entry.key, "duplicate key");
-// 				hashmap->destructor(
-// 				    bucket->value); //, "bucket->value", "destructor");
-// 				bucket->value = entry.value;
-// 				hashmap->stats.put_count++;
-// 				return bucket;
-// 			}
-
-// 			// /* Rich bucket */
-// uint16_t match_mask_robin = robin_chunk(hashmap->buckets.distances + index);
-// print_bits(2, &match_mask_robin);
-// 			// if (entry.distance > bucket->distance) {
-// 			// 	swap_entries(&entry, bucket);
-// #ifdef DEBUG_HMAP
-// 	hashmap->stats.swap_count++;
-// #endif /* DEBUG_HMAP */
-// 			// }
-// 		}
-// 	}
-
-// 	/* Past probe limit, trigger resize */
-// 	XFREE(entry.key, "past probe limit");
-// 	hashmap->stats.putfail_count++;
-// 	return NULL;
-// }
+	return;
+}
+/*
+// #define CLOBBER_ENTRY_WITH(_hmap, _dst, _meta, _distance, _key, _value) \
+// 	do {                                                                       \
+// 		_hmap->buckets.metas[_dst]     = _meta;                                \
+// 		_hmap->buckets.distances[_dst] = _distance;                            \
+// 		_hmap->buckets.keys[_dst]      = _key;                                 \
+// 		_hmap->buckets.values[_dst]    = _value;                               \
+// 	} while (0)
+*/
 
 //----------------------------------------------------------------- Function ---
 /**
@@ -419,7 +395,8 @@ void print_m128i_hexu8(const __m128i value)
 	uint8_t vec[16];
 	_mm_store_si128((__m128i *)vec, value);
 	printf(
-	    "%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x "
+	    "%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x "
+	    "%02x "
 	    "%02x %02x\n",
 	    vec[0],
 	    vec[1],
@@ -469,23 +446,23 @@ static inline uint16_t probe_pattern(const meta_byte pattern,
  * metadata entry
  *   -> Matches bitmask
  */
-static inline uint16_t probe_empty(const meta_byte *const entry_meta)
-{
-	/* setup filter */
-	const __m128i filter = _mm_set1_epi8(META_EMPTY);
+// static inline uint16_t probe_empty(const meta_byte *const entry_meta)
+// {
+// 	/* setup filter */
+// 	const __m128i filter = _mm_set1_epi8(META_EMPTY);
 
-	/* filter chunks */
-	const __m128i chunk = _mm_loadu_si128((__m128i *)(entry_meta));
-	const __m128i match = _mm_cmpeq_epi8(filter, chunk);
+// 	/* filter chunks */
+// 	const __m128i chunk = _mm_loadu_si128((__m128i *)(entry_meta));
+// 	const __m128i match = _mm_cmpeq_epi8(filter, chunk);
 
-#ifdef DEBUG_HMAP
-	puts("probe_empty filter :");
-	print_m128i_hexu8(filter);
-	print_m128i_hexu8(chunk);
-#endif /* DEBUG_HMAP */
+// #ifdef DEBUG_HMAP
+// 	puts("probe_empty filter :");
+// 	print_m128i_hexu8(filter);
+// 	print_m128i_hexu8(chunk);
+// #endif /* DEBUG_HMAP */
 
-	return _mm_movemask_epi8(match);
-}
+// 	return _mm_movemask_epi8(match);
+// }
 //----------------------------------------------------------------- Function ---
 /**
  * Probe distances chunk of 16 bytes for 'poor' entries relative to given
@@ -559,12 +536,18 @@ static inline uint16_t probe_related(const meta_byte *const entry_distance)
  *   - [x] Wrap to the beginning of the table
  *   - [x] Give up once all chunks are scanned
  *   - [x] Enforce lazy branching and computations to keep ideal path pristine
+ *   - [ ] Investigate ways to probe for Match or META_EMPTY at once
  */
 size_t hmap_find(const struct hmap *const hashmap, const char *const key)
 {
 	size_t hash    = hash_tab((unsigned char *)key, hashmap->xor_seed);
 	size_t index   = hash_index(hash);
 	meta_byte meta = hash_meta(hash);
+
+	// #ifdef DEBUG_HMAP
+	// 	hashmap->stats.hashes_tally_or |= hash;
+	// 	hashmap->stats.hashes_tally_and &= hash;
+	// #endif /* DEBUG_HMAP */
 
 	meta_byte *chunk;
 	uint16_t match_mask;
@@ -579,8 +562,8 @@ size_t hmap_find(const struct hmap *const hashmap, const char *const key)
 #endif /* DEBUG_HMAP */
 
 		/* loop through set bit in bitmask to access matches */
-		do{
-		// while (match_mask != 0) {
+		do {
+			// while (match_mask != 0) {
 			// const size_t offset    = __builtin_ctz(match_mask);
 			const size_t offset    = _bit_scan_forward(match_mask);
 			const char *probed_key = hashmap->buckets.keys[index + offset];
@@ -609,7 +592,7 @@ size_t hmap_find(const struct hmap *const hashmap, const char *const key)
 			/* wrap around the table */
 			index = 0;
 		};
-	} while ((chunk_count * 16) < hashmap->actual_capacity);
+	} while ((chunk_count * PROBE_LENGTH) < hashmap->actual_capacity);
 
 #ifdef DEBUG_HMAP
 	printf("Key not found after probing %lu chunks out of %lu\n",
@@ -618,6 +601,92 @@ size_t hmap_find(const struct hmap *const hashmap, const char *const key)
 #endif /* DEBUG_HMAP */
 
 	/* key not found */
+	return hashmap->actual_capacity + 1;
+}
+//----------------------------------------------------------------- Function ---
+/**
+ * Locate given key in given hmap starting at given index looking for given
+ * meta_byte pattern
+ *
+ * If given key exists
+ *   -> entry index
+ * Else
+ *   -> first empty slot
+ *
+ * todo
+ *   - [ ] Investigate ways to probe for Match or META_EMPTY at once
+ */
+static inline size_t hmap_find_or_empty(const struct hmap *const hashmap,
+                                        const char *const key,
+                                        size_t index,
+                                        const meta_byte meta)
+{
+	// size_t hash    = hash_tab((unsigned char *)key, hashmap->xor_seed);
+	// size_t index   = hash_index(hash);
+	// meta_byte meta = hash_meta(hash);
+
+	// #ifdef DEBUG_HMAP
+	// 	hashmap->stats.hashes_tally_or |= hash;
+	// 	hashmap->stats.hashes_tally_and &= hash;
+	// #endif /* DEBUG_HMAP */
+
+	meta_byte *chunk;
+	uint16_t match_mask;
+	size_t chunk_count = 0;
+
+	do {
+		chunk      = hashmap->buckets.metas + index;
+		match_mask = probe_pattern(meta, chunk);
+
+#ifdef DEBUG_HMAP
+		print_bits(2, &match_mask);
+#endif /* DEBUG_HMAP */
+
+		/* loop through set bit in bitmask to access matches */
+		/**
+		 * todo
+		 *   - [ ] Check how bad it is that it may run once with
+		 *         match_mask == 0 on first go around
+		 */
+		do {
+			// while (match_mask != 0) {
+			// const size_t offset    = __builtin_ctz(match_mask);
+			const size_t offset    = _bit_scan_forward(match_mask);
+			const char *probed_key = hashmap->buckets.keys[index + offset];
+
+			if ((probed_key != NULL) && (compare_keys(probed_key, key)) == 0) {
+				// hashmap->stats.find_count++;
+				/* Found key ! */
+				return index + offset;
+			}
+			/* clear least significant set bit */
+			match_mask ^= match_mask & (-match_mask);
+		} while (match_mask != 0);
+		/* no match in current chunk */
+		/* chunk done */
+		chunk_count++;
+
+		/* if there is any empty slot in the chunk that was probed */
+		/* no need to check the next */
+		if ((match_mask = probe_pattern(META_EMPTY, chunk))) {
+			/* -> key does NOT exist, insert in first empty slot */
+			return index + _bit_scan_forward(match_mask);
+		};
+
+		/* THIS SHOULD HARDLY EVER BE REACHED */
+		if ((index += PROBE_LENGTH) > hashmap->capacity) {
+			/* wrap around the table */
+			index = 0;
+		};
+	} while ((chunk_count * PROBE_LENGTH) < hashmap->actual_capacity);
+
+#ifdef DEBUG_HMAP
+	printf("Key not found after probing %lu chunks out of %lu\n",
+	       chunk_count,
+	       hashmap->actual_capacity / 16);
+#endif /* DEBUG_HMAP */
+
+	/* key not found, no empty slots left */
 	return hashmap->actual_capacity + 1;
 }
 
@@ -643,6 +712,178 @@ void *hmap_get(const struct hmap *const hashmap, const char *const key)
 
 //----------------------------------------------------------------- Function ---
 /**
+ * Insert a new entry in given Hashmap for given key, value pair or update
+ * an
+ * existing value
+ *
+ * Find given key or first empty slot
+ * If given key found
+ *   Update it with given value
+ *     -> updated entry index
+ * Else If empty slot found
+ *   Probe for robin hood 'swaps' till empty slot
+ *   Hold the new entry, DO NOT SWAP
+ *   Clobber empty slot with last swap candidate entry
+ *   Go upstream in the swap candidates list and push it to clobber next
+ * entry
+ *   Clobber most upstream swap candidate with new entry
+ *     -> new entry index
+ * Else
+ *   -> put failure if neither key nor empty slot found
+ *
+ * todo
+ *   - [ ] Keep track of entries distance from @home, min, max, average
+ *   - [ ] Keep track of theoritical robin hood "swaps"
+ *   - [ ] Keep track of actual clobber operation executed instead of swaps
+ *   - [ ] Add hmap fitness / resize logic
+ *   - [ ] Consider _mm_shuffle_epi8 to execute the swaps for metas and distance
+ *   - [ ] Decide what happens to the existing key when updating
+ *     + [x] Free either new or existing if they do NOT alias ?
+ *     + [ ] Switch to allocing on put ?
+ *     + [ ] Leave the responsibility to the user to handle its frees
+ *     + [ ] Consider similar problem with values, especially since updating
+ *           is sort of 'silent' and updating means clobbering a pointer to
+ *           alloced memory
+ *     + [ ] Look at how libcfu, build your own lisp, deal with this type of
+ *           scenario
+ */
+size_t hmap_put(struct hmap *const hashmap, char *const key, void *value)
+{
+	assert(key != NULL);
+	assert(value != NULL);
+
+	const size_t hash       = hash_tab((unsigned char *)key, hashmap->xor_seed);
+	const size_t home_index = hash_index(hash);
+	const meta_byte meta    = hash_meta(hash);
+
+	/* Find given key or first empty slot */
+	size_t candidate_index = hmap_find_or_empty(hashmap, key, home_index, meta);
+
+	//------------------------------------- neither key nor empty slot found
+	if (candidate_index > hashmap->actual_capacity) {
+		return hashmap->actual_capacity + 1;
+	}
+	//----------------------------------------------------- empty slot found
+	/**
+	 * todo
+	 *   - [ ] Figure out if there is any difference worth worrying about
+	 *         between checking for an empty vs an occupied slot
+	 *   - [x] Consider tossing hmap_find_or_empty completely
+	 *     + [ ] Unroll it here in hmap_put
+	 *     + [ ] Skip re-testing for each cases to figure out what happened
+	 *           inside hmap_find_or_empty
+	 *     + [ ] Call inlinable functions to process found, empty, fail cases
+	 *
+	 * note
+	 *   hmap_find_or_empty is already mostly duplicate code (to avoid doing
+	 *   unnecessary operation), might as well go all the way and make hmap_put
+	 *   a hmap_find variant where something happens.
+	 */
+	if (is_empty(hashmap->buckets.metas[candidate_index])) {
+		/* if empty slot the @home slot for given key */
+		if (candidate_index == home_index) {
+			clobber_bucket_with(hashmap, candidate_index, meta, 0, key, value);
+		}
+		else {
+			/*   Probe for robin hood 'swaps' till empty slot */
+			// meta_byte *chunk;
+			uint16_t match_mask;
+			// size_t chunk_count = 0;
+			size_t robin_index = home_index;
+
+			/* At worst PROBE_LENGTH swaps per chunk can be done */
+			size_t push_list[PROBE_LENGTH];
+			size_t push_count = 0;
+
+			do {
+				match_mask =
+				    probe_robin(&hashmap->buckets.distances[robin_index]);
+				size_t push_index = candidate_index;
+
+				while (match_mask != 0) {
+					// const size_t offset = _bit_scan_reverse(match_mask);
+					const size_t offset = _bit_scan_forward(match_mask);
+
+					push_index = robin_index + offset;
+					/**
+					 *  Look at hits from original probe_robin for next swaps
+					 *  No other have to be considered, correct ?
+					 */
+					// /* clear most significant set bit */
+					// match_mask &= ~(1u << offset);
+					/* clear least significant set bit */
+					match_mask ^= match_mask & (-match_mask);
+				}
+
+				/**
+				 * If you hit empty slot in this probe
+				 *    start furthest downstream
+				 *    push each hit in mask_match to next hit toward empty
+				 * slot
+				 * else
+				 *    same thing but furthest downstream replace temporarily
+				 *    held new entry
+				 * 
+				 * or do not check and push in empty slot after the loop
+				 */
+				for (; push_count > 0; push_count--) {
+					if ((robin_index + PROBE_LENGTH) >= candidate_index) {
+					}
+					else {
+						// char *tmp_key;
+						// void *tmp_value;
+						// meta_byte tmp_meta;
+						// meta_byte tmp_distance = ;
+					}
+				}
+
+			} while ((robin_index += PROBE_LENGTH) < candidate_index);
+
+			/**
+			 * Hold the new entry, DO NOT SWAP
+			 * Clobber empty slot with last swap candidate entry
+			 * Go upstream in the swap candidates list and push it to clober
+			 * next entry
+			 * Clobber most upstream swap candidate with new entry
+			 * -> new entry index
+			 */
+		}
+	}
+	//------------------------------------------------------ given key found
+	else {
+		/**
+		 * If given key and existing key pointer do NOT alias
+		 *    Free existing, use new one
+		 */
+		if (key != hashmap->buckets.keys[candidate_index]) {
+			// Use XFREE macro instead of destructor while hmap is a WIP
+			XFREE(hashmap->buckets.keys[candidate_index],
+			      "hmap_put : dupe of existing key");
+			hashmap->buckets.keys[candidate_index] = key;
+		}
+		/**
+		 * If given value and existing value pointer do NOT alias
+		 *    Free existing, use new one
+		 */
+		if (value != hashmap->buckets.values[candidate_index]) {
+			// Use XFREE macro instead of destructor while hmap is a WIP
+			XFREE(hashmap->buckets.values[candidate_index],
+			      "hmap_put : dupe of existing value");
+			hashmap->buckets.values[candidate_index] = value;
+		}
+	}
+
+	/* -> new or updated entry index */
+	return candidate_index;
+
+	// #ifdef DEBUG_HMAP
+	// 	hashmap->stats.hashes_tally_or |= hash;
+	// 	hashmap->stats.hashes_tally_and &= hash;
+	// #endif /* DEBUG_HMAP */
+}
+
+//----------------------------------------------------------------- Function ---
+/**
  * Free given HashmapEntry
  *   -> nothing
  *
@@ -651,7 +892,7 @@ void *hmap_get(const struct hmap *const hashmap, const char *const key)
  *   Require user to provide destructor for given value
  *   Free value with given destructor
  */
-static inline void destroy_entry(struct hmap *hashmap, size_t entry)
+static inline void destroy_entry(struct hmap *const hashmap, const size_t entry)
 {
 	// Use XFREE macro instead of destructor while hmap is a WIP
 	XFREE(hashmap->buckets.keys[entry], hashmap->buckets.keys[entry]);
@@ -670,13 +911,15 @@ static inline void destroy_entry(struct hmap *hashmap, size_t entry)
  * Else
  *   -> out of bound value ( > actual_capacity )
  */
-size_t hmap_remove(struct hmap *hashmap, const char *key)
+size_t hmap_remove(struct hmap *const hashmap, const char *const key)
 {
 	size_t entry = hmap_find(hashmap, key);
 
 	if (entry < hashmap->actual_capacity) {
 		destroy_entry(hashmap, entry);
-		hashmap->buckets.metas[entry] = META_DELETED; //|=META_DELETED; useful ?
+		// hashmap->buckets.metas[entry] = META_DELETED; //|=META_DELETED;
+		// useful ?
+		hashmap->buckets.metas[entry] = META_EMPTY; //|=META_DELETED; useful ?
 		hashmap->count--;
 	}
 
@@ -695,18 +938,19 @@ size_t hmap_remove(struct hmap *hashmap, const char *key)
  *   - [ ] Consider a clear_hashmap func : destroy entries only
  *   - [ ] Consider a reset_hashmap func : destroy entries, reset hashmap to
  *         given new size
+ *   - [ ] Use the probe
  */
-void hmap_delete_hashmap(struct hmap *hashmap)
+void hmap_delete_hashmap(struct hmap *const hashmap)
 {
 	for (size_t bucket = 0; bucket < hashmap->actual_capacity; bucket++) {
-		if (hashmap->buckets.keys[bucket] == NULL) {
-			continue;
-		}
-		// printf("%s\n", hashmap->buckets[i].key);
-		destroy_entry(hashmap, bucket);
+		// if (hashmap->buckets.keys[bucket] == NULL) {
+		if (is_occupied(hashmap->buckets.metas[bucket])) {
+			// printf("%s\n", hashmap->buckets[i].key);
+			destroy_entry(hashmap, bucket);
 #ifdef DEBUG_HMAP
-		hashmap->stats.del_count++;
+			hashmap->stats.del_count++;
 #endif /* DEBUG_HMAP */
+		}
 	}
 	// stats_hashmap(hashmap);
 	XFREE(hashmap->buckets.metas, "delete_hashmap hashmap->buckets.metas");
@@ -722,7 +966,8 @@ void hmap_delete_hashmap(struct hmap *hashmap)
  * Fill given xor_seed for given hash depth
  *   -> pointer to new xor_seed
  */
-static inline void xor_seed_fill(size_t *xor_seed, size_t hash_depth)
+static inline void xor_seed_fill(size_t *const xor_seed,
+                                 const size_t hash_depth)
 {
 	srand(__rdtsc());
 	for (size_t i = 0; i < 256; i++) {
@@ -764,6 +1009,16 @@ static inline void xor_seed_fill(size_t *xor_seed, size_t hash_depth)
  *     + [ ] Consider setting pointers inside the struct accordingly
  *           after the one big alloc
  */
+
+#define MALLOC_BUCKETS_ARRAY(_array, _capacity)                                \
+	do {                                                                       \
+		_array =                                                               \
+		    XMALLOC(sizeof(*(_array)) * _capacity, "new_hashmap", #_array);    \
+		if (_array == NULL) {                                                  \
+			goto err_free_buckets;                                             \
+		}                                                                      \
+	} while (0)
+
 struct hmap *hmap_new(const unsigned int n,
                       const struct hmap_allocator *const allocator)
 {
@@ -807,34 +1062,11 @@ struct hmap *hmap_new(const unsigned int n,
 	if (new_hashmap == NULL) {
 		goto err_free_hashmap;
 	}
-	new_hashmap->buckets.metas =
-	    XMALLOC(sizeof(*(new_hashmap->buckets.metas)) * actual_capacity,
-	            "new_hashmap",
-	            "new_hashmap->buckets.metas");
-	if (new_hashmap->buckets.metas == NULL) {
-		goto err_free_buckets;
-	}
-	new_hashmap->buckets.distances =
-	    XMALLOC(sizeof(*(new_hashmap->buckets.distances)) * actual_capacity,
-	            "new_hashmap",
-	            "new_hashmap->buckets.distances");
-	if (new_hashmap->buckets.distances == NULL) {
-		goto err_free_buckets;
-	}
-	new_hashmap->buckets.keys =
-	    XMALLOC(sizeof(*(new_hashmap->buckets.keys)) * actual_capacity,
-	            "new_hashmap",
-	            "new_hashmap->buckets.keys");
-	if (new_hashmap->buckets.keys == NULL) {
-		goto err_free_buckets;
-	}
-	new_hashmap->buckets.values =
-	    XMALLOC(sizeof(*(new_hashmap->buckets.values)) * actual_capacity,
-	            "new_hashmap",
-	            "new_hashmap->buckets.values");
-	if (new_hashmap->buckets.values == NULL) {
-		goto err_free_buckets;
-	}
+
+	MALLOC_BUCKETS_ARRAY(new_hashmap->buckets.metas, actual_capacity);
+	MALLOC_BUCKETS_ARRAY(new_hashmap->buckets.distances, actual_capacity);
+	MALLOC_BUCKETS_ARRAY(new_hashmap->buckets.keys, actual_capacity);
+	MALLOC_BUCKETS_ARRAY(new_hashmap->buckets.values, actual_capacity);
 
 	/* The value is passed as an int, but the function fills the block of
 	 * memory using the unsigned char conversion of this value */
@@ -873,7 +1105,7 @@ err_free_hashmap:
  * buckets
  *   -> expected number of entries per bucket
  */
-double expected_entries_per_bucket(size_t keys, size_t buckets)
+double expected_entries_per_bucket(const size_t keys, const size_t buckets)
 {
 	return (double)keys / (double)buckets;
 }
@@ -883,7 +1115,7 @@ double expected_entries_per_bucket(size_t keys, size_t buckets)
  * buckets
  *   -> expected number of empty buckets
  */
-double expected_empty_buckets(size_t keys, size_t buckets)
+double expected_empty_buckets(const size_t keys, const size_t buckets)
 {
 	return (double)buckets * pow(1 - (1 / (double)buckets), (double)keys);
 }
@@ -893,7 +1125,7 @@ double expected_empty_buckets(size_t keys, size_t buckets)
  * buckets
  *   -> expected number of filled buckets
  */
-double expected_filled_buckets(size_t keys, size_t buckets)
+double expected_filled_buckets(const size_t keys, const size_t buckets)
 {
 	return (double)buckets - expected_empty_buckets(keys, buckets);
 }
@@ -903,7 +1135,7 @@ double expected_filled_buckets(size_t keys, size_t buckets)
  * buckets
  *   -> expected number of collisions
  */
-double expected_collisions(size_t keys, size_t buckets)
+double expected_collisions(const size_t keys, const size_t buckets)
 {
 	return (double)keys - expected_filled_buckets(keys, buckets);
 }
@@ -912,7 +1144,7 @@ double expected_collisions(size_t keys, size_t buckets)
  * Pretty print xor_seed for given Hashmap
  *   -> nothing
  */
-void print_xor_seed(const struct hmap *hashmap)
+void print_xor_seed(const struct hmap *const hashmap)
 {
 	puts("xor_seed            :");
 	for (size_t i = 0; i < 256; i++) {
@@ -933,7 +1165,7 @@ void print_xor_seed(const struct hmap *hashmap)
  * Print given Hashmap stats
  *   -> nothing
  */
-void stats_hashmap(const struct hmap *hashmap)
+void stats_hashmap(const struct hmap *const hashmap)
 {
 	printf("EV entries / bucket = %f\n",
 	       expected_entries_per_bucket(hashmap->count, hashmap->capacity));
@@ -987,7 +1219,7 @@ void stats_hashmap(const struct hmap *hashmap)
  *   - [ ] Implement list iterator
  *     + [ ] See http://rosettacode.org/wiki/Doubly-linked_list/Traversal#C
  */
-void dump_hashmap(const struct hmap *hashmap)
+void dump_hashmap(const struct hmap *const hashmap)
 {
 	size_t empty_bucket = 0;
 
@@ -1018,7 +1250,8 @@ void dump_hashmap(const struct hmap *hashmap)
 #endif /* DEBUG_HMAP */
 }
 
-//--------------------------------------------------------------------- MAIN ---
+//--------------------------------------------------------------------- MAIN
+//---
 int main(void)
 {
 	// uint32_t seed = 31;
@@ -1032,7 +1265,7 @@ int main(void)
 	      stdout);
 	scanf("%lu", &n);
 
-	struct hmap *hashmap = hmap_new(n, NULL);
+	struct hmap *const hashmap = hmap_new(n, NULL);
 	//----------------------------------------------------------- mock entry
 	hash           = hash_tab((unsigned char *)"mock", hashmap->xor_seed);
 	size_t index   = hash_index(hash);
@@ -1170,6 +1403,7 @@ int main(void)
 			continue;
 		}
 
+		//--------------------------------------------------------- find
 		hash = hash_tab((unsigned char *)key, hashmap->xor_seed);
 		printf(
 		    "key        : %s\n"
@@ -1191,7 +1425,24 @@ int main(void)
 		else {
 			printf("%s NOT found\n", key);
 		}
+
+		//---------------------------------------------------------- put
+		hash        = hash_tab((unsigned char *)key, hashmap->xor_seed);
+		index       = hash_index(hash);
+		meta        = hash_meta(hash);
+		find_result = hmap_find_or_empty(hashmap, key, index, meta);
+		if (find_result <= hashmap->actual_capacity) {
+
+			printf("found %s or first next empty slot : @ %lu\n",
+			       key,
+			       find_result);
+		}
+		else {
+			printf("%s or empty slot NOT found\n", key);
+		}
 		// printf("get  %s : %s\n", key, (char *)hmap_get(hashmap, key));
+
+		hmap_put(hashmap, strdup(key), strdup(key));
 	}
 
 	//-------------------------------------------------------------- cleanup

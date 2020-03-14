@@ -123,6 +123,14 @@ git push -u origin master
 # start interactive rebase session for last 3 commits
 git rebase -i HEAD~2
 
+# review
+git log --graph --oneline --decorate --date-order --color --boundary @{u}
+git log --graph --oneline --decorate --date-order --color
+
+# create an alias for review
+git config --global alias.review 'log --graph --oneline --decorate --date-order --color'
+git review
+
 # download latest commits
 git remote update -p
 
@@ -136,8 +144,6 @@ git up
 # if local branch has diverged
 git rebase -p @{u}
 
-# review
-git log --graph --oneline --decorate --date-order --color --boundary @{u}
 
 # stop tracking and remove previously tracked file from the index
 echo -e "\ntest_report.yaml" >> .gitignore

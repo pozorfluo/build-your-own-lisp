@@ -1,18 +1,24 @@
 {
     "files.associations": {
-		"*.sh": "shellscript",
-		".gdbinit": "shellscript",
-		"stddef.h": "c",
-		"*.tcc": "c",
-		"type_traits": "c",
-		"hash_murmur3_nose.h": "c",
-		"math.h": "c",
-		"split_hash.C": "cpp",
-		"x86intrin.h": "c",
-		"ansi_esc.h": "c",
-		"typeinfo": "cpp",
-		"debug_xmalloc.h": "c"
-	},
+        "*.sh": "shellscript",
+        ".gdbinit": "shellscript",
+        "stddef.h": "c",
+        "*.tcc": "c",
+        "type_traits": "c",
+        "hash_murmur3_nose.h": "c",
+        "math.h": "c",
+        "split_hash.C": "cpp",
+        "x86intrin.h": "c",
+        "ansi_esc.h": "c",
+        "typeinfo": "cpp",
+        "debug_xmalloc.h": "c",
+        "iterator": "c",
+        "system_error": "c",
+        "array": "c",
+        "functional": "c",
+        "tuple": "c",
+        "utility": "c"
+    },
     "python.formatting.provider": "black",
     "python.pythonPath": "/home/spagbol/anaconda3/bin/python"
 }

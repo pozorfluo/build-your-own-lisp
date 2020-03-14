@@ -97,7 +97,7 @@ entry : a key, value pointer pair and 7 bits of secondary hash stored in a
 
 #### metadata
 Use 1 byte of metadata for each bucket
-  - Use 1 bit (MSB) to switch state the way the remaining bits are read
+  - Use 1 bit (MSB) to switch the way the remaining bits are read
   - Use 7 remaining bits to encode state or secondary hash
 
   - Split hash(key)
