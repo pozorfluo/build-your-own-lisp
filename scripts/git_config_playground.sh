@@ -121,7 +121,7 @@ git commit -m 'Make builtins variable immutable for chapter 11 : Bonus Marks
 git push -u origin master
 
 # start interactive rebase session for last 3 commits
-git rebase -i HEAD~2
+git rebase -i HEAD~8
 
 # review
 git log --graph --oneline --decorate --date-order --color --boundary @{u}

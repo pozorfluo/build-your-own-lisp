@@ -746,6 +746,26 @@ void *hmap_get(const struct hmap *const hashmap, const char *const key)
  *           alloced memory
  *     + [ ] Look at how libcfu, build your own lisp, deal with this type of
  *           scenario
+ *   - [ ] Reconsider this shelved version :
+ *         Probe for robin hood 'swaps' till empty slot
+ *
+ *          Look at hits from original probe_robin for next swaps
+ *          No other have to be considered, correct ?
+ *
+ *         If you hit empty slot in this probe
+ *            start furthest downstream
+ *            push each hit in mask_match to next hit toward empty
+ *         slot
+ *         else
+ *            same thing but furthest downstream replace temporarily
+ *            held new entry
+ *
+ *         Hold the new entry, DO NOT SWAP
+ *         Clobber empty slot with last swap candidate entry
+ *         Go upstream in the swap candidates list and push it to clober
+ *         next entry
+ *         Clobber most upstream swap candidate with new entry
+ *         -> new entry index
  */
 size_t hmap_put(struct hmap *const hashmap, char *const key, void *value)
 {
@@ -764,89 +784,14 @@ size_t hmap_put(struct hmap *const hashmap, char *const key, void *value)
 		return hashmap->actual_capacity + 1;
 	}
 	//----------------------------------------------------- empty slot found
-	/**
-	 * todo
-	 *   - [ ] Figure out if there is any difference worth worrying about
-	 *         between checking for an empty vs an occupied slot
-	 *   - [x] Consider tossing hmap_find_or_empty completely
-	 *     + [ ] Unroll it here in hmap_put
-	 *     + [ ] Skip re-testing for each cases to figure out what happened
-	 *           inside hmap_find_or_empty
-	 *     + [ ] Call inlinable functions to process found, empty, fail cases
-	 *
-	 * note
-	 *   hmap_find_or_empty is already mostly duplicate code (to avoid doing
-	 *   unnecessary operation), might as well go all the way and make hmap_put
-	 *   a hmap_find variant where something happens.
-	 */
 	if (is_empty(hashmap->buckets.metas[candidate_index])) {
-		/* if empty slot the @home slot for given key */
+		/* empty slot is the @home slot for given key */
 		if (candidate_index == home_index) {
 			clobber_bucket_with(hashmap, candidate_index, meta, 0, key, value);
 		}
+		/* empty slot is some distance away from @home slot for given key*/
 		else {
-			/*   Probe for robin hood 'swaps' till empty slot */
-			// meta_byte *chunk;
-			uint16_t match_mask;
-			// size_t chunk_count = 0;
-			size_t robin_index = home_index;
-
-			/* At worst PROBE_LENGTH swaps per chunk can be done */
-			size_t push_list[PROBE_LENGTH];
-			size_t push_count = 0;
-
-			do {
-				match_mask =
-				    probe_robin(&hashmap->buckets.distances[robin_index]);
-				size_t push_index = candidate_index;
-
-				while (match_mask != 0) {
-					// const size_t offset = _bit_scan_reverse(match_mask);
-					const size_t offset = _bit_scan_forward(match_mask);
-
-					push_index = robin_index + offset;
-					/**
-					 *  Look at hits from original probe_robin for next swaps
-					 *  No other have to be considered, correct ?
-					 */
-					// /* clear most significant set bit */
-					// match_mask &= ~(1u << offset);
-					/* clear least significant set bit */
-					match_mask ^= match_mask & (-match_mask);
-				}
-
-				/**
-				 * If you hit empty slot in this probe
-				 *    start furthest downstream
-				 *    push each hit in mask_match to next hit toward empty
-				 * slot
-				 * else
-				 *    same thing but furthest downstream replace temporarily
-				 *    held new entry
-				 * 
-				 * or do not check and push in empty slot after the loop
-				 */
-				for (; push_count > 0; push_count--) {
-					if ((robin_index + PROBE_LENGTH) >= candidate_index) {
-					}
-					else {
-						// char *tmp_key;
-						// void *tmp_value;
-						// meta_byte tmp_meta;
-						// meta_byte tmp_distance = ;
-					}
-				}
-
-			} while ((robin_index += PROBE_LENGTH) < candidate_index);
-
-			/**
-			 * Hold the new entry, DO NOT SWAP
-			 * Clobber empty slot with last swap candidate entry
-			 * Go upstream in the swap candidates list and push it to clober
-			 * next entry
-			 * Clobber most upstream swap candidate with new entry
-			 * -> new entry index
-			 */
+			/* robin swap ! */
 		}
 	}
 	//------------------------------------------------------ given key found
