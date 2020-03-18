@@ -297,6 +297,18 @@ static inline void clobber_bucket(struct hmap *const hashmap,
 
 	return;
 }
+static inline void slingshot(struct hmap *const hashmap,
+                             const size_t dst,
+                             const size_t src)
+{
+	size_t delta                    = dst - src;
+	hashmap->buckets.metas[dst]     = hashmap->buckets.metas[src];
+	hashmap->buckets.distances[dst] = hashmap->buckets.distances[src] + delta;
+	hashmap->buckets.keys[dst]      = hashmap->buckets.keys[src];
+	hashmap->buckets.values[dst]    = hashmap->buckets.values[src];
+
+	return;
+}
 /*
 // #define CLOBBER_ENTRY(_hmap, _dst, _src) \
 // 	do {                                                                       \
@@ -648,8 +660,8 @@ static inline size_t hmap_find_or_empty(const struct hmap *const hashmap,
 		 *   - [ ] Check how bad it is that it may run once with
 		 *         match_mask == 0 on first go around
 		 */
-		do {
-			// while (match_mask != 0) {
+		// do {
+		while (match_mask != 0) {
 			// const size_t offset    = __builtin_ctz(match_mask);
 			const size_t offset    = _bit_scan_forward(match_mask);
 			const char *probed_key = hashmap->buckets.keys[index + offset];
@@ -661,7 +673,8 @@ static inline size_t hmap_find_or_empty(const struct hmap *const hashmap,
 			}
 			/* clear least significant set bit */
 			match_mask ^= match_mask & (-match_mask);
-		} while (match_mask != 0);
+			// } while (match_mask != 0);
+		}
 		/* no match in current chunk */
 		/* chunk done */
 		chunk_count++;
@@ -779,7 +792,6 @@ size_t hmap_put(struct hmap *const hashmap, char *const key, void *value)
 	const size_t hash    = hash_tab((unsigned char *)key, hashmap->xor_seed);
 	const size_t home    = hash_index(hash);
 	const meta_byte meta = hash_meta(hash);
-	meta_byte distance   = 0;
 
 	/* Find given key or first empty slot */
 	size_t candidate = hmap_find_or_empty(hashmap, key, home, meta);
@@ -787,31 +799,53 @@ size_t hmap_put(struct hmap *const hashmap, char *const key, void *value)
 	//----------------------------------------------------- empty slot found
 	if (is_empty(hashmap->buckets.metas[candidate])) {
 		/**
-		 * todo
-		 *   - [ ] Handle cases where find wrapped around the table
-		 */
-		for (size_t bucket = home; bucket < candidate; bucket++, distance++) {
-		/**
-		 * Thierry La Fronde method : Sling shot the riches !
-		 * 
+		 * Thierry La Fronde method : Slingshot the riches !
+		 *
 		 * Go backwards from candidate empty bucket to home
 		 *   If current entry distance is lower or equal than the entry upstream
 		 *     Slingshot it to candidate empty bucket !
 		 *     Make current entry the new candidate empty bucket
 		 * Slingshot given entry to wherever candidate empty bucket is
 		 * Increment hmap entry count
-		 * 
+		 *
 		 * note
 		 * 	 Find returns existing key or first empty bucket
-		 *   By definition there should be no empty bucket between home 
-		 *   and candidate bucket excluded
-		if( distance > hashmap->buckets.distances[bucket]) {
-
+		 *   By definition there should be no other empty bucket between home
+		 *   and candidate bucket
+		 * todo
+		 *   - [ ] Handle cases where find wrapped around the table
+		 */
+		for (size_t bucket = candidate; bucket != home; bucket--) {
+			if (hashmap->buckets.distances[bucket] <=
+			    hashmap->buckets.distances[bucket - 1]) {
+				slingshot(hashmap, candidate, bucket);
+				candidate = bucket;
+#ifdef DEBUG_HMAP
+				printf("Slingshot %lu to %lu\n", bucket, candidate);
+				hashmap->stats.swap_count++;
+#endif /* DEBUG_HMAP */
+			}
 		}
-
-		}
+		/**
+		 * note
+		 *   this says implicitely that current implementation cannot deal with
+		 *   chains over 256
+		 */
+		// meta_byte distance   = candidate - home;
+		clobber_bucket_with(
+		    hashmap, candidate, meta, candidate - home, key, value);
 		hashmap->count++;
-		clobber_bucket_with(hashmap, candidate, meta, 0, key, value);
+#ifdef DEBUG_HMAP
+		/**
+		 * this is NOT the collision metric to assess hash function
+		 * It counts the numbers of times a new key did NOT end up in its home
+		 * bucket wether it is due to a direct hash collision or because of
+		 * an unrelated key ended up in its home bucket
+		 */
+		if ((candidate - home) != 0) {
+			hashmap->stats.collision_count++;
+		}
+#endif /* DEBUG_HMAP */
 	}
 	//------------------------------------------------------ given key found
 	else {
@@ -837,13 +871,13 @@ size_t hmap_put(struct hmap *const hashmap, char *const key, void *value)
 		}
 	}
 
+#ifdef DEBUG_HMAP
+	hashmap->stats.hashes_tally_or |= hash;
+	hashmap->stats.hashes_tally_and &= hash;
+#endif /* DEBUG_HMAP */
+
 	/* -> new or updated entry index */
 	return candidate;
-
-	// #ifdef DEBUG_HMAP
-	// 	hashmap->stats.hashes_tally_or |= hash;
-	// 	hashmap->stats.hashes_tally_and &= hash;
-	// #endif /* DEBUG_HMAP */
 }
 
 //----------------------------------------------------------------- Function ---
@@ -1153,23 +1187,23 @@ void stats_hashmap(const struct hmap *const hashmap)
 	       hashmap->stats.collision_count,
 	       (double)hashmap->stats.collision_count / (double)hashmap->count *
 	           100);
-	printf("hashmap->stats.hashes_ctrl_collision_count  : %lu\n",
-	       hashmap->stats.collision_count);
+	// printf("hashmap->stats.hashes_ctrl_collision_count  : %lu\n",
+	//        hashmap->stats.hashes_ctrl_collision_count);
 
 	printf("hashmap->stats.hashes_tally_or  : %lu\n",
 	       hashmap->stats.hashes_tally_or);
 	printf("hashmap->stats.hashes_tally_and : %lu\n",
 	       hashmap->stats.hashes_tally_and);
-	printf("hashmap->stats.put_count        : %lu\n", hashmap->stats.put_count);
-	printf("hashmap->stats.putfail_count    : %lu\n",
-	       hashmap->stats.putfail_count);
+	// printf("hashmap->stats.put_count        : %lu\n",
+	// hashmap->stats.put_count);
+	// printf("hashmap->stats.putfail_count    : %lu\n",
+	//        hashmap->stats.putfail_count);
 	printf("hashmap->stats.swap_count       : %lu\n",
 	       hashmap->stats.swap_count);
-	printf("hashmap->stats.del_count        : %lu\n", hashmap->stats.del_count);
-	printf("hashmap->stats.find_count       : %lu\n",
-	       hashmap->stats.find_count);
-	printf("hashmap->stats.collision_count  : %lu\n",
-	       hashmap->stats.collision_count);
+	// printf("hashmap->stats.del_count        : %lu\n",
+	// hashmap->stats.del_count);
+	// printf("hashmap->stats.find_count       : %lu\n",
+	//        hashmap->stats.find_count);
 
 	return;
 }
@@ -1195,10 +1229,36 @@ void dump_hashmap(const struct hmap *const hashmap)
 			continue;
 		}
 
-		printf("\x1b[10%dmhashmap->\x1b[30mbucket[%lu]\x1b[0m>>\n", 4, i);
+		/* Color code distance from home using ANSI esc code values */
+		int colour;
+
+		switch (hashmap->buckets.distances[i]) {
+		case 0:
+			colour = 4; // BLUE
+			break;
+		case 1:
+			colour = 6; // CYAN
+			break;
+		case 2:
+			colour = 2; // GREEN
+			break;
+		case 3:
+			colour = 3; // YELLOW
+			break;
+		case 4:
+			colour = 1; // RED
+			break;
+		case 5:
+			colour = 5; // MAGENTA
+			break;
+		default:
+			colour = 7; // WHITE
+			break;
+		}
+		printf("\x1b[10%dmhashmap->\x1b[30mbucket[%lu]\x1b[0m>>", colour, i);
 
 		// printf("\t %016lx : %s\n",
-		printf("\t        %lu : %s\n",
+		printf(" %lu : %s\n",
 		       hash_index(hash_tab((unsigned char *)hashmap->buckets.keys[i],
 		                           hashmap->xor_seed)),
 		       hashmap->buckets.keys[i]);
@@ -1225,7 +1285,6 @@ int main(void)
 	    "\t- [ ] Implement the most basic put operation to mock tables\n");
 	// uint32_t seed = 31;
 	size_t n = 8;
-	size_t hash;
 	// Hashmap *hashmap = new_hashmap(n, seed, hash_fimur_reduce);
 
 	fputs(FG_BRIGHT_BLUE REVERSE
@@ -1239,35 +1298,47 @@ int main(void)
 
 //-------------------------------------------------------------------- setup
 #define KEYPOOL_SIZE 32
-	// char random_keys[KEYPOOL_SIZE] = {'\0'};
-	// size_t test_count              = (1 << (n - 2)) - 1; // 1 << (n - 1);
+	char random_keys[KEYPOOL_SIZE] = {'\0'};
+	size_t test_count              = (1 << (n - 1)) - 1; // 1 << (n - 1);
 	char key[256];
-	// char *dummy_value = NULL;
+	char *dummy_key   = NULL;
+	char *dummy_value = NULL;
 
-	// srand(__rdtsc());
+	srand(__rdtsc());
 
-	// for (size_t k = 0; k < test_count; k++) {
-	// 	for (size_t i = 0; i < KEYPOOL_SIZE - 1; i++) {
-	// 		random_keys[i] = (char)(rand() % 95 + 0x20); // % 26 + 0x61);
-	// 		// putchar(random_keys[i]);
-	// 	}
-	// 	// putchar('\n');
+	for (size_t k = 0; k < test_count; k++) {
+		for (size_t i = 0; i < KEYPOOL_SIZE - 1; i++) {
+			random_keys[i] = (char)(rand() % 26 + 0x61); //% 95 + 0x20);
+			// putchar(random_keys[i]);
+		}
+		// putchar('\n');
 
-	// 	dummy_value = strdup(&random_keys[rand() % (KEYPOOL_SIZE - 1)]);
-	// 	// printf(
-	// 	//     "[%lu]key   : %s\n"
-	// 	//     "[%lu]value : %s\n",
-	// 	//     k,
-	// 	//     &random_keys[rand() % (KEYPOOL_SIZE - 1)],
-	// 	//     k,
-	// 	//     dummy_value);
+		dummy_key   = strdup(&random_keys[rand() % (KEYPOOL_SIZE - 1)]);
+		dummy_value = strdup(&random_keys[rand() % (KEYPOOL_SIZE - 1)]);
 
-	// 	if (put_hashmap(hashmap,
-	// 	                &random_keys[rand() % (KEYPOOL_SIZE - 1)],
-	// 	                dummy_value) == NULL) {
-	// 		XFREE(dummy_value, "main : setup");
-	// 	}
-	// }
+#ifdef DEBUG_HMAP
+		// hmap_put(hashmap, dummy_key, dummy_value);
+		const size_t hash =
+		    hash_tab((unsigned char *)dummy_key, hashmap->xor_seed);
+		const size_t home    = hash_index(hash);
+		const meta_byte meta = hash_meta(hash);
+		printf(
+		    "%s\n"
+		    "\tdummy_value : %s\n"
+		    "\thash        : %lu\n"
+		    "\thome        : %lu\n"
+		    "\tmeta        : %d\n",
+		    dummy_key,
+		    dummy_value,
+		    hash,
+		    home,
+		    meta);
+#endif /* DEBUG_HMAP */
+
+		hmap_put(hashmap, dummy_key, dummy_value);
+		// free(dummy_key);
+		// free(dummy_value);
+	}
 
 	//----------------------------------------------------------- input loop
 	for (;;) {
@@ -1308,7 +1379,7 @@ int main(void)
 
 		//------------------------------------------------------- find / put
 
-		hmap_put(hashmap, strdup(key), strdup(key));
+		printf("Looking for %s -> found @ %lu\n", key, hmap_find(hashmap, key));
 	}
 
 	//-------------------------------------------------------------- cleanup
