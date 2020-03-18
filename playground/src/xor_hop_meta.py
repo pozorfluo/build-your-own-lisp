@@ -21,3 +21,14 @@ bin(distance^h2)
 # your xored meta_byte is useless because your h2 is NOT necessarily a key
 # to get the distance
 
+
+xor_list = [2, 5, 9, 11]
+home = 1265
+
+for xor in xor_list:
+    home ^= xor
+    print(home)
+
+for xor in xor_list[::-1]:
+    home ^= xor
+    print(home)
