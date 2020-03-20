@@ -1,7 +1,8 @@
 //------------------------------------------------------------------ SUMMARY ---
 /**
  * Based on the work of the Abseil Team and publications of Daniel Lemire,
- * Peter Kankowski, Malte Skarupke, Maurice Herlihy, Nir Shavit, Moran Tzafrir.
+ * Peter Kankowski, Malte Skarupke, Maurice Herlihy, Nir Shavit, Moran Tzafrir,
+ * Emmanuel Goossaert.
  *
  * Implement a hash map tuned for lispy / LispEnv
  *
@@ -84,8 +85,6 @@ struct hmap_buckets {
 	meta_byte *metas;
 	meta_byte *distances; /* this costs 1 byte per bucket, ~= 6 % increase */
 	struct hmap_entry *entries;
-	// char **keys;
-	// void **values;
 };
 
 /**
@@ -261,27 +260,19 @@ static inline void swap_entries(struct hmap *const hashmap,
 {
 	meta_byte tmp_meta;
 	meta_byte tmp_distance;
-	// char *tmp_key;
-	// void *tmp_value;
 	struct hmap_entry tmp_entry;
 
 	tmp_meta     = hashmap->buckets.metas[a];
 	tmp_distance = hashmap->buckets.distances[a];
 	tmp_entry    = hashmap->buckets.entries[a];
-	// tmp_key      = hashmap->buckets.keys[a];
-	// tmp_value    = hashmap->buckets.values[a];
 
 	hashmap->buckets.metas[a]     = hashmap->buckets.metas[b];
 	hashmap->buckets.distances[a] = hashmap->buckets.distances[b];
 	hashmap->buckets.entries[a]   = hashmap->buckets.entries[b];
-	// hashmap->buckets.keys[a]      = hashmap->buckets.keys[b];
-	// hashmap->buckets.values[a]    = hashmap->buckets.values[b];
 
 	hashmap->buckets.metas[b]     = tmp_meta;
 	hashmap->buckets.distances[b] = tmp_distance;
 	hashmap->buckets.entries[b]   = tmp_entry;
-	// hashmap->buckets.keys[b]      = tmp_key;
-	// hashmap->buckets.values[b]    = tmp_value;
 
 	return;
 }
@@ -305,8 +296,6 @@ static inline void clobber_bucket(struct hmap *const hashmap,
 	hashmap->buckets.metas[dst]     = hashmap->buckets.metas[src];
 	hashmap->buckets.distances[dst] = hashmap->buckets.distances[src];
 	hashmap->buckets.entries[dst]   = hashmap->buckets.entries[src];
-	// hashmap->buckets.keys[dst]      = hashmap->buckets.keys[src];
-	// hashmap->buckets.values[dst]    = hashmap->buckets.values[src];
 
 	return;
 }
@@ -318,8 +307,6 @@ static inline void slingshot(struct hmap *const hashmap,
 	hashmap->buckets.metas[dst]     = hashmap->buckets.metas[src];
 	hashmap->buckets.distances[dst] = hashmap->buckets.distances[src] + delta;
 	hashmap->buckets.entries[dst]   = hashmap->buckets.entries[src];
-	// hashmap->buckets.keys[dst]      = hashmap->buckets.keys[src];
-	// hashmap->buckets.values[dst]    = hashmap->buckets.values[src];
 
 	return;
 }
@@ -351,8 +338,6 @@ static inline void clobber_bucket_with(struct hmap *const hashmap,
 	hashmap->buckets.distances[dst]     = distance;
 	hashmap->buckets.entries[dst].key   = key;
 	hashmap->buckets.entries[dst].value = value;
-	// hashmap->buckets.keys[dst]      = key;
-	// hashmap->buckets.values[dst]    = value;
 
 	return;
 }
@@ -600,14 +585,11 @@ size_t hmap_find(const struct hmap *const hashmap, const char *const key)
 			// while (match_mask != 0) {
 			// const size_t offset    = __builtin_ctz(match_mask);
 			const size_t offset = _bit_scan_forward(match_mask);
-			// const char *probed_key = hashmap->buckets.keys[index + offset];
 			size_t match           = index + offset;
 			const char *probed_key = hashmap->buckets.entries[match].key;
 
 			/* Can an entry that yields a match ever have a NULL key ? */
 			if ((probed_key != NULL) && (compare_keys(probed_key, key)) == 0) {
-				// if ((compare_keys(hashmap->buckets.entries[match].key, key))
-				// == 0) {
 				// hashmap->stats.find_count++;
 				/* Found key ! */
 				return match;
@@ -660,15 +642,6 @@ static inline size_t hmap_find_or_empty(const struct hmap *const hashmap,
                                         size_t index,
                                         const meta_byte meta)
 {
-	// size_t hash    = hash_tab((unsigned char *)key, hashmap->xor_seed);
-	// size_t index   = hash_index(hash);
-	// meta_byte meta = hash_meta(hash);
-
-	// #ifdef DEBUG_HMAP
-	// 	hashmap->stats.hashes_tally_or |= hash;
-	// 	hashmap->stats.hashes_tally_and &= hash;
-	// #endif /* DEBUG_HMAP */
-
 	meta_byte *chunk;
 	uint16_t match_mask;
 	size_t chunk_count = 0;
@@ -813,7 +786,6 @@ size_t hmap_put(struct hmap *const hashmap, char *const key, void *value)
 	const size_t hash    = hash_tab((unsigned char *)key, hashmap->xor_seed);
 	const size_t home    = hash_index(hash);
 	const meta_byte meta = hash_meta(hash);
-	// struct hmap_entry entry;
 
 	/* Find given key or first empty slot */
 	size_t candidate = hmap_find_or_empty(hashmap, key, home, meta);
@@ -883,26 +855,20 @@ size_t hmap_put(struct hmap *const hashmap, char *const key, void *value)
 		 * If given key and existing key pointer do NOT alias
 		 *    Free existing, use new one
 		 */
-		// if (key != hashmap->buckets.keys[candidate]) {
 		if (key != hashmap->buckets.entries[candidate].key) {
 			// Use XFREE macro instead of destructor while hmap is a WIP
-			// XFREE(hashmap->buckets.keys[candidate],
 			XFREE(hashmap->buckets.entries[candidate].key,
 			      "hmap_put : dupe of existing key");
-			// hashmap->buckets.keys[candidate] = key;
 			hashmap->buckets.entries[candidate].key = key;
 		}
 		/**
 		 * If given value and existing value pointer do NOT alias
 		 *    Free existing, use new one
 		 */
-		// if (value != hashmap->buckets.values[candidate]) {
 		if (value != hashmap->buckets.entries[candidate].value) {
 			// Use XFREE macro instead of destructor while hmap is a WIP
-			// XFREE(hashmap->buckets.values[candidate],
 			XFREE(hashmap->buckets.entries[candidate].value,
 			      "hmap_put : dupe of existing value");
-			// hashmap->buckets.values[candidate] = value;
 			hashmap->buckets.entries[candidate].value = value;
 		}
 	}
@@ -978,9 +944,7 @@ size_t hmap_remove(struct hmap *const hashmap, const char *const key)
 void hmap_delete_hashmap(struct hmap *const hashmap)
 {
 	for (size_t bucket = 0; bucket < hashmap->actual_capacity; bucket++) {
-		// if (hashmap->buckets.keys[bucket] == NULL) {
 		if (is_occupied(hashmap->buckets.metas[bucket])) {
-			// printf("%s\n", hashmap->buckets[i].key);
 			destroy_entry(hashmap, bucket);
 #ifdef DEBUG_HMAP
 			hashmap->stats.del_count++;
@@ -991,8 +955,6 @@ void hmap_delete_hashmap(struct hmap *const hashmap)
 	XFREE(hashmap->buckets.metas, "delete_hashmap hashmap->buckets.metas");
 	XFREE(hashmap->buckets.distances,
 	      "delete_hashmap hashmap->buckets.distances");
-	// XFREE(hashmap->buckets.keys, "delete_hashmap hashmap->buckets.keys");
-	// XFREE(hashmap->buckets.values, "delete_hashmap hashmap->buckets.value");
 	XFREE(hashmap->buckets.entries, "delete_hashmap hashmap->buckets.entries");
 	XFREE(hashmap, "delete_hashmap");
 }
@@ -1102,8 +1064,6 @@ struct hmap *hmap_new(const unsigned int n,
 	MALLOC_BUCKETS_ARRAY(new_hashmap->buckets.metas, actual_capacity);
 	MALLOC_BUCKETS_ARRAY(new_hashmap->buckets.distances, actual_capacity);
 	MALLOC_BUCKETS_ARRAY(new_hashmap->buckets.entries, actual_capacity);
-	// MALLOC_BUCKETS_ARRAY(new_hashmap->buckets.keys, actual_capacity);
-	// MALLOC_BUCKETS_ARRAY(new_hashmap->buckets.values, actual_capacity);
 
 	/* The value is passed as an int, but the function fills the block of
 	 * memory using the unsigned char conversion of this value */
@@ -1117,12 +1077,6 @@ struct hmap *hmap_new(const unsigned int n,
 	memset(new_hashmap->buckets.entries,
 	       0,
 	       sizeof(*(new_hashmap->buckets.entries)) * actual_capacity);
-	// memset(new_hashmap->buckets.keys,
-	//        0,
-	//        sizeof(*(new_hashmap->buckets.keys)) * actual_capacity);
-	// memset(new_hashmap->buckets.values,
-	//        0,
-	//        sizeof(*(new_hashmap->buckets.values)) * actual_capacity);
 
 	return new_hashmap;
 
@@ -1131,8 +1085,6 @@ err_free_buckets:
 	XFREE(new_hashmap->buckets.metas, "new_hashmap->buckets.metas");
 	XFREE(new_hashmap->buckets.distances, "new_hashmap->buckets.distances");
 	XFREE(new_hashmap->buckets.entries, "new_hashmap->buckets.entries");
-// XFREE(new_hashmap->buckets.keys, "new_hashmap->buckets.keys");
-// XFREE(new_hashmap->buckets.values, "new_hashmap->buckets.values");
 err_free_hashmap:
 	XFREE(new_hashmap, "new_hashmap");
 	return NULL;
@@ -1386,8 +1338,6 @@ int main(void)
 #endif /* DEBUG_HMAP */
 
 		hmap_put(hashmap, dummy_key, dummy_value);
-		// free(dummy_key);
-		// free(dummy_value);
 	}
 
 	//----------------------------------------------------------- input loop
