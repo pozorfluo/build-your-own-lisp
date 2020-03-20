@@ -17,7 +17,8 @@
         "array": "c",
         "functional": "c",
         "tuple": "c",
-        "utility": "c"
+        "utility": "c",
+        "random": "c"
     },
     "python.formatting.provider": "black",
     "python.pythonPath": "/home/spagbol/anaconda3/bin/python"

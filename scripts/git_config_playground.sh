@@ -98,8 +98,13 @@ git status
 # git add . && git add -u.
 git add -A
 
-
 # commit, push
+git commit -m 'Tweak buckets memory layout
+
+    Interleave key, value in a single array of entries.
+
+    Propagate changes.'
+
 git commit -m 'Make builtins variable immutable for chapter 11 : Bonus Marks
 
 	Return an error if def is used with a symbol used for builtins or
@@ -121,7 +126,7 @@ git commit -m 'Make builtins variable immutable for chapter 11 : Bonus Marks
 git push -u origin master
 
 # start interactive rebase session for last 3 commits
-git rebase -i HEAD~8
+git rebase -i HEAD~2
 
 # review
 git log --graph --oneline --decorate --date-order --color --boundary @{u}
