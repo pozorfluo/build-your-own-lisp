@@ -14,7 +14,7 @@
                 "-g",
                 // "-DDEBUG_MALLOC",
 				// "-DDEBUG_MPC",
-				// "-DDEBUG_HMAP",
+				"-DDEBUG_HMAP",
                 "-DVALGRIND",
                 // "-O0",
                 "-msse2",

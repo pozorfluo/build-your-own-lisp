@@ -99,12 +99,6 @@ git status
 git add -A
 
 # commit, push
-git commit -m 'Tweak buckets memory layout
-
-    Interleave key, value in a single array of entries.
-
-    Propagate changes.'
-
 git commit -m 'Make builtins variable immutable for chapter 11 : Bonus Marks
 
 	Return an error if def is used with a symbol used for builtins or

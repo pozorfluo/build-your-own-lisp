@@ -8,8 +8,8 @@ enum meta_ctrl { CTRL_EMPTY = -128, CTRL_DELETED = -1};
 
 struct hmap_allocator {
 	// void *(*malloc)(const void *);
-	void *(*malloc)(size_t size);
-	void (*free)(void *);
+	void *(*new)(size_t size);
+	void (*delete)(void *);
 	// typedef void (*ValueDestructor)(void *, const char *, const char *);
 };
 
