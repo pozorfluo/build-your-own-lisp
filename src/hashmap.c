@@ -1228,9 +1228,10 @@ struct hmap *hmap_new(const unsigned int n,
 
 /* free(NULL) is ok, correct ? */
 err_free_arrays:
-	XFREE(new_hashmap->buckets.metas, "new_hashmap->buckets.metas");
-	XFREE(new_hashmap->buckets.distances, "new_hashmap->buckets.distances");
-	XFREE(new_hashmap->buckets.entries, "new_hashmap->buckets.entries");
+	XFREE(new_hashmap->buckets.metas, "hmap_new err_free_arrays");
+	XFREE(new_hashmap->buckets.distances, "hmap_new err_free_arrays");
+	XFREE(new_hashmap->buckets.entries, "hmap_new err_free_arrays");
+	XFREE(new_hashmap->store, "hmap_new err_free_arrays");
 err_free_hashmap:
 	XFREE(new_hashmap, "new_hashmap");
 	return NULL;
