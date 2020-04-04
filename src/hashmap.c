@@ -199,10 +199,11 @@ static inline void destroy_entry(struct hmap *const hashmap, const size_t entry)
  * todo
  *   - [ ] Assess hash function fitness
  *     + [x] Track stuck bits with hashes_tally_or, hashes_tally_and
-       + [ ] Track control chunk collisions likelyhood with
-             hashes_ctrl_collision_count
-       + [ ] Look at SMHasher for more ways to assess fitness
-         * [ ] See : https://github.com/aappleby/smhasher/wiki/SMHasher
+ *     + [ ] Track control chunk collisions likelyhood with
+ *           hashes_ctrl_collision_count
+ *     + [ ] Look at SMHasher for more ways to assess fitness
+ *       * [ ] See : https://github.com/aappleby/smhasher/wiki/SMHasher
+ *   - [ ] Check /playground/src for alternative/shelved hash function
  */
 static inline size_t hash_tab(const unsigned char *key,
                               const size_t *const xor_seed)
@@ -870,10 +871,19 @@ size_t hmap_put(struct hmap *const hashmap, char *const key, void *const value)
 		 *   can NOT be more than 256 slingshot jobs to resolve. This is
 		 *   probably overly generous already.
 		 * todo
-		 *   - [ ] Handle cases where find wrapped around the table
-		 *   - [ ] Hold a rich target list as you update distance in the TLF
-		 *         loop
-		 *     + [ ] Unwind and carry out the slingshot when done
+		 *   - [ ] Handle cases where find wrapped around the table, either :
+		 *     + [ ] Use PROBE_LENGTH as max distance and forbid wrapping around
+		 *       * [ ] Trigger resize when distance above PROBE_LENGTH is
+		 *             requested
+		 *     + [ ] Add necessary tests and jumps to wrap around in put_hashmap
+		 *           when find return a position that wrapped around the map
+		 *     + [ ] Evaluate usefulness of wrapping around
+		 *     + [ ] Benchmark
+		 *   - [ ] Slingshot as you move backward then
+		 *     + [ ] Benchmark against :
+		 *       *  [ ] Hold a rich target list as you update distance in the
+		 *              TLF loop
+		 *       * [ ] Unwind and carry out the slingshot when done
 		 */
 		// int rich_targets[256];
 
@@ -1430,9 +1440,12 @@ int main(void)
 {
 	puts(
 	    "todo\n"
+	    "\t- [ ] Check boundaries when doing slingshots\n"
 	    "\t- [ ] Implement baseline non-SIMD linear probing\n"
 	    "\t\t+ [ ] Benchmark against SIMD wip versions\n"
-	    "\t- [ ] Implement the most basic put operation to mock tables\n");
+	    "\t- [ ] Implement the most basic put operation to mock tables\n"
+	    "\t- [ ] Try mapping and storing primitive type/values\n"
+	    "\t\t+ [ ] Benchmark the difference with store of pointers\n");
 	// uint32_t seed = 31;
 	size_t n = 8;
 	// Hashmap *hashmap = new_hashmap(n, seed, hash_fimur_reduce);
