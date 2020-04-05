@@ -7,6 +7,9 @@
 #gdb
 .gdb_history
 
+#cachegrind
+cachegrind.out.*
+
 #project specific
 lispy_history.txt
 test_report.yaml
