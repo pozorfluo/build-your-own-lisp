@@ -55,7 +55,8 @@
         "stdexcept": "c",
         "streambuf": "c",
         "cinttypes": "c",
-        "cstdbool": "c"
+        "cstdbool": "c",
+        "stdlib.h": "c"
     },
     "python.formatting.provider": "black",
     "python.pythonPath": "/home/spagbol/anaconda3/bin/python"

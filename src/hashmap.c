@@ -395,6 +395,7 @@ static inline int compare_keys(const char *const key_a, const char *const key_b)
 	size_t size_b  = strlen(key_b);
 	int difference = -1;
 
+#ifdef DEBUG_HMAP
 	printf(
 	    "comparing key a : %s\n size : %lu\n"
 	    "      and key b : %s\n size : %lu\n",
@@ -402,6 +403,7 @@ static inline int compare_keys(const char *const key_a, const char *const key_b)
 	    size_a,
 	    key_b,
 	    size_b);
+#endif /* DEBUG_HMAP */
 
 	// do not bother with switch & jump, gcc outputs the same assembly
 	// see : https://godbolt.org/z/suQQMk
@@ -631,11 +633,13 @@ size_t hmap_find(const struct hmap *const hashmap, const char *const key)
 			    hashmap->store[(hashmap->buckets.entries[match])].key;
 
 			if ((probed_key != NULL)) {
+#ifdef DEBUG_HMAP
 				printf(
 				    "comparing store key : %s\n"
 				    "      and given key : %s\n",
 				    probed_key,
 				    key);
+#endif /* DEBUG_HMAP */
 			}
 			/* Can an entry that yields a match ever have a NULL key ? */
 			if ((probed_key != NULL) && (compare_keys(probed_key, key)) == 0) {
@@ -713,11 +717,13 @@ static inline size_t hmap_find_or_empty(const struct hmap *const hashmap,
 			size_t match = index + offset;
 			const char *probed_key =
 			    hashmap->store[(hashmap->buckets.entries[match])].key;
+#ifdef DEBUG_HMAP
 			printf(
 			    "comparing store key : %s\n"
 			    "      and given key : %s\n",
 			    probed_key,
 			    key);
+#endif /* DEBUG_HMAP */
 
 			if ((compare_keys(probed_key, key)) == 0) {
 				// if ((compare_keys(hashmap->buckets.entries[match]->key, key))
@@ -910,9 +916,11 @@ size_t hmap_put(struct hmap *const hashmap, char *const key, void *const value)
 		// hashmap->top->value = value;
 		hashmap->store[hashmap->top].key   = key;
 		hashmap->store[hashmap->top].value = value;
+#ifdef DEBUG_HMAP
 		printf("stored : [%s, %s]\n",
 		       hashmap->store[hashmap->top].key,
 		       (char *)hashmap->store[hashmap->top].value);
+#endif  /* DEBUG_HMAP */
 		/**
 		 * note
 		 *   this says implicitely that current implementation cannot deal with
@@ -1014,11 +1022,14 @@ static inline void destroy_entry(struct hmap *const hashmap, const size_t entry)
 
 	if ((hashmap->top > 0) && (hashmap->top != store_slot)) {
 		const char const *top_key = hashmap->store[hashmap->top].key;
-
+#ifdef DEBUG_HMAP
 		printf("moving top key : %s to store slot %lu\n", top_key, store_slot);
+#endif /* DEBUG_HMAP */
 
 		size_t top_bucket = hmap_find(hashmap, top_key);
+#ifdef DEBUG_HMAP
 		printf("top_bucket : %lu\n", top_bucket);
+#endif /* DEBUG_HMAP */
 
 		hashmap->buckets.entries[top_bucket] = hashmap->buckets.entries[entry];
 

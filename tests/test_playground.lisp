@@ -240,6 +240,3 @@
 	^
 	> 
 	<
-
-;; valgrind --track-origins=yes --leak-check=full --show-reachable=yes ./lisp
-;; less +F -N lispy_history.txt
