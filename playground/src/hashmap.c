@@ -618,6 +618,12 @@ size_t hmap_find(const struct hmap *const hashmap, const char *const key)
 #endif /* DEBUG_HMAP */
 
 		/* loop through set bit in bitmask to access matches */
+		/**
+		 * todo
+		 *   - [ ] Check how bad it would be to run once with
+		 *         match_mask == 0 on first go around
+		 */
+		// do {
 		while (match_mask != 0) {
 			// const size_t offset    = __builtin_ctz(match_mask);
 			const size_t offset = _bit_scan_forward(match_mask);
@@ -644,6 +650,7 @@ size_t hmap_find(const struct hmap *const hashmap, const char *const key)
 			/* remove least significant set bit */
 			match_mask ^= match_mask & (-match_mask);
 		}
+		// } while (match_mask != 0);
 		/* no match in current chunk */
 		/* chunk done */
 		chunk_count++;
@@ -694,8 +701,7 @@ static inline size_t hmap_find_or_empty(const struct hmap *const hashmap,
 	size_t chunk_count = 0;
 
 	do {
-		chunk = hashmap->buckets.metas + index;
-		// chunk      = hashmap->buckets.metas[index];
+		chunk      = hashmap->buckets.metas + index;
 		match_mask = probe_pattern(meta, chunk);
 
 #ifdef DEBUG_HMAP
@@ -720,6 +726,10 @@ static inline size_t hmap_find_or_empty(const struct hmap *const hashmap,
 #endif /* DEBUG_HMAP */
 
 			if ((compare_keys(probed_key, key)) == 0) {
+				// if ((compare_keys(hashmap->buckets.entries[match]->key, key))
+				// ==
+				//     0) {
+				// hashmap->stats.find_count++;
 				/* Found key ! */
 				return match;
 			}
@@ -976,7 +986,6 @@ size_t hmap_put(struct hmap *const hashmap, char *const key, void *const value)
 static inline void empty_entry(struct hmap *const hashmap, const size_t entry)
 {
 	hashmap->buckets.metas[entry] = META_EMPTY; //|=META_DELETED; useful ?
-	// hashmap->buckets.distances[entry] = 0;
 	hashmap->count--;
 }
 //----------------------------------------------------------------- Function ---
@@ -1040,9 +1049,7 @@ static inline void destroy_entry(struct hmap *const hashmap, const size_t entry)
 /**
  * Look for given key in given hmap
  * If given key exists
- * 	 probe for stop bucket
- *   slingshot entry backward, up to stop bucket
- *   mark entry right before stop bucket as empty
+ *   mark entry entry as empty
  *   -> removed	entry index
  * Else
  *   -> out of bound value ( > actual_capacity )
@@ -1053,52 +1060,11 @@ static inline void destroy_entry(struct hmap *const hashmap, const size_t entry)
  */
 size_t hmap_remove(struct hmap *const hashmap, const char *const key)
 {
-	const size_t entry = hmap_find(hashmap, key);
+	size_t entry = hmap_find(hashmap, key);
 
-	// size_t slingshot_list[PROBE_LENGTH] = {entry};
-
-	/* Given key exists */
 	if (entry < hashmap->actual_capacity) {
 		// destroy_entry(hashmap, entry);
-
-		/* probe for stop bucket */
-		uint16_t match_mask;
-		/**
-		 * todo
-		 *   - [ ] Assess if probing at entry + 1 yelds a cache miss when
-		 *         read/writing to entry
-		 */
-		size_t stop_bucket = entry + 1;
-		match_mask = probe_pattern(0, hashmap->buckets.distances + stop_bucket);
-
-		/* is there at least 1 slingshot job ? */
-		if (match_mask != 0) {
-			/* slingshot entry backward, up to stop bucket */
-			stop_bucket += _bit_scan_forward(match_mask);
-
-			/* process buckets.distances while it is hot */
-			for (size_t bucket = entry; bucket < stop_bucket; bucket++) {
-				hashmap->buckets.distances[bucket] =
-				    hashmap->buckets.distances[bucket + 1] - 1;
-			}
-			/* mark entry distance in last shifted bucket as @home or empty */
-			hashmap->buckets.distances[stop_bucket - 1] = 0;
-
-			/* process buckets.entries */
-			for (size_t bucket = entry; bucket < stop_bucket; bucket++) {
-				hashmap->buckets.entries[bucket] =
-				    hashmap->buckets.entries[bucket + 1];
-			}
-
-			/* process buckets.metas */
-			for (size_t bucket = entry; bucket < stop_bucket; bucket++) {
-				hashmap->buckets.metas[bucket] =
-				    hashmap->buckets.metas[bucket + 1];
-			}
-		}
-		/* mark entry in last shifted bucket as empty */
-		hashmap->buckets.metas[stop_bucket - 1] = META_EMPTY;
-		// empty_entry(hashmap, entry);
+		empty_entry(hashmap, entry);
 	}
 
 #ifdef DEBUG_HMAP
@@ -1267,12 +1233,6 @@ struct hmap *hmap_new(const unsigned int n,
 	memset(new_hashmap->buckets.metas,
 	       META_EMPTY,
 	       sizeof(*(new_hashmap->buckets.metas)) * actual_capacity);
-	/**
-	 * Because distances are initialized to 0
-	 * and set to 0 when removing an entry
-	 * Probing distances for 0 yields "stop buckets"
-	 * aka @home entry or empty bucket
-	 */
 	memset(new_hashmap->buckets.distances,
 	       0,
 	       sizeof(*(new_hashmap->buckets.metas)) * actual_capacity);
@@ -1491,13 +1451,6 @@ int main(void)
 {
 	puts(
 	    "todo\n"
-	    "\t- [ ] Refactor Slingshot sequences by array\n"
-	    "\t\t+ [ ] Slingshot ALL buckets.metas then\n"
-	    "\t\t+ [ ] Slingshot ALL buckets.distances then\n"
-	    "\t\t+ [ ] Slingshot ALL buckets.entries\n"
-	    "\t- [X] Implement backward shift deletion\n"
-	    "\t- [ ] Profile core table operations\n"
-	    "\t\t+ [ ] Isolate them by using fixed size keys, a innocuous hash func\n"
 	    "\t- [ ] Check boundaries when doing slingshots\n"
 	    "\t- [ ] Implement baseline non-SIMD linear probing\n"
 	    "\t\t+ [ ] Benchmark against SIMD wip versions\n"
@@ -1598,17 +1551,16 @@ int main(void)
 
 		//------------------------------------------------------- find / put
 		if (key[0] != '\0') {
-			// size_t result = hmap_find(hashmap, key);
-			hmap_remove(hashmap, key);
-			// if (result > hashmap->actual_capacity) {
-			// 	puts("Key not found ! \n");
-			// }
-			// else {
-			// 	printf("Looking for %s -> found @ %lu\n", key, result);
+			size_t result = hmap_find(hashmap, key);
+			if (result > hashmap->actual_capacity) {
+				puts("Key not found ! \n");
+			}
+			else {
+				printf("Looking for %s -> found @ %lu\n", key, result);
 
-			// 	printf("Destroying entry !\n");
-			// 	destroy_entry(hashmap, result);
-			// }
+				printf("Destroying entry !\n");
+				destroy_entry(hashmap, result);
+			}
 		}
 	}
 
