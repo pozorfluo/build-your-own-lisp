@@ -19,6 +19,8 @@
                 // "-O0",
                 "-msse2",
                 "-msse4",
+                "-march=native",
+                // "-mpopcnt",
                 "-Og",
                 // "-O3",
                 "-ftree-vectorize",

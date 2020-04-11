@@ -17,12 +17,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-/* __rdtsc() _mm_set1_epi8 _mm_movemask_epi8 _mm_cmpeq_epi8 */
+/**
+ * __rdtsc
+ * __builtin_ctz, __builtin_ctzl, __builtin_ctzll
+ * _bit_scan_forward, _BitScanForward, _BitScanForward64
+ */
 #ifdef _MSC_VER
 #include <intrin.h>
 #else
-// #include <immintrin.h>
+#include <immintrin.h>
 #include <x86intrin.h>
 #endif
 
@@ -38,14 +41,40 @@
 
 #include "debug_xmalloc.h"
 //------------------------------------------------------------ MAGIC NUMBERS ---
+#ifdef __AVX__
+/**
+ *   _mm256_set_epi8
+ *   _mm256_cmpeq_epi8
+ *   _mm256_cmpgt_epi8
+ *   _mm256_movemask_epi8
+ *   _mm256_cmpeq_epi8
+ *   _mm256_store_si256
+ *   _mm256_loadu_si256
+ *   _mm256_lddqu_si256
+ */
+#include <immintrin.h>
+#define PROBE_LENGTH 32
+#else
+/**
+ * require at least __SSE2__
+ *   _mm_set1_epi8
+ *   _mm_cmpeq_epi8
+ *   _mm_cmpgt_epi8
+ *   _mm_movemask_epi8
+ *   _mm_cmpeq_epi8
+ *   _mm_store_si128
+ *
+ * require at least __SSE3__
+ *   _mm_lddqu_si128
+ */
 #define PROBE_LENGTH 16
+#endif /* __AVX__ */
 
 //------------------------------------------------------------------- MACROS ---
 #define ARRAY_LENGTH(_array) (sizeof(_array) / sizeof((_array)[0]))
 
 //------------------------------------------------------------- DECLARATIONS ---
 typedef signed char meta_byte;
-// typedef int16_t hop_map;
 
 enum meta_ctrl {
 	META_EMPTY    = -128, /* 0b10000000 */
@@ -177,9 +206,15 @@ static inline meta_byte hash_meta(const size_t hash)
 static inline int compare_keys(const char *const key_a, const char *const key_b)
     __attribute__((pure, always_inline));
 
+#ifdef __AVX__
+static inline uint32_t probe_pattern(const meta_byte pattern,
+                                     const meta_byte *const entry)
+    __attribute__((pure, always_inline));
+#else
 static inline uint16_t probe_pattern(const meta_byte pattern,
                                      const meta_byte *const entry)
     __attribute__((pure, always_inline));
+#endif /* __AVX__ */
 
 // static inline size_t hmap_find(const struct hmap *hashmap, const char *key)
 //     __attribute__((const, always_inline));
@@ -473,6 +508,26 @@ void print_m128i_hexu8(const __m128i value)
  * given metadata entry
  *   -> Matches bitmask
  */
+#ifdef __AVX__
+static inline uint32_t probe_pattern(const meta_byte pattern,
+                                     const meta_byte *const entry_meta)
+{
+	/* setup filter */
+	const __m256i filter = _mm256_set1_epi8(pattern);
+
+	/* filter chunks */
+	const __m256i chunk = _mm256_loadu_si256((__m256i *)(entry_meta));
+	const __m256i match = _mm256_cmpeq_epi8(filter, chunk);
+
+#ifdef DEBUG_HMAP
+	puts("probe_pattern filter :");
+	print_m128i_hexu8(filter);
+	print_m128i_hexu8(chunk);
+#endif /* DEBUG_HMAP */
+
+	return _mm256_movemask_epi8(match);
+}
+#else
 static inline uint16_t probe_pattern(const meta_byte pattern,
                                      const meta_byte *const entry_meta)
 {
@@ -491,6 +546,7 @@ static inline uint16_t probe_pattern(const meta_byte pattern,
 
 	return _mm_movemask_epi8(match);
 }
+#endif /* __AVX__ */
 //----------------------------------------------------------------- Function ---
 /**
  * Probe metadata chunk of 16 bytes for META_EMPTY slots starting at given
@@ -600,13 +656,18 @@ size_t hmap_find(const struct hmap *const hashmap, const char *const key)
 	size_t index   = hash_index(hash);
 	meta_byte meta = hash_meta(hash);
 
-	// #ifdef DEBUG_HMAP
-	// 	hashmap->stats.hashes_tally_or |= hash;
-	// 	hashmap->stats.hashes_tally_and &= hash;
-	// #endif /* DEBUG_HMAP */
+// #ifdef DEBUG_HMAP
+// 	hashmap->stats.hashes_tally_or |= hash;
+// 	hashmap->stats.hashes_tally_and &= hash;
+// #endif /* DEBUG_HMAP */
+
+#ifdef __AVX__
+	uint32_t match_mask;
+#else
+	uint16_t match_mask;
+#endif /* __AVX__ */
 
 	meta_byte *chunk;
-	uint16_t match_mask;
 	size_t chunk_count = 0;
 
 	do {
@@ -619,9 +680,13 @@ size_t hmap_find(const struct hmap *const hashmap, const char *const key)
 
 		/* loop through set bit in bitmask to access matches */
 		while (match_mask != 0) {
-			// const size_t offset    = __builtin_ctz(match_mask);
-			const size_t offset = _bit_scan_forward(match_mask);
-			size_t match        = index + offset;
+			// const size_t offset    = __builtin_ctz(match_mask); // uint16_t
+			const size_t offset = __builtin_ctzl(match_mask); // uint32_t
+			// const size_t offset    = __builtin_ctzll(match_mask); // uint64_t
+			// const size_t offset = _bit_scan_forward(match_mask);
+			// const size_t offset;
+			// _BitScanForward(&offset, match_mask);
+			size_t match = index + offset;
 			// const char *probed_key = hashmap->buckets.entries[match]->key;
 			const char *probed_key =
 			    hashmap->store[(hashmap->buckets.entries[match])].key;
@@ -689,8 +754,13 @@ static inline size_t hmap_find_or_empty(const struct hmap *const hashmap,
                                         size_t index,
                                         const meta_byte meta)
 {
-	meta_byte *chunk;
+#ifdef __AVX__
+	uint32_t match_mask;
+#else
 	uint16_t match_mask;
+#endif /* __AVX__ */
+
+	meta_byte *chunk;
 	size_t chunk_count = 0;
 
 	do {
@@ -1059,14 +1129,23 @@ size_t hmap_remove(struct hmap *const hashmap, const char *const key)
 
 	/* Given key exists */
 	if (entry < hashmap->actual_capacity) {
-		// destroy_entry(hashmap, entry);
+// destroy_entry(hashmap, entry);
 
-		/* probe for stop bucket */
+/* probe for stop bucket */
+#ifdef __AVX__
+		uint32_t match_mask;
+#else
 		uint16_t match_mask;
+#endif  /* __AVX__ */
+
 		/**
 		 * todo
 		 *   - [ ] Assess if probing at entry + 1 yelds a cache miss when
 		 *         read/writing to entry
+		 *     + [ ] Do not bother ! probing at (advertised)capacity + 1 will
+		 *            try to read 1 bucket out of bound !!
+		 *     + [ ] Be careful though, you are going to have to ignore entry
+		 *           distance because it may be @home
 		 */
 		size_t stop_bucket = entry + 1;
 		match_mask = probe_pattern(0, hashmap->buckets.distances + stop_bucket);
@@ -1497,13 +1576,20 @@ int main(void)
 	    "\t\t+ [ ] Slingshot ALL buckets.entries\n"
 	    "\t- [X] Implement backward shift deletion\n"
 	    "\t- [ ] Profile core table operations\n"
-	    "\t\t+ [ ] Isolate them by using fixed size keys, a innocuous hash func\n"
+	    "\t\t+ [ ] Isolate them by using fixed size keys, a innocuous hash "
+	    "func\n"
 	    "\t- [ ] Check boundaries when doing slingshots\n"
 	    "\t- [ ] Implement baseline non-SIMD linear probing\n"
 	    "\t\t+ [ ] Benchmark against SIMD wip versions\n"
 	    "\t- [ ] Implement the most basic put operation to mock tables\n"
 	    "\t- [ ] Try mapping and storing primitive type/values\n"
 	    "\t\t+ [ ] Benchmark the difference with store of pointers\n");
+
+#ifdef __AVX__
+	puts("__AVX__ 1");
+	printf("PROBE_LENGTH %d\n", PROBE_LENGTH);
+#endif /* __AVX__ */
+
 	// uint32_t seed = 31;
 	size_t n = 8;
 	// Hashmap *hashmap = new_hashmap(n, seed, hash_fimur_reduce);
