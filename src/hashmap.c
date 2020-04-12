@@ -1152,12 +1152,55 @@ void dump_hashmap(const struct hmap *const hashmap)
 #endif /* DEBUG_HMAP */
 }
 
+//----------------------------------------------------------------- Function ---
+/**
+ * Go through all buckets
+ * Access the store
+ *   -> nothing
+ */
+void sum_bucket(const struct hmap *const hashmap)
+{
+	size_t sum_key   = 0;
+	size_t sum_value = 0;
+
+	for (size_t i = 0; i < hashmap->capacity; i++) {
+		sum_key += hashmap->store[(hashmap->buckets.entries[i])].key;
+		sum_value += hashmap->store[(hashmap->buckets.entries[i])].value;
+	}
+
+	printf(FG_BLUE REVERSE
+	       "sum_key             : %lu\n"
+	       "sum_value           : %lu\n" RESET,
+	       sum_key,
+	       sum_value);
+}
+
+void sum_store(const struct hmap *const hashmap)
+{
+	size_t sum_key   = 0;
+	size_t sum_value = 0;
+
+	/* first rewind 1 entry from the top */
+	size_t top = hashmap->top;
+	while (top) {
+		top--;
+		sum_key += hashmap->store[top].key;
+		sum_value += hashmap->store[top].value;
+	}
+
+	printf(FG_BLUE REVERSE
+	       "sum_key             : %lu\n"
+	       "sum_value           : %lu\n" RESET,
+	       sum_key,
+	       sum_value);
+}
+
 //--------------------------------------------------------------------- MAIN
 //---
 int main(void)
 {
 	puts("todo\n" FG_BRIGHT_RED
-	     "\t- [x] Update hmap->top when doing hmap->remove\n" 
+	     "\t- [x] Update hmap->top when doing hmap->remove\n"
 	     "\t\t+ [ ] Look for simpler ways to update the store !!\n" RESET
 	     "\t- [ ] Refactor Slingshot sequences by array\n"
 	     "\t\t+ [ ] Slingshot ALL buckets.metas then\n"
@@ -1252,6 +1295,16 @@ int main(void)
 
 		if ((strcmp(key, "dump")) == 0) {
 			dump_hashmap(hashmap);
+			continue;
+		}
+
+		if ((strcmp(key, "sumb")) == 0) {
+			sum_bucket(hashmap);
+			continue;
+		}
+
+		if ((strcmp(key, "sums")) == 0) {
+			sum_store(hashmap);
 			continue;
 		}
 
