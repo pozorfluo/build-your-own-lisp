@@ -537,7 +537,8 @@ size_t hmap_get(const struct hmap *const hashmap, const size_t key)
 	size_t value = 0;
 
 	if (entry <= hashmap->capacity) {
-		value = hashmap->store[entry].value;
+		// value = hashmap->store[entry].value;
+		value = hashmap->store[(hashmap->buckets.entries[entry])].value;
 	}
 
 	return value;
@@ -1129,12 +1130,14 @@ void dump_hashmap(const struct hmap *const hashmap)
 		                   : max_distance;
 		printf("\x1b[10%dmhashmap->\x1b[30mbucket[%lu]\x1b[0m>>", colour, i);
 
-		printf(" %lu[%d] : %lu\n",
+		printf(" %lu[%d] : %lu | %lu\n",
 		       hash_index(reduce_fibo(
 		           hashmap->store[(hashmap->buckets.entries[i])].key,
 		           hashmap->hash_shift)),
 		       hashmap->buckets.distances[i],
-		       hashmap->store[(hashmap->buckets.entries[i])].key);
+		       hashmap->store[(hashmap->buckets.entries[i])].key,
+		       hashmap->store[(hashmap->buckets.entries[i])].value
+			   );
 	}
 
 	printf("empty_buckets       : %lu \t-> %f%%\n",
@@ -1196,16 +1199,19 @@ int main(void)
 	//-------------------------------------------------------------------- setup
 	// #define KEYPOOL_SIZE 32
 	// char random_keys[KEYPOOL_SIZE] = {'\0'};
-	size_t test_count = (1 << n) * 0.89; // 1 << (n - 1);
+	size_t test_count = (1 << n) * 0.98; // 1 << (n - 1);
 	char key[256];
 	// char *dummy_key   = NULL;
 	// char *dummy_value = NULL;
 
 	// srand(__rdtsc());
+	printf(FG_BRIGHT_YELLOW REVERSE "Filling hashmap with %lu entries\n" RESET,
+	       test_count);
 
 	for (size_t k = 0; k < test_count; k++) {
 		hmap_put(hashmap, k, k);
 	}
+	printf(FG_BRIGHT_YELLOW REVERSE "Done !\n" RESET);
 
 	//----------------------------------------------------------- input loop
 	for (;;) {
@@ -1275,7 +1281,7 @@ int main(void)
 			}
 			else {
 				printf("Looking for %lu -> found @ %lu\n", numeric_key, result);
-
+				printf("\t\t-> value : %lu\n", hmap_get(hashmap, numeric_key));
 				printf("Removing entry !\n");
 				hmap_remove(hashmap, numeric_key);
 			}
