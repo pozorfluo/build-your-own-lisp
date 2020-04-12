@@ -72,6 +72,30 @@ int main(void)
 			continue;
 		}
 
+		if ((strcmp(key, "find")) == 0) {
+			size_t sum_value = 0;
+			for (size_t k = 0; k < test_count; k++) {
+				for (size_t i = 0; i < capacity; i++) {
+					if (hashmap[k].key == k) {
+						sum_value += hashmap[k].value;
+						break;
+					}
+				}
+			}
+			printf("sum : %lu\n", sum_value);
+			
+			for (size_t k = test_count - 1; k > 0; k--) {
+				for (size_t i = 0; i < capacity; i++) {
+					if (hashmap[k].key == k) {
+						sum_value -= hashmap[k].value;
+						break;
+					}
+				}
+			}
+			printf("sum : %lu\n", sum_value);
+			continue;
+		}
+
 		if ((strcmp(key, "dump")) == 0) {
 			for (size_t k = 0; k < test_count; k++) {
 				printf("%lu | %lu\n", hashmap[k].key, hashmap[k].value);
@@ -80,16 +104,15 @@ int main(void)
 		}
 
 		if ((strcmp(key, "sum")) == 0) {
-			size_t sum_key = 0;
+			size_t sum_key   = 0;
 			size_t sum_value = 0;
 			for (size_t k = 0; k < test_count; k++) {
-				sum_key +=  hashmap[k].key;
-				sum_value +=  hashmap[k].value;
+				sum_key += hashmap[k].key;
+				sum_value += hashmap[k].value;
 			}
 			printf("sum : %lu | %lu\n", sum_key, sum_value);
 			continue;
 		}
-
 	}
 
 	//-------------------------------------------------------------- cleanup

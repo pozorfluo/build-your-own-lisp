@@ -1201,7 +1201,7 @@ int main(void)
 	puts("todo\n" FG_BRIGHT_RED
 	     "\t- [x] Update hmap->top when doing hmap->remove\n"
 	     "\t\t+ [ ] Look for simpler ways to update the store !!\n" RESET
-		 FG_BRIGHT_YELLOW
+	         FG_BRIGHT_YELLOW
 	     "\t- [ ] Fill and read an array as a baseline\n" RESET
 	     "\t- [ ] Refactor Slingshot sequences by array\n"
 	     "\t\t+ [ ] Slingshot ALL buckets.metas then\n"
@@ -1306,6 +1306,20 @@ int main(void)
 
 		if ((strcmp(key, "sums")) == 0) {
 			sum_store(hashmap);
+			continue;
+		}
+
+		if ((strcmp(key, "find")) == 0) {
+			size_t sum_value = 0;
+			for (size_t k = 0; k < test_count; k++) {
+				sum_value += hmap_get(hashmap, k);
+			}
+			printf("sum : %lu\n", sum_value);
+			
+			for (size_t k = test_count - 1; k > 0; k--) {
+				sum_value -= hmap_get(hashmap, k);
+			}
+			printf("sum : %lu\n", sum_value);
 			continue;
 		}
 

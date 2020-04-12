@@ -189,7 +189,7 @@ sum : 33791059938195 | 33791059938195
 ==1307== LL miss rate:         6.2% (       1.9%     +       30.0%  )
 ```
 
-# reduce_fibo cache-profiling branch, n = 12
+# reduce_fibo cache-profiling branch, n = 23
 ```js
 Table size is 2^n. Enter n ( default n=8 )  ? 23
 Filling hashmap with 8220835 entries
@@ -220,4 +220,284 @@ sum_value           : 33791059938195
 ==1481== LL refs:          93,956,825  ( 61,149,320 rd   +  32,807,505 wr)
 ==1481== LL misses:        92,309,196  ( 59,528,746 rd   +  32,780,450 wr)
 ==1481== LL miss rate:            2.5% (        1.8%     +         8.3%  )
+```
+
+# reduce_fibo cache-profiling branch, SSE w PROBE_LENGTH = 16, n = 23
+```js
+Table size is 2^n. Enter n ( default n=8 )  ? 23
+Filling hashmap with 8220835 entries
+hmap->top : 0
+Done !
+hmap->top : 8220835
+ >  > rm
+hmap->top : 0
+ > fill
+hmap->top : 8220835
+ > sums
+sum_key             : 33791059938195
+sum_value           : 33791059938195
+ > exit
+==2127== 
+==2127== I   refs:      2,638,462,016
+==2127== I1  misses:            1,214
+==2127== LLi misses:            1,205
+==2127== I1  miss rate:          0.00%
+==2127== LLi miss rate:          0.00%
+==2127== 
+==2127== D   refs:      1,035,513,070  (672,976,312 rd   + 362,536,758 wr)
+==2127== D1  misses:       93,955,395  ( 61,147,955 rd   +  32,807,440 wr)
+==2127== LLd misses:       92,105,990  ( 59,327,047 rd   +  32,778,943 wr)
+==2127== D1  miss rate:           9.1% (        9.1%     +         9.0%  )
+==2127== LLd miss rate:           8.9% (        8.8%     +         9.0%  )
+==2127== 
+==2127== LL refs:          93,956,609  ( 61,149,169 rd   +  32,807,440 wr)
+==2127== LL misses:        92,107,195  ( 59,328,252 rd   +  32,778,943 wr)
+==2127== LL miss rate:            2.5% (        1.8%     +         9.0%  )
+```
+
+# baseline array, n = 16
+```js
+Table size is 2^n. Enter n ( default n=8 )  ? 16
+Filling hashmap with 64225 entries
+Done !
+ >  > rm
+ > fill
+ > sum
+sum : 2062393200 | 2062393200
+ > rm
+ > fill
+ > sum
+sum : 2062393200 | 2062393200
+ > rm
+ > fill
+ > sum
+sum : 2062393200 | 2062393200
+ > exit
+==1870== 
+==1870== I   refs:      2,133,398
+==1870== I1  misses:        1,135
+==1870== LLi misses:        1,115
+==1870== I1  miss rate:      0.05%
+==1870== LLi miss rate:      0.05%
+==1870== 
+==1870== D   refs:        873,675  (438,578 rd   + 435,097 wr)
+==1870== D1  misses:      164,341  ( 51,192 rd   + 113,149 wr)
+==1870== LLd misses:       18,711  (  2,099 rd   +  16,612 wr)
+==1870== D1  miss rate:      18.8% (   11.7%     +    26.0%  )
+==1870== LLd miss rate:       2.1% (    0.5%     +     3.8%  )
+==1870== 
+==1870== LL refs:         165,476  ( 52,327 rd   + 113,149 wr)
+==1870== LL misses:        19,826  (  3,214 rd   +  16,612 wr)
+==1870== LL miss rate:        0.7% (    0.1%     +     3.8%  )
+```
+
+# reduce_fibo cache-profiling branch, n = 16
+```js
+Table size is 2^n. Enter n ( default n=8 )  ? 16
+Filling hashmap with 64225 entries
+hmap->top : 0
+Done !
+hmap->top : 64225
+ >  > rm
+hmap->top : 0
+ > fill
+hmap->top : 64225
+ > sums
+sum_key             : 2062393200
+sum_value           : 2062393200
+ > rm
+hmap->top : 0
+ > fill
+hmap->top : 64225
+ > sums
+sum_key             : 2062393200
+sum_value           : 2062393200
+ > rm
+hmap->top : 0
+ > fill
+hmap->top : 64225
+ > sums
+sum_key             : 2062393200
+sum_value           : 2062393200
+ > exit
+==1915== 
+==1915== I   refs:      51,248,956
+==1915== I1  misses:         1,244
+==1915== LLi misses:         1,220
+==1915== I1  miss rate:       0.00%
+==1915== LLi miss rate:       0.00%
+==1915== 
+==1915== D   refs:      21,020,549  (14,078,793 rd   + 6,941,756 wr)
+==1915== D1  misses:     1,993,312  ( 1,480,016 rd   +   513,296 wr)
+==1915== LLd misses:        28,976  (     2,120 rd   +    26,856 wr)
+==1915== D1  miss rate:        9.5% (      10.5%     +       7.4%  )
+==1915== LLd miss rate:        0.1% (       0.0%     +       0.4%  )
+==1915== 
+==1915== LL refs:        1,994,556  ( 1,481,260 rd   +   513,296 wr)
+==1915== LL misses:         30,196  (     3,340 rd   +    26,856 wr)
+==1915== LL miss rate:         0.0% (       0.0%     +       0.4%  )
+```
+
+# reduce_fibo cache-profiling branch, SSE w PROBE_LENGTH = 16, n = 16
+```js
+Table size is 2^n. Enter n ( default n=8 )  ? 16
+Filling hashmap with 64225 entries
+hmap->top : 0
+Done !
+hmap->top : 64225
+ >  > rm
+hmap->top : 0
+ > fill
+hmap->top : 64225
+ > sums
+sum_key             : 2062393200
+sum_value           : 2062393200
+ > rm
+hmap->top : 0
+ > fill
+hmap->top : 64225
+ > sums
+sum_key             : 2062393200
+sum_value           : 2062393200
+ > rm
+hmap->top : 0
+ > fill
+hmap->top : 64225
+ > sums
+sum_key             : 2062393200
+sum_value           : 2062393200
+ > exit
+==2038== 
+==2038== I   refs:      51,612,957
+==2038== I1  misses:         1,239
+==2038== LLi misses:         1,215
+==2038== I1  miss rate:       0.00%
+==2038== LLi miss rate:       0.00%
+==2038== 
+==2038== D   refs:      19,422,583  (12,995,028 rd   + 6,427,555 wr)
+==2038== D1  misses:     1,915,075  ( 1,401,825 rd   +   513,250 wr)
+==2038== LLd misses:        28,974  (     2,119 rd   +    26,855 wr)
+==2038== D1  miss rate:        9.9% (      10.8%     +       8.0%  )
+==2038== LLd miss rate:        0.1% (       0.0%     +       0.4%  )
+==2038== 
+==2038== LL refs:        1,916,314  ( 1,403,064 rd   +   513,250 wr)
+==2038== LL misses:         30,189  (     3,334 rd   +    26,855 wr)
+==2038== LL miss rate:         0.0% (       0.0%     +       0.4%  )
+```
+
+
+# reduce_fibo cache-profiling branch, n = 8
+```js
+Table size is 2^n. Enter n ( default n=8 )  ? 8
+Filling hashmap with 250 entries
+hmap->top : 0
+Done !
+hmap->top : 250
+ >  > find
+sum : 31125
+ > exit
+==2487== 
+==2487== I   refs:      284,700
+==2487== I1  misses:      1,211
+==2487== LLi misses:      1,190
+==2487== I1  miss rate:    0.43%
+==2487== LLi miss rate:    0.42%
+==2487== 
+==2487== D   refs:      102,923  (75,232 rd   + 27,691 wr)
+==2487== D1  misses:      3,521  ( 2,773 rd   +    748 wr)
+==2487== LLd misses:      2,784  ( 2,118 rd   +    666 wr)
+==2487== D1  miss rate:     3.4% (   3.7%     +    2.7%  )
+==2487== LLd miss rate:     2.7% (   2.8%     +    2.4%  )
+==2487== 
+==2487== LL refs:         4,732  ( 3,984 rd   +    748 wr)
+==2487== LL misses:       3,974  ( 3,308 rd   +    666 wr)
+==2487== LL miss rate:      1.0% (   0.9%     +    2.4%  )
+```
+
+# baseline array, n = 8
+```js
+(base) [spagbol@HADES-Z: ...rce/C/build-your-own-lisp] [cache-profiling|✚ 3⚑ 1] ✔
+08:00 $ valgrind --tool=cachegrind bin/baseline
+==2533== Cachegrind, a cache and branch-prediction profiler
+==2533== Copyright (C) 2002-2015, and GNU GPL'd, by Nicholas Nethercote et al.
+==2533== Using Valgrind-3.12.0.SVN and LibVEX; rerun with -h for copyright info
+==2533== Command: bin/baseline
+==2533== 
+--2533-- warning: L3 cache found, using its data for the LL simulation.
+Table size is 2^n. Enter n ( default n=8 )  ? 8   
+Filling hashmap with 250 entries
+Done !
+ >  > find
+sum : 31125
+ > exit
+==2533== 
+==2533== I   refs:      199,534
+==2533== I1  misses:      1,137
+==2533== LLi misses:      1,116
+==2533== I1  miss rate:    0.57%
+==2533== LLi miss rate:    0.56%
+==2533== 
+==2533== D   refs:       67,830  (51,347 rd   + 16,483 wr)
+==2533== D1  misses:      3,408  ( 2,708 rd   +    700 wr)
+==2533== LLd misses:      2,717  ( 2,098 rd   +    619 wr)
+==2533== D1  miss rate:     5.0% (   5.3%     +    4.2%  )
+==2533== LLd miss rate:     4.0% (   4.1%     +    3.8%  )
+==2533== 
+==2533== LL refs:         4,545  ( 3,845 rd   +    700 wr)
+==2533== LL misses:       3,833  ( 3,214 rd   +    619 wr)
+==2533== LL miss rate:      1.4% (   1.3%     +    3.8%  )
+```
+
+# reduce_fibo cache-profiling branch, n = 23
+```js
+Table size is 2^n. Enter n ( default n=8 )  ? 23
+Filling hashmap with 8220835 entries
+hmap->top : 0
+Done !
+hmap->top : 8220835
+ >  > find
+sum : 33791059938195
+ > exit
+==2648== 
+==2648== I   refs:      1,048,825,424
+==2648== I1  misses:            1,197
+==2648== LLi misses:            1,188
+==2648== I1  miss rate:          0.00%
+==2648== LLi miss rate:          0.00%
+==2648== 
+==2648== D   refs:        464,014,420  (312,957,970 rd   + 151,056,450 wr)
+==2648== D1  misses:       45,735,473  ( 29,330,068 rd   +  16,405,405 wr)
+==2648== LLd misses:       45,695,761  ( 29,290,433 rd   +  16,405,328 wr)
+==2648== D1  miss rate:           9.9% (        9.4%     +        10.9%  )
+==2648== LLd miss rate:           9.8% (        9.4%     +        10.9%  )
+==2648== 
+==2648== LL refs:          45,736,670  ( 29,331,265 rd   +  16,405,405 wr)
+==2648== LL misses:        45,696,949  ( 29,291,621 rd   +  16,405,328 wr)
+==2648== LL miss rate:            3.0% (        2.2%     +        10.9%  )
+```
+
+# baseline array, n = 23
+```js
+Table size is 2^n. Enter n ( default n=8 )  ? 23
+Filling hashmap with 8220835 entries
+Done !
+ >  > find
+sum : 33791059938195
+ > exit
+==2579== 
+==2579== I   refs:      92,681,388
+==2579== I1  misses:         1,131
+==2579== LLi misses:         1,121
+==2579== I1  miss rate:       0.00%
+==2579== LLi miss rate:       0.00%
+==2579== 
+==2579== D   refs:      20,619,344  (16,492,554 rd   + 4,126,790 wr)
+==2579== D1  misses:     4,113,937  ( 2,058,046 rd   + 2,055,891 wr)
+==2579== LLd misses:     4,113,303  ( 2,057,488 rd   + 2,055,815 wr)
+==2579== D1  miss rate:       20.0% (      12.5%     +      49.8%  )
+==2579== LLd miss rate:       19.9% (      12.5%     +      49.8%  )
+==2579== 
+==2579== LL refs:        4,115,068  ( 2,059,177 rd   + 2,055,891 wr)
+==2579== LL misses:      4,114,424  ( 2,058,609 rd   + 2,055,815 wr)
+==2579== LL miss rate:         3.6% (       1.9%     +      49.8%  )
 ```
