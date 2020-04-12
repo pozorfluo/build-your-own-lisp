@@ -760,10 +760,10 @@ static inline void destroy_entry(struct hmap *const hashmap, const size_t entry)
 		    hashmap->store[hashmap->top].key;
 		hashmap->store[(hashmap->buckets.entries[entry])].value =
 		    hashmap->store[hashmap->top].value;
-		hashmap->store[hashmap->top].key   = 0; // NULL;
-		hashmap->store[hashmap->top].value = 0; // NULL;
+		// hashmap->store[hashmap->top].key   = 0; // NULL;
+		// hashmap->store[hashmap->top].value = 0; // NULL;
 	}
-	empty_entry(hashmap, entry);
+	// empty_entry(hashmap, entry);
 
 	return;
 }
@@ -772,6 +772,7 @@ static inline void destroy_entry(struct hmap *const hashmap, const size_t entry)
 /**
  * Look for given key in given hmap
  * If given key exists
+ *   update the store
  * 	 probe for stop bucket
  *   slingshot entry backward, up to stop bucket
  *   mark entry right before stop bucket as empty
@@ -779,9 +780,6 @@ static inline void destroy_entry(struct hmap *const hashmap, const size_t entry)
  * Else
  *   -> out of bound value ( > capacity )
  *
- * note
- *   The entry is NOT deleted from the store.
- *   It is MARKED as Empty.
  */
 size_t hmap_remove(struct hmap *const hashmap, const size_t key)
 {
@@ -789,6 +787,9 @@ size_t hmap_remove(struct hmap *const hashmap, const size_t key)
 
 	/* Given key exists */
 	if (entry < hashmap->capacity) {
+		/* update store */
+		destroy_entry(hashmap, entry);
+
 /* probe for stop bucket */
 #ifdef __AVX__
 		uint32_t match_mask;
@@ -1136,8 +1137,7 @@ void dump_hashmap(const struct hmap *const hashmap)
 		           hashmap->hash_shift)),
 		       hashmap->buckets.distances[i],
 		       hashmap->store[(hashmap->buckets.entries[i])].key,
-		       hashmap->store[(hashmap->buckets.entries[i])].value
-			   );
+		       hashmap->store[(hashmap->buckets.entries[i])].value);
 	}
 
 	printf("empty_buckets       : %lu \t-> %f%%\n",
@@ -1156,24 +1156,25 @@ void dump_hashmap(const struct hmap *const hashmap)
 //---
 int main(void)
 {
-	puts(
-	    "todo\n"
-	    "\t- [ ] Refactor Slingshot sequences by array\n"
-	    "\t\t+ [ ] Slingshot ALL buckets.metas then\n"
-	    "\t\t+ [ ] Slingshot ALL buckets.distances then\n"
-	    "\t\t+ [ ] Slingshot ALL buckets.entries\n"
-	    "\t- [x] Implement backward shift deletion\n"
-	    "\t- [ ] Profile core table operations\n"
-	    "\t\t+ [ ] Isolate them by using fixed size keys, a innocuous hash "
-	    "func\n"
-	    "\t- [ ] Check boundaries when doing slingshots\n"
-	    "\t- [x] Consider tossing actual_capacity \n"
-	    "\t\t+ [ ] Hunt potential off-by-1 errors checking entry vs capacity\n"
-	    "\t- [ ] Implement baseline non-SIMD linear probing\n"
-	    "\t\t+ [ ] Benchmark against SIMD wip versions\n"
-	    "\t- [x] Implement the most basic put operation to mock tables\n"
-	    "\t- [ ] Try mapping and storing primitive type/values\n"
-	    "\t\t+ [ ] Benchmark the difference with store of pointers\n");
+	puts("todo\n" FG_BRIGHT_RED
+	     "\t- [x] Update hmap->top when doing hmap->remove\n" 
+	     "\t\t+ [ ] Look for simpler ways to update the store !!\n" RESET
+	     "\t- [ ] Refactor Slingshot sequences by array\n"
+	     "\t\t+ [ ] Slingshot ALL buckets.metas then\n"
+	     "\t\t+ [ ] Slingshot ALL buckets.distances then\n"
+	     "\t\t+ [ ] Slingshot ALL buckets.entries\n"
+	     "\t- [x] Implement backward shift deletion\n"
+	     "\t- [ ] Profile core table operations\n"
+	     "\t\t+ [ ] Isolate them by using fixed size keys, a innocuous hash "
+	     "func\n"
+	     "\t- [ ] Check boundaries when doing slingshots\n"
+	     "\t- [x] Consider tossing actual_capacity \n"
+	     "\t\t+ [ ] Hunt potential off-by-1 errors checking entry vs capacity\n"
+	     "\t- [ ] Implement baseline non-SIMD linear probing\n"
+	     "\t\t+ [ ] Benchmark against SIMD wip versions\n"
+	     "\t- [x] Implement the most basic put operation to mock tables\n"
+	     "\t- [ ] Try mapping and storing primitive type/values\n"
+	     "\t\t+ [ ] Benchmark the difference with store of pointers\n");
 
 #ifdef __AVX__
 	puts("__AVX__ 1");
@@ -1208,11 +1209,13 @@ int main(void)
 	printf(FG_BRIGHT_YELLOW REVERSE "Filling hashmap with %lu entries\n" RESET,
 	       test_count);
 
+	printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET, hashmap->top);
+
 	for (size_t k = 0; k < test_count; k++) {
 		hmap_put(hashmap, k, k);
 	}
 	printf(FG_BRIGHT_YELLOW REVERSE "Done !\n" RESET);
-
+	printf(FG_YELLOW REVERSE "hmap->top : %lu\n" RESET, hashmap->top);
 	//----------------------------------------------------------- input loop
 	for (;;) {
 		fputs("\x1b[102m > \x1b[0m", stdout);
@@ -1227,6 +1230,24 @@ int main(void)
 
 		if ((strcmp(key, "exit")) == 0) {
 			break;
+		}
+
+		if ((strcmp(key, "rm")) == 0) {
+			for (size_t k = 0; k < test_count; k++) {
+				hmap_remove(hashmap, k);
+			}
+			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
+			       hashmap->top);
+			continue;
+		}
+
+		if ((strcmp(key, "fill")) == 0) {
+			for (size_t k = 0; k < test_count; k++) {
+				hmap_put(hashmap, k, k);
+			}
+			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
+			       hashmap->top);
+			continue;
 		}
 
 		if ((strcmp(key, "dump")) == 0) {
@@ -1284,6 +1305,8 @@ int main(void)
 				printf("\t\t-> value : %lu\n", hmap_get(hashmap, numeric_key));
 				printf("Removing entry !\n");
 				hmap_remove(hashmap, numeric_key);
+				printf(FG_YELLOW REVERSE "hmap->top : %lu\n" RESET,
+				       hashmap->top);
 			}
 		}
 	}
