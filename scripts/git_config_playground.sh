@@ -117,28 +117,6 @@ git commit -m 'Make builtins variable immutable for chapter 11 : Bonus Marks
 			and that is a problem.
 	- [ ] check structure packing for added bool mutable field.'
 
-
-git commit -m 'Lay groundwork for reduce_fibo introduction
-
-    Discard hmap->actual_capacity
-      hmap->capacity is now used as hmap->actual_capacity and is the 
-      ( requested/advertised capacity + PROBE_LENGTH ).
-
-      The few times that the old advertised capacity are needed now use
-      ( hmap->capacity - PROBE_LENGTH ).
-
-    Add hmap->hash_shift
-      shift amount necessary for desired hash depth including the 7 bits
-	  required for meta_byte with reduce function.
-
-      It assumes __WORDSIZE 64 for now.
-      
-    Define size_t reduce_fibo(const size_t hash, const size_t shift)
-      Reduce a given hash to a packed hmap index and meta_byte.
-      
-      Also can be used to compute a hash, multiplicative style with a fibonacci 
-      derived constant, for a given numeric key.'
-
 git push -u origin master
 
 # start interactive rebase session for last 3 commits
