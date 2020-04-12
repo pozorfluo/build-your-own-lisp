@@ -123,14 +123,16 @@ enum meta_ctrl {
  *     + [ ] Balloon up ?
  *     + [ ] Live with a higher load factor than requested ? (within limits)
  */
-struct hmap_allocator {
-	void *(*new)(size_t size);
-	void (*delete)(void *);
-};
+// struct hmap_allocator {
+// 	void *(*new)(size_t size);
+// 	void (*delete)(void *);
+// };
 
 struct hmap_entry {
-	char *key;
-	void *value;
+	// char *key;
+	// void *value;
+	size_t key;
+	size_t value;
 };
 
 struct hmap_buckets {
@@ -174,8 +176,8 @@ struct hmap {
 	// size_t actual_capacity; /* advertised capacity + PROBE_LENGTH */
 	size_t capacity; /* now is actual capacity */
 	size_t count;    /* occupied entries count */
-	const struct hmap_allocator allocator;
-	const size_t xor_seed[256];
+                     // const struct hmap_allocator allocator;
+                     // const size_t xor_seed[256];
 #ifdef DEBUG_HMAP
 	struct hmap_stats stats;
 #endif /* DEBUG_HMAP */
@@ -190,17 +192,17 @@ struct hmap_init {
 	// size_t actual_capacity;
 	size_t capacity;
 	size_t count;
-	struct hmap_allocator allocator;
-	size_t xor_seed[256];
+// struct hmap_allocator allocator;
+// size_t xor_seed[256];
 #ifdef DEBUG_HMAP
 	struct hmap_stats stats;
 #endif /* DEBUG_HMAP */
 };
 
 //----------------------------------------------------- FORWARD DECLARATIONS ---
-static inline size_t hash_tab(const unsigned char *key,
-                              const size_t *const xor_seed)
-    __attribute__((pure, always_inline));
+// static inline size_t hash_tab(const unsigned char *key,
+//                               const size_t *const xor_seed)
+//     __attribute__((pure, always_inline));
 
 static inline size_t reduce_fibo(const size_t hash, const size_t shift)
     __attribute__((const, always_inline));
@@ -211,9 +213,10 @@ static inline size_t hash_index(const size_t hash)
 static inline meta_byte hash_meta(const size_t hash)
     __attribute__((const, always_inline));
 
+/*
 static inline int compare_keys(const char *const key_a, const char *const key_b)
     __attribute__((pure, always_inline));
-
+*/
 #ifdef __AVX__
 static inline uint32_t probe_pattern(const meta_byte pattern,
                                      const meta_byte *const entry)
@@ -227,9 +230,9 @@ static inline uint16_t probe_pattern(const meta_byte pattern,
 // static inline size_t hmap_find(const struct hmap *hashmap, const char *key)
 //     __attribute__((const, always_inline));
 
-static inline void xor_seed_fill(size_t *const xor_seed,
-                                 const size_t hash_depth)
-    __attribute__((always_inline));
+// static inline void xor_seed_fill(size_t *const xor_seed,
+//                                  const size_t hash_depth)
+//     __attribute__((always_inline));
 
 static inline void destroy_entry(struct hmap *const hashmap, const size_t entry)
     __attribute__((always_inline));
@@ -248,27 +251,27 @@ static inline void destroy_entry(struct hmap *const hashmap, const size_t entry)
  *       * [ ] See : https://github.com/aappleby/smhasher/wiki/SMHasher
  *   - [ ] Check /playground/src for alternative/shelved hash function
  */
-static inline size_t hash_tab(const unsigned char *key,
-                              const size_t *const xor_seed)
-{
-	size_t hash = 0;
+// static inline size_t hash_tab(const unsigned char *key,
+//                               const size_t *const xor_seed)
+// {
+// 	size_t hash = 0;
 
-	while (*key) {
-		hash ^= xor_seed[(*key + hash) & 0xFF] ^ *key;
-		// #ifdef DEBUG_HMAP
-		// 		printf(
-		// 		    "partial hash : %lu\n"
-		// 		    "char         : %c\n"
-		// 		    "xor[char]    : %lu\n\n",
-		// 		    hash,
-		// 		    (char)*key,
-		// 		    xor_seed[*key]);
-		// #endif /* DEBUG_HMAP */
-		key++;
-	}
+// 	while (*key) {
+// 		hash ^= xor_seed[(*key + hash) & 0xFF] ^ *key;
+// 		// #ifdef DEBUG_HMAP
+// 		// 		printf(
+// 		// 		    "partial hash : %lu\n"
+// 		// 		    "char         : %c\n"
+// 		// 		    "xor[char]    : %lu\n\n",
+// 		// 		    hash,
+// 		// 		    (char)*key,
+// 		// 		    xor_seed[*key]);
+// 		// #endif /* DEBUG_HMAP */
+// 		key++;
+// 	}
 
-	return hash;
-}
+// 	return hash;
+// }
 
 static inline size_t hash_index(const size_t hash) { return hash >> 7; }
 
@@ -454,29 +457,30 @@ static inline void clobber_bucket_with(struct hmap *const hashmap,
  *     Else
  *       -> difference
  */
-static inline int compare_keys(const char *const key_a, const char *const key_b)
-{
-	size_t size_a  = strlen(key_a);
-	size_t size_b  = strlen(key_b);
-	int difference = -1;
+// static inline int compare_keys(const char *const key_a, const char *const
+// key_b)
+// {
+// 	size_t size_a  = strlen(key_a);
+// 	size_t size_b  = strlen(key_b);
+// 	int difference = -1;
 
-#ifdef DEBUG_HMAP
-	printf(
-	    "comparing key a : %s\n size : %lu\n"
-	    "      and key b : %s\n size : %lu\n",
-	    key_a,
-	    size_a,
-	    key_b,
-	    size_b);
-#endif /* DEBUG_HMAP */
+// #ifdef DEBUG_HMAP
+// 	printf(
+// 	    "comparing key a : %s\n size : %lu\n"
+// 	    "      and key b : %s\n size : %lu\n",
+// 	    key_a,
+// 	    size_a,
+// 	    key_b,
+// 	    size_b);
+// #endif /* DEBUG_HMAP */
 
-	// do not bother with switch & jump, gcc outputs the same assembly
-	// see : https://godbolt.org/z/suQQMk
-	if (size_a == size_b) {
-		difference = memcmp(key_a, key_b, size_a + 1);
-	}
-	return difference;
-}
+// 	// do not bother with switch & jump, gcc outputs the same assembly
+// 	// see : https://godbolt.org/z/suQQMk
+// 	if (size_a == size_b) {
+// 		difference = memcmp(key_a, key_b, size_a + 1);
+// 	}
+// 	return difference;
+// }
 
 #ifdef DEBUG_HMAP
 //----------------------------------------------------------------- Function ---
@@ -680,9 +684,11 @@ static inline uint16_t probe_related(const meta_byte *const entry_distance)
  *   - [x] Enforce lazy branching and computations to keep ideal path pristine
  *   - [ ] Investigate ways to probe for Match or META_EMPTY at once
  */
-size_t hmap_find(const struct hmap *const hashmap, const char *const key)
+// size_t hmap_find(const struct hmap *const hashmap, const char *const key)
+size_t hmap_find(const struct hmap *const hashmap, const size_t key)
 {
-	size_t hash    = hash_tab((unsigned char *)key, hashmap->xor_seed);
+	// size_t hash    = hash_tab((unsigned char *)key, hashmap->xor_seed);
+	size_t hash    = reduce_fibo(key, hashmap->hash_shift);
 	size_t index   = hash_index(hash);
 	meta_byte meta = hash_meta(hash);
 
@@ -718,20 +724,14 @@ size_t hmap_find(const struct hmap *const hashmap, const char *const key)
 			// _BitScanForward(&offset, match_mask);
 			size_t match = index + offset;
 			// const char *probed_key = hashmap->buckets.entries[match]->key;
-			const char *probed_key =
+			// const char *probed_key =
+			const size_t probed_key =
 			    hashmap->store[(hashmap->buckets.entries[match])].key;
 
-			if ((probed_key != NULL)) {
-#ifdef DEBUG_HMAP
-				printf(
-				    "comparing store key : %s\n"
-				    "      and given key : %s\n",
-				    probed_key,
-				    key);
-#endif /* DEBUG_HMAP */
-			}
 			/* Can an entry that yields a match ever have a NULL key ? */
-			if ((probed_key != NULL) && (compare_keys(probed_key, key)) == 0) {
+			// if ((probed_key != NULL) && (compare_keys(probed_key, key)) == 0)
+			// {
+			if (probed_key == key) {
 				// hashmap->stats.find_count++;
 				/* Found key ! */
 				return match;
@@ -780,7 +780,8 @@ size_t hmap_find(const struct hmap *const hashmap, const char *const key)
  *   - [ ] Investigate ways to probe for Match or META_EMPTY at once
  */
 static inline size_t hmap_find_or_empty(const struct hmap *const hashmap,
-                                        const char *const key,
+                                        // const char *const key,
+                                        const size_t key,
                                         size_t index,
                                         const meta_byte meta)
 {
@@ -809,7 +810,8 @@ static inline size_t hmap_find_or_empty(const struct hmap *const hashmap,
 
 			/* Can an entry that yields a match ever have a NULL key ? */
 			size_t match = index + offset;
-			const char *probed_key =
+			// const char *probed_key =
+			const size_t probed_key =
 			    hashmap->store[(hashmap->buckets.entries[match])].key;
 #ifdef DEBUG_HMAP
 			printf(
@@ -819,7 +821,8 @@ static inline size_t hmap_find_or_empty(const struct hmap *const hashmap,
 			    key);
 #endif /* DEBUG_HMAP */
 
-			if ((compare_keys(probed_key, key)) == 0) {
+			// if ((compare_keys(probed_key, key)) == 0) {
+			if (probed_key == key) {
 				/* Found key ! */
 				return match;
 			}
@@ -862,10 +865,12 @@ static inline size_t hmap_find_or_empty(const struct hmap *const hashmap,
  * Else
  *   -> NULL
  */
-void *hmap_get(const struct hmap *const hashmap, const char *const key)
+// void *hmap_get(const struct hmap *const hashmap, const char *const key)
+size_t hmap_get(const struct hmap *const hashmap, const size_t key)
 {
 	const size_t entry = hmap_find(hashmap, key);
-	void *value        = NULL;
+	// void *value        = NULL;
+	size_t value = 0;
 
 	if (entry <= hashmap->capacity) {
 		value = hashmap->store[entry].value;
@@ -934,13 +939,17 @@ void *hmap_get(const struct hmap *const hashmap, const char *const key)
  *         Clobber most upstream swap candidate with new entry
  *         -> new entry index
  */
-size_t hmap_put(struct hmap *const hashmap, char *const key, void *const value)
+// size_t hmap_put(struct hmap *const hashmap, char *const key, void *const
+// value)
+// size_t hmap_put(struct hmap *const hashmap, const size_t key, void *const value)
+size_t hmap_put(struct hmap *const hashmap, const size_t key, const size_t value)
 {
-	assert(key != NULL);
-	assert(value != NULL);
+	// assert(key != NULL);
+	// assert(value != NULL);
 
 	/* Prepare temp entry */
-	const size_t hash    = hash_tab((unsigned char *)key, hashmap->xor_seed);
+	// const size_t hash    = hash_tab((unsigned char *)key, hashmap->xor_seed);
+	const size_t hash    = reduce_fibo(key, hashmap->hash_shift);
 	const size_t home    = hash_index(hash);
 	const meta_byte meta = hash_meta(hash);
 
@@ -1258,16 +1267,16 @@ void hmap_delete_hashmap(struct hmap *const hashmap)
  * Fill given xor_seed for given hash depth
  *   -> pointer to new xor_seed
  */
-static inline void xor_seed_fill(size_t *const xor_seed,
-                                 const size_t hash_depth)
-{
-	srand(__rdtsc());
-	for (size_t i = 0; i < 256; i++) {
-		// % hash_depth is okay-ish as long as its a power of 2
-		// Expect skewed distribution otherwise
-		xor_seed[i] = rand() % (hash_depth);
-	}
-}
+// static inline void xor_seed_fill(size_t *const xor_seed,
+//                                  const size_t hash_depth)
+// {
+// 	srand(__rdtsc());
+// 	for (size_t i = 0; i < 256; i++) {
+// 		// % hash_depth is okay-ish as long as its a power of 2
+// 		// Expect skewed distribution otherwise
+// 		xor_seed[i] = rand() % (hash_depth);
+// 	}
+// }
 
 //----------------------------------------------------------------- Function ---
 /**
@@ -1311,23 +1320,23 @@ static inline void xor_seed_fill(size_t *const xor_seed,
 		}                                                                      \
 	} while (0)
 
-struct hmap *hmap_new(const size_t n,
-                      const struct hmap_allocator *const allocator)
+struct hmap *hmap_new(const size_t n) //,
+//   const struct hmap_allocator *const allocator)
 {
 	//--------------------------------------------------- allocator init
-	struct hmap_allocator allocator_init;
+	// struct hmap_allocator allocator_init;
 
-	if (allocator == NULL) {
-		allocator_init.new    = malloc;
-		allocator_init.delete = free;
-	}
-	else {
-		/**
-		 * todo
-		 *   - [ ] Fix getting allocator as a pointer, it does not make sense
-		 */
-		allocator_init = *allocator;
-	}
+	// if (allocator == NULL) {
+	// 	allocator_init.new    = malloc;
+	// 	allocator_init.delete = free;
+	// }
+	// else {
+	// 	/**
+	// 	 * todo
+	// 	 *   - [ ] Fix getting allocator as a pointer, it does not make sense
+	// 	 */
+	// 	allocator_init = *allocator;
+	// }
 	//---------------------------------------------- advertised capacity
 	/* tab_hash requires a mininum of 8 bits of hash space */
 	/* including the 7 bits required for meta_byte */
@@ -1335,8 +1344,8 @@ struct hmap *hmap_new(const size_t n,
 	const size_t hash_depth = capacity << 7;
 
 	//---------------------------------------------------- xor_seed init
-	size_t xor_seed_init[256];
-	xor_seed_fill(xor_seed_init, hash_depth);
+	// size_t xor_seed_init[256];
+	// xor_seed_fill(xor_seed_init, hash_depth);
 
 	//-------------------------------------------------------- hmap init
 	/* actual capacity */
@@ -1359,15 +1368,18 @@ struct hmap *hmap_new(const size_t n,
 	                                 hash_shift,
 	                                 capacity,
 	                                 0,
-	                                 allocator_init,
-	                                 {0},
+	                                 //  allocator_init,
+	                                 //  {0},
 	                                 stats_init};
 #else
 	struct hmap_init hashmap_init = {
-	    {NULL}, NULL, 0, hash_shift, capacity, 0, allocator_init, {0}};
+	    {NULL}, NULL, 0, hash_shift, capacity, 0,
+	    // allocator_init,
+	    //  {0}
+	};
 #endif /* DEBUG_HMAP */
 
-	memcpy(hashmap_init.xor_seed, xor_seed_init, sizeof(xor_seed_init));
+	// memcpy(hashmap_init.xor_seed, xor_seed_init, sizeof(xor_seed_init));
 
 	struct hmap *new_hashmap =
 	    XMALLOC(sizeof(struct hmap), "new_hashmap", "new_hashmap");
@@ -1470,21 +1482,21 @@ double expected_collisions(const size_t keys, const size_t buckets)
  * Pretty print xor_seed for given Hashmap
  *   -> nothing
  */
-void print_xor_seed(const struct hmap *const hashmap)
-{
-	puts("xor_seed            :");
-	for (size_t i = 0; i < 256; i++) {
-		printf("%0*lx ",
-		       (int)ceil(((hashmap->stats.n + 7) / 4.0)),
-		       hashmap->xor_seed[i]);
-		if (((i + 1) % 16) == 0) {
-			putchar('\n');
-		}
-	}
-	putchar('\n');
+// void print_xor_seed(const struct hmap *const hashmap)
+// {
+// 	puts("xor_seed            :");
+// 	for (size_t i = 0; i < 256; i++) {
+// 		printf("%0*lx ",
+// 		       (int)ceil(((hashmap->stats.n + 7) / 4.0)),
+// 		       hashmap->xor_seed[i]);
+// 		if (((i + 1) % 16) == 0) {
+// 			putchar('\n');
+// 		}
+// 	}
+// 	putchar('\n');
 
-	return;
-}
+// 	return;
+// }
 
 //----------------------------------------------------------------- Function ---
 /**
@@ -1596,13 +1608,17 @@ void dump_hashmap(const struct hmap *const hashmap)
 		printf("\x1b[10%dmhashmap->\x1b[30mbucket[%lu]\x1b[0m>>", colour, i);
 
 		// printf("\t %016lx : %s\n",
-		printf(" %lu[%d] : %s\n",
-		       hash_index(hash_tab((unsigned char *)hashmap
-		                               ->store[(hashmap->buckets.entries[i])]
-		                               .key,
-		                           hashmap->xor_seed)),
-		       hashmap->buckets.distances[i],
-		       hashmap->store[(hashmap->buckets.entries[i])].key);
+		printf(
+		    " %lu[%d] : %s\n",
+		    //    hash_index(hash_tab((unsigned char *)hashmap
+		    //                            ->store[(hashmap->buckets.entries[i])]
+		    //                            .key,
+		    //                        hashmap->xor_seed)),
+		    hash_index(
+		        reduce_fibo(hashmap->store[(hashmap->buckets.entries[i])].key,
+		                    hashmap->hash_shift)),
+		    hashmap->buckets.distances[i],
+		    hashmap->store[(hashmap->buckets.entries[i])].key);
 	}
 
 	printf("empty_buckets       : %lu \t-> %f%%\n",
@@ -1613,7 +1629,7 @@ void dump_hashmap(const struct hmap *const hashmap)
 
 #ifdef DEBUG_HMAP
 	stats_hashmap(hashmap);
-	print_xor_seed(hashmap);
+// print_xor_seed(hashmap);
 #endif /* DEBUG_HMAP */
 }
 
@@ -1657,7 +1673,8 @@ int main(void)
 	      stdout);
 	scanf("%lu", &n);
 
-	struct hmap *const hashmap = hmap_new(n, NULL);
+	// struct hmap *const hashmap = hmap_new(n, NULL);
+	struct hmap *const hashmap = hmap_new(n);
 //----------------------------------------------------------- mock entry
 
 //-------------------------------------------------------------------- setup
@@ -1724,10 +1741,10 @@ int main(void)
 		}
 
 #ifdef DEBUG_HMAP
-		if ((strcmp(key, "seed")) == 0) {
-			print_xor_seed(hashmap);
-			continue;
-		}
+		// if ((strcmp(key, "seed")) == 0) {
+		// 	print_xor_seed(hashmap);
+		// 	continue;
+		// }
 		if ((strcmp(key, "stats")) == 0) {
 			stats_hashmap(hashmap);
 			continue;
