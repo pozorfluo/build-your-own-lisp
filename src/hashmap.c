@@ -1195,13 +1195,14 @@ void sum_store(const struct hmap *const hashmap)
 	       sum_value);
 }
 
-//--------------------------------------------------------------------- MAIN
-//---
+//--------------------------------------------------------------------- MAIN ---
 int main(void)
 {
 	puts("todo\n" FG_BRIGHT_RED
 	     "\t- [x] Update hmap->top when doing hmap->remove\n"
 	     "\t\t+ [ ] Look for simpler ways to update the store !!\n" RESET
+		 FG_BRIGHT_YELLOW
+	     "\t- [ ] Fill and read an array as a baseline\n" RESET
 	     "\t- [ ] Refactor Slingshot sequences by array\n"
 	     "\t\t+ [ ] Slingshot ALL buckets.metas then\n"
 	     "\t\t+ [ ] Slingshot ALL buckets.distances then\n"
