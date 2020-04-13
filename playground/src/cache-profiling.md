@@ -501,3 +501,114 @@ sum : 33791059938195
 ==2579== LL misses:      4,114,424  ( 2,058,609 rd   + 2,055,815 wr)
 ==2579== LL miss rate:         3.6% (       1.9%     +      49.8%  )
 ```
+
+```js
+05:15 $ valgrind --tool=cachegrind bin/baseline
+Table size is 2^n. Enter n ( default n=8 )  ? 16
+Enter desired load factor ? 1
+load_factor = 1.000000
+load_count  = 65536
+Filling hashmap with 65536 entries
+Done !
+|><| 0.012528 s
+ > |><| 0.000397 s
+ > find
+sum : 2147450880
+sum : 0
+sum : 2146915890
+|><| 115.736816 s
+ > exit
+==9729== 
+==9729== I   refs:      45,098,341,078
+==9729== I1  misses:             1,404
+==9729== LLi misses:             1,352
+==9729== I1  miss rate:           0.00%
+==9729== LLi miss rate:           0.00%
+==9729==
+==9729== D   refs:       6,443,927,785  (6,443,382,890 rd   + 544,895 wr)
+==9729== D1  misses:     1,609,351,908  (1,609,271,283 rd   +  80,625 wr)
+==9729== LLd misses:            19,067  (        2,125 rd   +  16,942 wr)
+==9729== D1  miss rate:           25.0% (         25.0%     +    14.8%  )
+==9729== LLd miss rate:            0.0% (          0.0%     +     3.1%  )
+==9729== 
+==9729== LL refs:        1,609,353,312  (1,609,272,687 rd   +  80,625 wr)
+==9729== LL misses:             20,419  (        3,477 rd   +  16,942 wr)
+==9729== LL miss rate:             0.0% (          0.0%     +     3.1%  )
+
+
+05:17 $ valgrind --tool=cachegrind bin/hashmap 
+__AVX__ 1
+PROBE_LENGTH 32
+__WORDSIZE 64
+RAND_MAX  2147483647
+Table size is 2^n. Enter n ( default n = 8 )  ? 16
+Enter desired load factor ? 1
+load_factor = 1.000000
+load_count  = 65536
+Filling hashmap with 65536 entries
+hmap->top : 0
+Done !
+hmap->top : 65536
+|><| 0.051139 s
+ > |><| 0.000560 s
+ > find
+sum : 2147450880
+sum : 0
+sum : 2144079604
+|><| 0.062028 s
+ > exit
+==9801== 
+==9801== I   refs:      19,024,896
+==9801== I1  misses:         1,494
+==9801== LLi misses:         1,410
+==9801== I1  miss rate:       0.01%
+==9801== LLi miss rate:       0.01%
+==9801== 
+==9801== D   refs:       7,976,713  (5,970,411 rd   + 2,006,302 wr)
+==9801== D1  misses:       773,275  (  642,470 rd   +   130,805 wr)
+==9801== LLd misses:        29,333  (    2,149 rd   +    27,184 wr)
+==9801== D1  miss rate:        9.7% (     10.8%     +       6.5%  )
+==9801== LLd miss rate:        0.4% (      0.0%     +       1.4%  )
+==9801== 
+==9801== LL refs:          774,769  (  643,964 rd   +   130,805 wr)
+==9801== LL misses:         30,743  (    3,559 rd   +    27,184 wr)
+==9801== LL miss rate:         0.1% (      0.0%     +       1.4%  )
+
+05:25 $ valgrind --tool=cachegrind bin/hashmap
+__AVX__ 1
+PROBE_LENGTH 32
+__WORDSIZE 64
+RAND_MAX  2147483647
+Table size is 2^n. Enter n ( default n = 8 )  ? 24
+Enter desired load factor ? 1
+load_factor = 1.000000
+load_count  = 16777216
+Filling hashmap with 16777216 entries
+hmap->top : 0
+Done !
+hmap->top : 16777216
+|><| 13.900773 s
+ > |><| 0.000460 s
+ > find
+sum : 140737479966720
+sum : 0
+sum : 140719393292824
+|><| 26.304258 s
+ > exit
+==9939== 
+==9939== I   refs:      5,066,074,404
+==9939== I1  misses:            1,502
+==9939== LLi misses:            1,491
+==9939== I1  miss rate:          0.00%
+==9939== LLi miss rate:          0.00%
+==9939== 
+==9939== D   refs:      2,176,192,801  (1,622,744,525 rd   + 553,448,276 wr)
+==9939== D1  misses:      187,661,670  (  154,624,975 rd   +  33,036,695 wr)
+==9939== LLd misses:      184,260,468  (  151,224,349 rd   +  33,036,119 wr)
+==9939== D1  miss rate:           8.6% (          9.5%     +         6.0%  )
+==9939== LLd miss rate:           8.5% (          9.3%     +         6.0%  )
+==9939== 
+==9939== LL refs:         187,663,172  (  154,626,477 rd   +  33,036,695 wr)
+==9939== LL misses:       184,261,959  (  151,225,840 rd   +  33,036,119 wr)
+==9939== LL miss rate:            2.5% (          2.3%     +         6.0%  )
+```
