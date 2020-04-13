@@ -17,12 +17,17 @@
 
 #define LOOP_SIZE 10000000
 
-#define START_BENCH(start) start = (float)clock() / CLOCKS_PER_SEC
+#define START_BENCH(start)                                                     \
+	do {                                                                       \
+		start = (float)clock() / CLOCKS_PER_SEC;                               \
+	} while (0)
 
 #define STOP_BENCH(start, stop, diff, result)                                  \
-	stop   = (float)clock() / CLOCKS_PER_SEC;                                  \
-	diff   = stop - start;                                                     \
-	result = diff;
+	do {                                                                       \
+		stop   = (float)clock() / CLOCKS_PER_SEC;                              \
+		diff   = stop - start;                                                 \
+		result = diff;                                                         \
+	} while (0)
 
 #else
 #define LOOP_SIZE 0
@@ -144,6 +149,22 @@ static inline size_t hash_fimur_reduce(const char *key,
 	}
 
 	return hash >> (64 - n);
+}
+
+static inline size_t hash_fibo_reduce(const char *key, const unsigned int n)
+    __attribute__((const, always_inline));
+
+static inline size_t hash_fibo_reduce(const char *key, const unsigned int n)
+{
+	size_t hash = 11400714819323198485llu;
+	int shift   = (64 - n);
+
+	while (*key) {
+		hash ^= (hash >> shift) + *key++;
+		hash *= (11400714819323198485llu * hash);
+	}
+
+	return hash >> shift;
 }
 
 //----------------------------------------------------------------- Function ---
@@ -310,6 +331,18 @@ int main(void)
 	STOP_BENCH(start, stop, diff, bench_time);
 	printf("bench hash_fimur_reduce        \t: %f \n", bench_time);
 	printf("%016lx\n", hash_fimur);
+
+	//---------------------------------------------------------- bench E2
+	size_t hash_fibo = seed;
+	START_BENCH(start);
+	for (size_t i = 0; i < test_count; i++) {
+		for (size_t i = 0; i < KEYPOOL_SIZE; i++) {
+			hash_fimur = hash_fibo_reduce(&random_keys[i], 11);
+		}
+	}
+	STOP_BENCH(start, stop, diff, bench_time);
+	printf("bench hash_fibo_reduce        \t: %f \n", bench_time);
+	printf("%016lx\n", hash_fibo);
 
 	//---------------------------------------------------------- bench F
 	START_BENCH(start);

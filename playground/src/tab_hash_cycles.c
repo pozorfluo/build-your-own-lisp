@@ -18,7 +18,6 @@
 
 #include "hash_murmur3_nose.h"
 
-
 /**
  * todo
  *   - [ ] Explore simd hash function
@@ -48,7 +47,6 @@
 // 	// return reduce_barret(sum);
 // 	return sum[0];
 // }
-
 
 #define RDTSC_START(cycles)                                                    \
 	do {                                                                       \
@@ -153,6 +151,13 @@ size_t hash_tab(const unsigned char *key)
 	return hash;
 }
 
+static inline size_t reduce_fibo(const size_t hash, const size_t shift)
+{
+	// const size_t xor_hash = hash ^ (hash >> shift);
+	// return (11400714819323198485llu * xor_hash) >> shift;
+	return (11400714819323198485llu ^ hash) >> shift;
+}
+
 uint32_t hash_tab_access(uint32_t *z,
                          uint32_t N,
                          uint32_t *accesses,
@@ -166,6 +171,18 @@ uint32_t hash_tab_access(uint32_t *z,
 		// printf("%lu\n", hash_tab((unsigned char *)&accesses[j]));
 		sum += z[hash_tab((unsigned char *)&accesses[j])];
 		//  sum += z[accesses[j] & (N-1)] ;
+	}
+	return sum;
+}
+
+uint32_t reduce_fibo_access(uint32_t *z,
+                            uint32_t N,
+                            uint32_t *accesses,
+                            uint32_t nmbr)
+{
+	uint32_t sum = 0;
+	for (uint32_t j = 0; j < nmbr; ++j) {
+		sum += z[reduce_fibo(accesses[j], 48) % N];
 	}
 	return sum;
 }
@@ -200,11 +217,16 @@ void demo(uint32_t N)
 	}
 
 	uint32_t expected1 = hash_tab_access(z, N, accesses, nmbr);
-	uint32_t expected2 = murmurhash3_x86_32_mod_access(z, N, accesses, nmbr);
+	// uint32_t expected2 = murmurhash3_x86_32_mod_access(z, N, accesses, nmbr);
+	uint32_t expected3 = reduce_fibo_access(z, N, accesses, nmbr);
 
 	BEST_TIME(hash_tab_access(z, N, accesses, nmbr), expected1, 1000, nmbr);
-	BEST_TIME(murmurhash3_x86_32_mod_access(z, N, accesses, nmbr),
-	          expected2,
+	// BEST_TIME(murmurhash3_x86_32_mod_access(z, N, accesses, nmbr),
+	//           expected2,
+	//           1000,
+	//           nmbr);
+	BEST_TIME(reduce_fibo_access(z, N, accesses, nmbr),
+	          expected3,
 	          1000,
 	          nmbr);
 	free(z);
@@ -233,5 +255,3 @@ int main(void)
 
 	return 0;
 }
-
-

@@ -6,6 +6,40 @@
 
 #include "ansi_esc.h"
 
+//---------------------------------------------------------------- BENCHMARK ---
+#define BENCHMARK
+
+#ifdef BENCHMARK
+#include <fcntl.h>
+#include <time.h>
+#include <unistd.h>
+
+#include <x86intrin.h> /* __rdtsc */
+
+// #define LOOP_SIZE 10000000
+
+#define START_BENCH(start)                                                     \
+	do {                                                                       \
+		start = (float)clock() / CLOCKS_PER_SEC;                               \
+	} while (0)
+
+#define STOP_BENCH(start, stop, diff, result)                                  \
+	do {                                                                       \
+		stop   = (float)clock() / CLOCKS_PER_SEC;                              \
+		diff   = stop - start;                                                 \
+		result = diff;                                                         \
+		printf(FG_YELLOW REVERSE "|><|" RESET FG_YELLOW " %f s\n" RESET,       \
+		       result);                                                        \
+	} while (0)
+
+#else
+#define LOOP_SIZE 0
+#define START_BENCH(start)
+#define STOP_BENCH(start, stop, diff, result)
+#define BENCH(expression, loop, result)
+#endif /* BENCHMARK */
+
+//------------------------------------------------------------- DECLARATIONS ---
 struct hmap_entry {
 	size_t key;
 	size_t value;
@@ -14,8 +48,10 @@ struct hmap_entry {
 //--------------------------------------------------------------------- MAIN ---
 int main(void)
 {
+	srand(__rdtsc());
 
 	size_t n = 8;
+	float load_factor;
 
 	fputs(FG_BRIGHT_BLUE REVERSE
 	      "Table size is 2^n. Enter n ( default n=8 ) " FG_BRIGHT_BLUE
@@ -27,26 +63,44 @@ int main(void)
 	struct hmap_entry *const hashmap =
 	    malloc(sizeof(struct hmap_entry) * capacity);
 
+	fputs(FG_BLUE REVERSE
+	      "Enter desired load factor" FG_BLUE
+	      " ? " RESET,
+	      stdout);
+	scanf("%f", &load_factor);
+	//-------------------------------------------------------------- benchmark
+	// setup
+	// #ifdef BENCHMARK
+	float start, stop, diff, bench_time;
+	// #endif /* BENCHMARK */
+	START_BENCH(start);
+
 	//-------------------------------------------------------------------- setup
 
-	size_t test_count = (1 << n) * 0.98; // 1 << (n - 1);
+	size_t test_count = (1 << n); // 1 << (n - 1);
+	size_t load_count = (1 << n) * load_factor;
+	printf("load_factor = %f\n", load_factor);
+	printf("load_count  = %lu\n", load_count);
+	
 	char key[256];
 
 	printf(FG_BRIGHT_YELLOW REVERSE "Filling hashmap with %lu entries\n" RESET,
 	       test_count);
 
-	for (size_t k = 0; k < test_count; k++) {
+	for (size_t k = 0; k < load_count; k++) {
 		hashmap[k].key   = k;
 		hashmap[k].value = k;
 	}
 	printf(FG_BRIGHT_YELLOW REVERSE "Done !\n" RESET);
 	//----------------------------------------------------------- input loop
 	for (;;) {
+		STOP_BENCH(start, stop, diff, bench_time);
 		fputs("\x1b[102m > \x1b[0m", stdout);
 		// scanf("%s", key);
 		fgets(key, 255, stdin);
 		size_t length = strlen(key);
 
+		START_BENCH(start);
 		/* trim newline */
 		if ((length > 0) && (key[--length] == '\n')) {
 			key[length] = '\0';
@@ -76,23 +130,37 @@ int main(void)
 			size_t sum_value = 0;
 			for (size_t k = 0; k < test_count; k++) {
 				for (size_t i = 0; i < capacity; i++) {
-					if (hashmap[k].key == k) {
-						sum_value += hashmap[k].value;
+					if (hashmap[i].key == k) {
+						sum_value += hashmap[i].value;
 						break;
 					}
 				}
 			}
 			printf("sum : %lu\n", sum_value);
-			
+
 			for (size_t k = test_count - 1; k > 0; k--) {
 				for (size_t i = 0; i < capacity; i++) {
-					if (hashmap[k].key == k) {
-						sum_value -= hashmap[k].value;
+					if (hashmap[i].key == k) {
+						sum_value -= hashmap[i].value;
 						break;
 					}
 				}
 			}
 			printf("sum : %lu\n", sum_value);
+
+			for (size_t k = test_count - 1; k > 0; k--) {
+				size_t random_key = rand() % test_count;
+				// printf("random_key : %lu\n", random_key);
+				for (size_t i = 0; i < capacity; i++) {
+					if (hashmap[i].key == random_key) {
+						// printf("found : %lu\n", hashmap[i].key);
+						sum_value += hashmap[i].value;
+						break;
+					}
+				}
+			}
+			printf("sum : %lu\n", sum_value);
+
 			continue;
 		}
 
