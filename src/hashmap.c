@@ -1236,7 +1236,9 @@ int main(void)
 	     "\t- [x] Update hmap->top when doing hmap->remove\n"
 	     "\t\t+ [ ] Look for simpler ways to update the store !!\n" RESET
 	         FG_BRIGHT_YELLOW
-	     "\t- [ ] Fill and read an array as a baseline\n" RESET
+	     "\t- [x] Fill and read an array as a baseline\n"
+	     "\t- [ ] Add a test that does a constant number of find, get, put,\n"
+	     "\t\tremove and compare output at different hmap sizes, load factor\n" RESET
 	     "\t- [ ] Refactor Slingshot sequences by array\n"
 	     "\t\t+ [ ] Slingshot ALL buckets.metas then\n"
 	     "\t\t+ [ ] Slingshot ALL buckets.distances then\n"
@@ -1275,9 +1277,7 @@ int main(void)
 	// struct hmap *const hashmap = hmap_new(n, NULL);
 	struct hmap *const hashmap = hmap_new(n);
 
-	fputs(FG_BLUE REVERSE
-	      "Enter desired load factor" FG_BLUE
-	      " ? " RESET,
+	fputs(FG_BLUE REVERSE "Enter desired load factor" FG_BLUE " ? " RESET,
 	      stdout);
 	scanf("%f", &load_factor);
 

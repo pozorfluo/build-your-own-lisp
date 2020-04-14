@@ -10,8 +10,8 @@ valgrind --track-origins=yes --leak-check=full --show-reachable=yes bin/lispy
 
 # run cachegrind
 # see : https://valgrind.org/docs/manual/cg-manual.html
+valgrind --tool=cachegrind bin/baseline-array
 valgrind --tool=cachegrind bin/hashmap
-valgrind --tool=cachegrind bin/baseline
 valgrind --tool=cachegrind bin/lispy
 
 # annotate profiling infos

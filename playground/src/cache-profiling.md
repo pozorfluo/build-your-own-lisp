@@ -1,4 +1,290 @@
-# hash_tab, n = 12
+# Refactor Slingshot sequences by array
+
+## see [spreadsheet](https://docs.google.com/spreadsheets/d/1v8RIQn3hWyHqpa2QtOxHnTEQ35Zm_tLvrZoT4zIMEK0/edit#gid=1943297465)
+```js
+__AVX__ 1
+PROBE_LENGTH 32
+__WORDSIZE 64
+RAND_MAX  2147483647
+
+Table size is 2^n. Enter n ( default n = 8 )  ? 8
+Enter desired load factor ? 1
+load_factor = 1.000000
+load_count  = 256
+Filling hashmap with 256 entries
+hmap->top : 0
+Done !
+hmap->top : 256
+|><| 0.008444 s
+ > |><| 0.000466 s
+ > exit
+==11022== 
+==11022== I   refs:      286,627
+==11022== I1  misses:      1,429
+==11022== LLi misses:      1,360
+==11022== I1  miss rate:    0.50%
+==11022== LLi miss rate:    0.47%
+==11022== 
+==11022== D   refs:      104,468  (75,308 rd   + 29,160 wr)
+==11022== D1  misses:      3,491  ( 2,745 rd   +    746 wr)
+==11022== LLd misses:      2,761  ( 2,101 rd   +    660 wr)
+==11022== D1  miss rate:     3.3% (   3.6%     +    2.6%  )
+==11022== LLd miss rate:     2.6% (   2.8%     +    2.3%  )
+==11022== 
+==11022== LL refs:         4,920  ( 4,174 rd   +    746 wr)
+==11022== LL misses:       4,121  ( 3,461 rd   +    660 wr)
+==11022== LL miss rate:      1.1% (   1.0%     +    2.3%  )
+
+Table size is 2^n. Enter n ( default n = 8 )  ? 12
+Enter desired load factor ? 1
+load_factor = 1.000000
+load_count  = 4096
+Filling hashmap with 4096 entries
+hmap->top : 0
+Done !
+hmap->top : 4096
+|><| 0.009572 s
+ > |><| 0.000534 s
+ > exit
+==11299== 
+==11299== I   refs:      666,908
+==11299== I1  misses:      1,431
+==11299== LLi misses:      1,362
+==11299== I1  miss rate:    0.21%
+==11299== LLi miss rate:    0.20%
+==11299== 
+==11299== D   refs:      287,845  (186,172 rd   + 101,673 wr)
+==11299== D1  misses:      9,621  (  3,719 rd   +   5,902 wr)
+==11299== LLd misses:      4,321  (  2,101 rd   +   2,220 wr)
+==11299== D1  miss rate:     3.3% (    2.0%     +     5.8%  )
+==11299== LLd miss rate:     1.5% (    1.1%     +     2.2%  )
+==11299== 
+==11299== LL refs:        11,052  (  5,150 rd   +   5,902 wr)
+==11299== LL misses:       5,683  (  3,463 rd   +   2,220 wr)
+==11299== LL miss rate:      0.6% (    0.4%     +     2.2%  )
+
+Table size is 2^n. Enter n ( default n = 8 )  ? 16
+Enter desired load factor ? 1
+load_factor = 1.000000
+load_count  = 65536
+Filling hashmap with 65536 entries
+hmap->top : 0
+Done !
+hmap->top : 65536
+|><| 0.046527 s
+ > |><| 0.000458 s
+ > exit
+==11104== 
+==11104== I   refs:      8,270,194
+==11104== I1  misses:        1,441
+==11104== LLi misses:        1,371
+==11104== I1  miss rate:      0.02%
+==11104== LLi miss rate:      0.02%
+==11104== 
+==11104== D   refs:      3,844,776  (2,494,899 rd   + 1,349,877 wr)
+==11104== D1  misses:      292,712  (  161,977 rd   +   130,735 wr)
+==11104== LLd misses:       29,278  (    2,101 rd   +    27,177 wr)
+==11104== D1  miss rate:       7.6% (      6.5%     +       9.7%  )
+==11104== LLd miss rate:       0.8% (      0.1%     +       2.0%  )
+==11104== 
+==11104== LL refs:         294,153  (  163,418 rd   +   130,735 wr)
+==11104== LL misses:        30,649  (    3,472 rd   +    27,177 wr)
+==11104== LL miss rate:        0.3% (      0.0%     +       2.0%  )
+
+Table size is 2^n. Enter n ( default n = 8 )  ? 18
+Enter desired load factor ? 1
+load_factor = 1.000000
+load_count  = 262144
+Filling hashmap with 262144 entries
+hmap->top : 0
+Done !
+hmap->top : 262144
+|><| 0.179674 s
+ > |><| 0.000513 s
+ > exit
+==11245== 
+==11245== I   refs:      33,344,193
+==11245== I1  misses:         1,418
+==11245== LLi misses:         1,350
+==11245== I1  miss rate:       0.00%
+==11245== LLi miss rate:       0.00%
+==11245== 
+==11245== D   refs:      15,970,173  (10,345,807 rd   + 5,624,366 wr)
+==11245== D1  misses:     1,009,285  (   486,673 rd   +   522,612 wr)
+==11245== LLd misses:       109,148  (     2,099 rd   +   107,049 wr)
+==11245== D1  miss rate:        6.3% (       4.7%     +       9.3%  )
+==11245== LLd miss rate:        0.7% (       0.0%     +       1.9%  )
+==11245== 
+==11245== LL refs:        1,010,703  (   488,091 rd   +   522,612 wr)
+==11245== LL misses:        110,498  (     3,449 rd   +   107,049 wr)
+==11245== LL miss rate:         0.2% (       0.0%     +       1.9%  )
+
+Table size is 2^n. Enter n ( default n = 8 )  ? 24
+Enter desired load factor ? 1
+load_factor = 1.000000
+load_count  = 16777216
+Filling hashmap with 16777216 entries
+hmap->top : 0
+Done !
+hmap->top : 16777216
+|><| 13.527589 s
+ > |><| 0.000460 s
+ > exit
+==11192== 
+==11192== I   refs:      2,315,142,387
+==11192== I1  misses:            1,443
+==11192== LLi misses:            1,432
+==11192== I1  miss rate:          0.00%
+==11192== LLi miss rate:          0.00%
+==11192== 
+==11192== D   refs:      1,119,224,643  (733,549,721 rd   + 385,674,922 wr)
+==11192== D1  misses:       61,842,960  ( 28,806,337 rd   +  33,036,623 wr)
+==11192== LLd misses:       61,405,020  ( 28,368,974 rd   +  33,036,046 wr)
+==11192== D1  miss rate:           5.5% (        3.9%     +         8.6%  )
+==11192== LLd miss rate:           5.5% (        3.9%     +         8.6%  )
+==11192== 
+==11192== LL refs:          61,844,403  ( 28,807,780 rd   +  33,036,623 wr)
+==11192== LL misses:        61,406,452  ( 28,370,406 rd   +  33,036,046 wr)
+==11192== LL miss rate:            1.8% (        0.9%     +         8.6%  )
+```
+
+## 
+```js
+```
+
+## 
+```js
+```
+
+## 
+```js
+```
+
+## 
+```js
+```
+
+## 
+```js
+```
+
+## 
+```js
+```
+
+## 
+```js
+```
+
+## 
+```js
+```
+
+## 
+```js
+```
+
+## 
+```js
+```
+
+## 
+```js
+```
+
+# assorted runs against baseline-array
+## 23:47 $ valgrind --tool=cachegrind bin/baseline-array
+```js
+Table size is 2^n. Enter n ( default n=8 )  ? 16
+Enter desired load factor ? 1
+load_factor = 1.000000
+load_count  = 65536
+Filling hashmap with 65536 entries
+Done !
+|><| 0.013046 s
+ > |><| 0.000612 s
+ > rm
+|><| 0.001567 s
+ > fill
+|><| 0.002184 s
+ > sum
+sum : 2147450880 | 2147450880
+|><| 0.001564 s
+ > find 
+sum : 2147450880
+sum : 0
+sum : 2147390564
+|><| 127.380219 s
+ > exit
+==10808== 
+==10808== I   refs:      45,102,277,991
+==10808== I1  misses:             1,419
+==10808== LLi misses:             1,358
+==10808== I1  miss rate:           0.00%
+==10808== LLi miss rate:           0.00%
+==10808== 
+==10808== D   refs:       6,444,668,734  (6,443,991,153 rd   + 677,581 wr)
+==10808== D1  misses:     1,609,597,302  (1,609,420,280 rd   + 177,022 wr)
+==10808== LLd misses:            19,013  (        2,076 rd   +  16,937 wr)
+==10808== D1  miss rate:           25.0% (         25.0%     +    26.1%  )
+==10808== LLd miss rate:            0.0% (          0.0%     +     2.5%  )
+==10808== 
+==10808== LL refs:        1,609,598,721  (1,609,421,699 rd   + 177,022 wr)
+==10808== LL misses:             20,371  (        3,434 rd   +  16,937 wr)
+==10808== LL miss rate:             0.0% (          0.0%     +     2.5%  )
+```
+
+## 23:50 $ valgrind --tool=cachegrind bin/hashmap
+```js
+__AVX__ 1
+PROBE_LENGTH 32
+__WORDSIZE 64
+RAND_MAX  2147483647
+Table size is 2^n. Enter n ( default n = 8 )  ? 16
+Enter desired load factor ? 1
+load_factor = 1.000000
+load_count  = 65536
+Filling hashmap with 65536 entries
+hmap->top : 0
+Done !
+hmap->top : 65536
+|><| 0.054382 s
+ > |><| 0.000695 s
+ > rm
+hmap->top : 0
+|><| 0.044955 s
+ > fill
+hmap->top : 65536
+|><| 0.044114 s
+ > sums
+sum_key             : 2147450880
+sum_value           : 2147450880
+|><| 0.001931 s
+ > find
+sum : 2147450880
+sum : 0
+sum : 2144079604
+|><| 0.071733 s
+ > exit
+==10897== 
+==10897== I   refs:      34,887,597
+==10897== I1  misses:         1,496
+==10897== LLi misses:         1,412
+==10897== I1  miss rate:       0.00%
+==10897== LLi miss rate:       0.00%
+==10897== 
+==10897== D   refs:      14,557,024  (10,538,100 rd   + 4,018,924 wr)
+==10897== D1  misses:     1,369,909  ( 1,109,990 rd   +   259,919 wr)
+==10897== LLd misses:        29,284  (     2,107 rd   +    27,177 wr)
+==10897== D1  miss rate:        9.4% (      10.5%     +       6.5%  )
+==10897== LLd miss rate:        0.2% (       0.0%     +       0.7%  )
+==10897== 
+==10897== LL refs:        1,371,405  ( 1,111,486 rd   +   259,919 wr)
+==10897== LL misses:         30,696  (     3,519 rd   +    27,177 wr)
+==10897== LL miss rate:         0.1% (       0.0%     +       0.7%  )
+```
+
+## hash_tab, n = 12
 ```js
 ==26597== 
 ==26597== I   refs:      12,094,655
@@ -18,7 +304,7 @@
 ==26597== LL miss rate:         0.1% (      0.0%     +       0.4%  )
 ```
 
-# reduce_fibo cache-profiling branch, n = 12
+## reduce_fibo cache-profiling branch, n = 12
 ```js
 ==28796== 
 ==28796== I   refs:      584,375
@@ -38,7 +324,7 @@
 ==28796== LL miss rate:      0.6% (    0.4%     +     1.9%  )
 ```
 
-# baseline array, n = 16
+## baseline array, n = 16
 ```js
 Table size is 2^n. Enter n ( default n=8 )  ? 16
 Filling hashmap with 64225 entries
@@ -67,7 +353,7 @@ sum : 2062393200 | 2062393200
 ```
 
 
-# reduce_fibo cache-profiling branch, n = 16
+## reduce_fibo cache-profiling branch, n = 16
 ```js
 Table size is 2^n. Enter n ( default n=8 )  ? 16
 Filling hashmap with 64225 entries
@@ -100,7 +386,7 @@ sum_value           : 2062393200
 ==1102== LL miss rate:         0.1% (      0.0%     +       0.9%  )
 ```
 
-# baseline array, n = 12
+## baseline array, n = 12
 ```js
 Table size is 2^n. Enter n ( default n=8 )  ? 12
 Filling hashmap with 4014 entries
@@ -128,7 +414,7 @@ sum : 8054091 | 8054091
 ==1239== LL miss rate:      1.4% (   1.1%     +    5.9%  )
 ```
 
-# reduce_fibo cache-profiling branch, n = 12
+## reduce_fibo cache-profiling branch, n = 12
 ```js
 Table size is 2^n. Enter n ( default n=8 )  ? 12
 Filling hashmap with 4014 entries
@@ -161,7 +447,7 @@ sum_value           : 8054091
 ==1178== LL miss rate:        0.3% (    0.2%     +     1.0%  )
 ```
 
-# baseline array, n = 23
+## baseline array, n = 23
 ```js
 Table size is 2^n. Enter n ( default n=8 )  ? 23
 Filling hashmap with 8220835 entries
@@ -189,7 +475,7 @@ sum : 33791059938195 | 33791059938195
 ==1307== LL miss rate:         6.2% (       1.9%     +       30.0%  )
 ```
 
-# reduce_fibo cache-profiling branch, n = 23
+## reduce_fibo cache-profiling branch, n = 23
 ```js
 Table size is 2^n. Enter n ( default n=8 )  ? 23
 Filling hashmap with 8220835 entries
@@ -222,7 +508,7 @@ sum_value           : 33791059938195
 ==1481== LL miss rate:            2.5% (        1.8%     +         8.3%  )
 ```
 
-# reduce_fibo cache-profiling branch, SSE w PROBE_LENGTH = 16, n = 23
+## reduce_fibo cache-profiling branch, SSE w PROBE_LENGTH = 16, n = 23
 ```js
 Table size is 2^n. Enter n ( default n=8 )  ? 23
 Filling hashmap with 8220835 entries
@@ -255,7 +541,7 @@ sum_value           : 33791059938195
 ==2127== LL miss rate:            2.5% (        1.8%     +         9.0%  )
 ```
 
-# baseline array, n = 16
+## baseline array, n = 16
 ```js
 Table size is 2^n. Enter n ( default n=8 )  ? 16
 Filling hashmap with 64225 entries
@@ -291,7 +577,7 @@ sum : 2062393200 | 2062393200
 ==1870== LL miss rate:        0.7% (    0.1%     +     3.8%  )
 ```
 
-# reduce_fibo cache-profiling branch, n = 16
+## reduce_fibo cache-profiling branch, n = 16
 ```js
 Table size is 2^n. Enter n ( default n=8 )  ? 16
 Filling hashmap with 64225 entries
@@ -338,7 +624,7 @@ sum_value           : 2062393200
 ==1915== LL miss rate:         0.0% (       0.0%     +       0.4%  )
 ```
 
-# reduce_fibo cache-profiling branch, SSE w PROBE_LENGTH = 16, n = 16
+## reduce_fibo cache-profiling branch, SSE w PROBE_LENGTH = 16, n = 16
 ```js
 Table size is 2^n. Enter n ( default n=8 )  ? 16
 Filling hashmap with 64225 entries
@@ -386,7 +672,7 @@ sum_value           : 2062393200
 ```
 
 
-# reduce_fibo cache-profiling branch, n = 8
+## reduce_fibo cache-profiling branch, n = 8
 ```js
 Table size is 2^n. Enter n ( default n=8 )  ? 8
 Filling hashmap with 250 entries
@@ -414,7 +700,7 @@ sum : 31125
 ==2487== LL miss rate:      1.0% (   0.9%     +    2.4%  )
 ```
 
-# baseline array, n = 8
+## baseline array, n = 8
 ```js
 (base) [spagbol@HADES-Z: ...rce/C/build-your-own-lisp] [cache-profiling|✚ 3⚑ 1] ✔
 08:00 $ valgrind --tool=cachegrind bin/baseline
@@ -448,7 +734,7 @@ sum : 31125
 ==2533== LL miss rate:      1.4% (   1.3%     +    3.8%  )
 ```
 
-# reduce_fibo cache-profiling branch, n = 23
+## reduce_fibo cache-profiling branch, n = 23
 ```js
 Table size is 2^n. Enter n ( default n=8 )  ? 23
 Filling hashmap with 8220835 entries
@@ -476,7 +762,7 @@ sum : 33791059938195
 ==2648== LL miss rate:            3.0% (        2.2%     +        10.9%  )
 ```
 
-# baseline array, n = 23
+## baseline array, n = 23
 ```js
 Table size is 2^n. Enter n ( default n=8 )  ? 23
 Filling hashmap with 8220835 entries
