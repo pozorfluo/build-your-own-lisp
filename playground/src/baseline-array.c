@@ -54,8 +54,7 @@ int main(void)
 	float load_factor;
 
 	fputs(FG_BRIGHT_BLUE REVERSE
-	      "Table size is 2^n. Enter n ( default n=8 ) " FG_BRIGHT_BLUE
-	      " ? " RESET,
+	      "Table size is 2^n. Enter n ( default n = 8 ) ? " RESET,
 	      stdout);
 	scanf("%lu", &n);
 
@@ -63,9 +62,7 @@ int main(void)
 	struct hmap_entry *const hashmap =
 	    malloc(sizeof(struct hmap_entry) * capacity);
 
-	fputs(FG_BLUE REVERSE
-	      "Enter desired load factor" FG_BLUE
-	      " ? " RESET,
+	fputs(FG_BLUE REVERSE "Enter desired load factor ? " RESET,
 	      stdout);
 	scanf("%f", &load_factor);
 	//-------------------------------------------------------------- benchmark

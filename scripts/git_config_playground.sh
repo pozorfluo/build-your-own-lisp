@@ -117,6 +117,11 @@ git commit -m 'Make builtins variable immutable for chapter 11 : Bonus Marks
 			and that is a problem.
 	- [ ] check structure packing for added bool mutable field.'
 
+git commit -m 'Mechanize cachegrind test runs
+
+    Hack crude python script to launch, collect, arrange test results in
+    .csv file'
+
 git push -u origin master
 
 # push to specific remote branch

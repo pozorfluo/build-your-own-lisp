@@ -22,3 +22,7 @@ cg_merge -o outputfile file1 file2 file3 ...
 
 # diff profiles
 cg_diff file1 file2
+
+
+# run profile script
+python ./scripts/profile_hmap.py "valgrind --tool=cachegrind bin/hashmap" -o

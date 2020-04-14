@@ -17,7 +17,7 @@
 	--test=<file>  Path to handwritten tests definition file [default: tests/test.lisp].
 	--log=<file>   Path to log file [default: test_report.yaml].
 	--stress=<n>   Number of iterations for Lispenv test [default: 10].
-	--delay=<s>    Delay before sending commands [default: 0.01 seconds].
+	--delay=<s>    Delay before sending commands [default: 0.05 seconds].
 	-v, --verbose  Pretty prints test results in terminal.
 	-o, --output   Show spawned process output in terminal.
 \x1B[0m 
