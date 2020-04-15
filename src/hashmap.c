@@ -61,9 +61,11 @@
 		stop   = (float)clock() / CLOCKS_PER_SEC;                              \
 		diff   = stop - start;                                                 \
 		result = diff;                                                         \
-		printf(FG_YELLOW REVERSE "|><|" RESET FG_YELLOW " %f s\n" RESET,       \
-		       result);                                                        \
+		printf("|><| %f s\n", result);                                         \
 	} while (0)
+
+// printf(FG_YELLOW REVERSE "|><|" RESET FG_YELLOW " %f s\n" RESET,
+//        result);
 
 #else
 #define LOOP_SIZE 0
@@ -1238,7 +1240,8 @@ int main(void)
 	         FG_BRIGHT_YELLOW
 	     "\t- [x] Fill and read an array as a baseline\n"
 	     "\t- [ ] Add a test that does a constant number of find, get, put,\n"
-	     "\t\tremove and compare output at different hmap sizes, load factor\n" RESET
+	     "\t\tremove and compare output at different hmap sizes, load "
+	     "factor\n" RESET
 	     "\t- [ ] Refactor Slingshot sequences by array\n"
 	     "\t\t+ [ ] Slingshot ALL buckets.metas then\n"
 	     "\t\t+ [ ] Slingshot ALL buckets.distances then\n"
@@ -1276,8 +1279,7 @@ int main(void)
 	// struct hmap *const hashmap = hmap_new(n, NULL);
 	struct hmap *const hashmap = hmap_new(n);
 
-	fputs(FG_BLUE REVERSE "Enter desired load factor ? " RESET,
-	      stdout);
+	fputs(FG_BLUE REVERSE "Enter desired load factor ? " RESET, stdout);
 	scanf("%f", &load_factor);
 
 	//-------------------------------------------------------------- benchmark
@@ -1285,7 +1287,6 @@ int main(void)
 	// #ifdef BENCHMARK
 	float start, stop, diff, bench_time;
 	// #endif /* BENCHMARK */
-	START_BENCH(start);
 
 	//-------------------------------------------------------------------- setup
 	// #define KEYPOOL_SIZE 32
@@ -1304,11 +1305,15 @@ int main(void)
 
 	printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET, hashmap->top);
 
+	START_BENCH(start);
 	for (size_t k = 0; k < load_count; k++) {
 		hmap_put(hashmap, k, k);
 	}
+	// STOP_BENCH(start, stop, diff, bench_time);
+
 	printf(FG_BRIGHT_YELLOW REVERSE "Done !\n" RESET);
 	printf(FG_YELLOW REVERSE "hmap->top : %lu\n" RESET, hashmap->top);
+	fgets(key, 255, stdin);
 	//----------------------------------------------------------- input loop
 	for (;;) {
 		STOP_BENCH(start, stop, diff, bench_time);
@@ -1363,7 +1368,7 @@ int main(void)
 			continue;
 		}
 
-		if ((strcmp(key, "sums")) == 0) {
+		if ((strcmp(key, "sum")) == 0) {
 			// START_BENCH(start);
 			sum_store(hashmap);
 			// STOP_BENCH(start, stop, diff, bench_time);

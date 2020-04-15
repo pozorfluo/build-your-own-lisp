@@ -5,23 +5,23 @@
 └──────────────────────────────────────────────────────────────────────────────┘
 \x1B[0;32;49m
 ███ Usage:
-	profile_hmap.py  <binary> [--log=<file>]
-					   [--delay=<s>]  [-v | --verbose] [-o | --output]
+	profile_hmap.py  <binary> [--log=<file>] [--delay=<s>] [-o | --output]
+                              [--separator=<char>]
 	profile_hmap.py  -h | --help
 	profile_hmap.py  --version
 
 ███ Options:
-	-h, --help     Show this screen.
-	--version      Show version.
-	--log=<file>   Path to log file [default: profile_report.tsv].
-	--delay=<s>    Delay before sending commands [default: 0.05 seconds].
-	-v, --verbose  Pretty prints test results in terminal.
-	-o, --output   Show spawned process output in terminal.
-\x1B[0m 
-Launch, collect, arrange hmap cachegrind test results in a .tsv log file.
+	-h, --help           Show this screen.
+	--version            Show version.
+	--log=<file>         Path to log file [default: profile_report.tsv].
+	--delay=<s>          Delay before sending commands [default: 0.05 seconds].
+    --separator=<char>   Separator to use between values [default: \t]
+	-o, --output         Show spawned process output in terminal.
 
-\x1B[90m 
-────────────────────────────────────────────────────────────────────────
+\x1B[0m
+Launch, collect, arrange hmap cachegrind test results in a .tsv log file.
+\x1B[0;32;49m
+────────────────────────────────────────────────────────────────────────────────
 \x1B[0m
 """
 from docopt import docopt
@@ -32,11 +32,12 @@ import os
 
 import random
 import string
-import datetime
+
+# import datetime
 
 import itertools
 
-from collections import namedtuple
+# from collections import namedtuple
 import re
 
 # --------------------------------------------- escaped ansi escape sequence ---
@@ -64,35 +65,20 @@ fg_bright_white = "\x1b[97m"
 fg_default = "\x1b[39m"
 bg_green = "\x1b[102m"
 
-# use dict form to expand template string
-ansiseq = {
-    "reset": reset,
-    "reverse": reverse,
-    "fg_black": fg_black,
-    "fg_red": fg_red,
-    "fg_green": fg_green,
-    "fg_yellow": fg_yellow,
-    "fg_blue": fg_blue,
-    "fg_magenta": fg_magenta,
-    "fg_cyan": fg_cyan,
-    "fg_white": fg_white,
-    "fg_default": fg_default,
-    "bg_green": bg_green,
-}
 # ----------------------------------------- Generated tests helper functions ---
 
 # --------------------------------------------- handwritten tests definition ---
-
 tests = {
-    "n": range(20),
+    "n": range(8),
     "load_factor": [0.1, 0.25, 0.5, 0.65, 0.75, 0.85, 0.90, 0.95, 0.98, 1],
+    "commands": ["rm", "fill", "sum", "find"],
 }
 
 # --------------------------------------------------------------------- main ---
 def main() -> None:
     """
 	docopt based CLI
-	 
+
 	See : http://docopt.org/
 	"""
     arguments = docopt(__doc__, version="0.1")
@@ -101,13 +87,15 @@ def main() -> None:
         arguments["--delay"] = 0.05
     if arguments["--log"] is None:
         arguments["--log"] = "profile_report.tsv"
+    if arguments["--separator"] is None:
+        arguments["--separator"] = "\t"
 
     # Get your bearings, setup
     currentDirectory = os.getcwd()
     print(currentDirectory)
-    # verbose = arguments["-v"] | arguments["--verbose"]
-    logfile_path = arguments["--log"]
 
+    logfile_path = arguments["--log"]
+    separator = arguments["--separator"]
     # ---------------------------------------------------------- prompts
     prompt = f"{bg_green} > {reset}"
     prompt_size = (
@@ -138,31 +126,55 @@ def main() -> None:
         re.MULTILINE,
     )
 
-    # test_str = (
-    #     "==16142== \n"
-    #     "==16142== I   refs:      238,103\n"
-    #     "==16142== I1  misses:      1,432\n"
-    #     "==16142== LLi misses:      1,363\n"
-    #     "==16142== I1  miss rate:    0.60%\n"
-    #     "==16142== LLi miss rate:    0.57%\n"
-    #     "==16142== \n"
-    #     "==16142== D   refs:       85,671  (62,254 rd   + 23,417 wr)\n"
-    #     "==16142== D1  misses:      3,478  ( 2,732 rd   +    746 wr)\n"
-    #     "==16142== LLd misses:      2,762  ( 2,102 rd   +    660 wr)\n"
-    #     "==16142== D1  miss rate:     4.1% (   4.4%     +    3.2%  )\n"
-    #     "==16142== LLd miss rate:     3.2% (   3.4%     +    2.8%  )\n"
-    #     "==16142== \n"
-    #     "==16142== LL refs:         4,910  ( 4,164 rd   +    746 wr)\n"
-    #     "==16142== LL misses:       4,125  ( 3,465 rd   +    660 wr)\n"
-    #     "==16142== LL miss rate:      1.3% (   1.2%     +    2.8%  )"
-    # )
+    timer_re = re.compile(r"\|\>\<\| ([0-9.]+) s")
+    count_re = re.compile(r"load_count  = ([0-9.])")
 
-    # Testing !
+    # --------------------------------------------------------- test jobs
     with open(logfile_path, "w") as logfile:
-        # timestamp = datetime.datetime.now().isoformat()
+        # log column name
+        logfile.write(
+            f"n{separator}"
+            f"load_factor{separator}"
+            f"entry_count{separator}"
+            f"i_refs{separator}"
+            f"i_misses{separator}"
+            f"lli_misses{separator}"
+            f"i_missrate{separator}"
+            f"lli_missrate{separator}"
+            f"d_refs{separator}"
+            f"d_refs_rd{separator}"
+            f"d_refs_wr{separator}"
+            f"d_misses{separator}"
+            f"d_misses_rd{separator}"
+            f"d_misses_wr{separator}"
+            f"lld_misses{separator}"
+            f"lld_misses_rd{separator}"
+            f"lld_misses_wr{separator}"
+            f"d_missrate{separator}"
+            f"d_missrate_rd{separator}"
+            f"d_missrate_wr{separator}"
+            f"lld_missrate{separator}"
+            f"lld_missrate_rd{separator}"
+            f"lld_missrate_wr{separator}"
+            f"ll_refs{separator}"
+            f"ll_refs_rd{separator}"
+            f"ll_refs_wr{separator}"
+            f"ll_misses{separator}"
+            f"ll_misses_rd{separator}"
+            f"ll_misses_wr{separator}"
+            f"ll_missrate{separator}"
+            f"ll_missrate_rd{separator}"
+            f"ll_missrate_wr{separator}"
+            f"initial_fill{separator}"
+        )
+        for command in tests["commands"]:
+            logfile.write(f"{command}{separator}")
 
+        logfile.write("\n")
+
+        # loop through jobs
         for n, load_factor in itertools.product(tests["n"], tests["load_factor"]):
-            print(f"{n} : {load_factor}")
+            print(f"job n = {n}; load_factor = {load_factor}")
             # spawn process
             testee = pexpect.spawn(arguments["<binary>"], encoding="utf-8")
             testee.delaybeforesend = float(arguments["--delay"])
@@ -170,51 +182,32 @@ def main() -> None:
             if arguments["-o"] | arguments["--output"]:
                 testee.logfile_read = sys.stdout
             # use a generous timeout length for valgrind and/or program startup
-            # testee.timeout = 5
             testee.expect_exact(prompt_size, timeout=5)
 
-            # use a short timeout length to avoid lingering on failures
-            testee.timeout = 0.5
+            # use a generous timeout, it takes a while past n > 24
+            testee.timeout = 10
 
-            # dummy test
+            timer_results = []
+
+            # send job setup
             testee.sendline(str(n))
             testee.expect_exact(prompt_load)
             testee.sendline(str(load_factor))
-            testee.expect_exact(prompt)
 
-            # todo
-            #   - [ ] Catch timer results
-            #         |><| 0.409057 s
+            # catch load_count
+            testee.expect(count_re)
+            load_count = testee.match.group(1)
+            # catch initial_fill timer result
+            testee.expect(timer_re)
+            timer_results.append(testee.match.group(1))
 
-
-            # # Loop over hand written tests
-            # # for test in tests:
-            #     try:
-            #         if verbose:
-            #             print(f"\x1b[30;43m ? \t\x1b[0;33m{test.input}\x1b[0m")
-            #         testee.sendline(test.input)
-            #         for line in test.result:
-            #             testee.expect_exact(f"{line}")
-            #     except pexpect.exceptions.TIMEOUT:
-            #         if verbose:
-            #             print("\x1b[31;7m ! \t            failed.\x1b[0m")
-            #         else:
-            #             print("\x1b[31;7m ! ", end="", flush=True)
-            #         logfile.write(
-            #             "\n--- # ----------------------------------------------------------------- TEST ---\n"
-            #             f"input           : {test.input}\n"
-            #             f"expected_result : {test.result}\n\n"
-            #             f"dump: {str(testee)}"
-            #             "\n... # --------------------------------------------------------------- FAILED ---\n"
-            #         )
-            #         failed += 1
-            #     else:
-            #         testee.expect_exact(prompt)
-            #         if verbose:
-            #             print("\x1b[36;7m + \t            passed.\x1b[0m")
-            #         else:
-            #             print("\x1b[36;7m + ", end="", flush=True)
-            #         passed += 1
+            # loop through job commands
+            for command in tests["commands"]:
+                testee.expect_exact(prompt)
+                testee.sendline(command)
+                # catch command timer result
+                testee.expect(timer_re)
+                timer_results.append(testee.match.group(1))
 
             # exit from inside spawned process
             testee.sendline("exit")
@@ -226,33 +219,23 @@ def main() -> None:
             # logfile.write(cachegrind_output)
             matches = cachegrind_re.search(cachegrind_output).groupdict()
 
-            # todo
-            #   - [ ] Log n, load_factor, load_count, timer results
-            
-            # log column name
-            # for group_name in matches.keys():
-            #     logfile.write(f"{group_name}\t")
-            # logfile.write("\n")
+            # log job setup
+            logfile.write(
+                f"{n}{separator}" 
+                f"{load_factor}{separator}"
+                f"{load_count}{separator}"
+            )
 
             # log results
             for group_match in matches.values():
-                logfile.write(f"{group_match.replace(',','')}\t")
+                logfile.write(f"{group_match.replace(',','')}{separator}")
+
+            # log timer results
+            for result in timer_results:
+                logfile.write(f"{result}{separator}")
+
             logfile.write("\n")
-            # ----------------------------------------------- yaml style log
-            # testee.logfile_read = logfile
-            # testee.expect(pexpect.EOF)
-            # logfile.write("---\ncachegrind : '")
-            # for group_name, group_match in matches.groupdict().items():
-            #     logfile.write(f"{group_name} : {group_match.replace(',','')}\n")
-            # logfile.write(
-            #     f"start_date : {timestamp}\n"
-            #     f"end_date   : {datetime.datetime.now().isoformat()}\n"
-            #     f"options    : {str(arguments)}\n"
-            #     f"passed     : {passed}\n"
-            #     f"failed     : {failed}\n"
-            #     "..."
-            # )
-            # print(timestamp)
+
             testee.close()
 
     print(f"log available : {logfile_path}")
