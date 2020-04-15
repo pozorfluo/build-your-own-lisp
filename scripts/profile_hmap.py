@@ -69,7 +69,7 @@ bg_green = "\x1b[102m"
 
 # --------------------------------------------- handwritten tests definition ---
 tests = {
-    "n": range(8),
+    "n": range(25),
     "load_factor": [0.1, 0.25, 0.5, 0.65, 0.75, 0.85, 0.90, 0.95, 0.98, 1],
     "commands": ["rm", "fill", "sum", "find"],
 }
@@ -127,7 +127,7 @@ def main() -> None:
     )
 
     timer_re = re.compile(r"\|\>\<\| ([0-9.]+) s")
-    count_re = re.compile(r"load_count  = ([0-9.])")
+    count_re = re.compile(r"load_count  = ([0-9.]+)")
 
     # --------------------------------------------------------- test jobs
     with open(logfile_path, "w") as logfile:
@@ -185,7 +185,7 @@ def main() -> None:
             testee.expect_exact(prompt_size, timeout=5)
 
             # use a generous timeout, it takes a while past n > 24
-            testee.timeout = 10
+            testee.timeout = 60
 
             timer_results = []
 
