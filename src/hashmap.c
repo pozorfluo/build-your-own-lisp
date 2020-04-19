@@ -564,7 +564,8 @@ static inline size_t hmap_find_or_empty(const struct hmap *const hashmap,
  * If given key exists
  *   -> pointer to value in hmap
  * Else
- *   -> NULL
+ *   //-> NULL
+ *   -> 0
  */
 size_t hmap_get(const struct hmap *const hashmap, const size_t key)
 {
@@ -1291,10 +1292,13 @@ int main(void)
 	//-------------------------------------------------------------------- setup
 	// #define KEYPOOL_SIZE 32
 	// char random_keys[KEYPOOL_SIZE] = {'\0'};
-	size_t test_count = (1 << n); // 1 << (n - 1);
+	// size_t test_count = (1 << n); // 1 << (n - 1);
+	#define TEST_COUNT 1000
 	size_t load_count = (1 << n) * load_factor;
 	printf("load_factor = %f\n", load_factor);
 	printf("load_count  = %lu\n", load_count);
+	size_t capacity = hashmap->capacity;
+	size_t sum_value = 0;
 	char key[256];
 	// char *dummy_key   = NULL;
 	// char *dummy_value = NULL;
@@ -1309,7 +1313,6 @@ int main(void)
 	for (size_t k = 0; k < load_count; k++) {
 		hmap_put(hashmap, k, k);
 	}
-	// STOP_BENCH(start, stop, diff, bench_time);
 
 	printf(FG_BRIGHT_YELLOW REVERSE "Done !\n" RESET);
 	printf(FG_YELLOW REVERSE "hmap->top : %lu\n" RESET, hashmap->top);
@@ -1328,75 +1331,90 @@ int main(void)
 			key[length] = '\0';
 		}
 
+		//-------------------------------------------------- exit
 		if ((strcmp(key, "exit")) == 0) {
 			break;
 		}
 
+		//-------------------------------------------------- rm
 		if ((strcmp(key, "rm")) == 0) {
-			// START_BENCH(start);
 			for (size_t k = 0; k < load_count; k++) {
 				hmap_remove(hashmap, k);
 			}
 			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
 			       hashmap->top);
-			// STOP_BENCH(start, stop, diff, bench_time);
 			continue;
 		}
 
+		//-------------------------------------------------- fill
 		if ((strcmp(key, "fill")) == 0) {
-			// START_BENCH(start);
 			for (size_t k = 0; k < load_count; k++) {
 				hmap_put(hashmap, k, k);
 			}
 			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
 			       hashmap->top);
-			// STOP_BENCH(start, stop, diff, bench_time);
 			continue;
 		}
 
+		//-------------------------------------------------- dump
 		if ((strcmp(key, "dump")) == 0) {
-			// START_BENCH(start);
 			dump_hashmap(hashmap);
-			// STOP_BENCH(start, stop, diff, bench_time);
 			continue;
 		}
 
+		//-------------------------------------------------- sumb
 		if ((strcmp(key, "sumb")) == 0) {
-			// START_BENCH(start);
 			sum_bucket(hashmap);
-			// STOP_BENCH(start, stop, diff, bench_time);
 			continue;
 		}
 
+		//-------------------------------------------------- sum
 		if ((strcmp(key, "sum")) == 0) {
-			// START_BENCH(start);
 			sum_store(hashmap);
-			// STOP_BENCH(start, stop, diff, bench_time);
 			continue;
 		}
 
+		//-------------------------------------------------- find
+		/**
+		 * Test for values that do NOT exist with TEST_COUNT > load_count
+		 */
 		if ((strcmp(key, "find")) == 0) {
-			// START_BENCH(start);
-			size_t sum_value = 0;
-			for (size_t k = 0; k < test_count; k++) {
+			sum_value = 0;
+			for (size_t k = 0; k < TEST_COUNT; k++) {
+				// printf("\tk = %lu\n", k);
 				sum_value += hmap_get(hashmap, k);
 			}
 			printf("sum : %lu\n", sum_value);
 
-			for (size_t k = test_count - 1; k > 0; k--) {
+			for (int k = TEST_COUNT - 1; k >= 0; k--) {
+				// printf("\tk = %d\n", k);
 				sum_value -= hmap_get(hashmap, k);
 			}
 			printf("sum : %lu\n", sum_value);
 
-			for (size_t k = test_count - 1; k > 0; k--) {
-				size_t random_key = rand() % test_count;
+			for (size_t k = TEST_COUNT; k > 0; k--) {
+				// printf("\tk = %lu\n", k);
+				size_t random_key = rand() % capacity;
 				// printf("random_key : %lu\n", random_key);
 				sum_value += hmap_get(hashmap, random_key);
 				// printf("found : %lu\n", hmap_get(hashmap, random_key));
 			}
 			printf("sum : %lu\n", sum_value);
 
-			// STOP_BENCH(start, stop, diff, bench_time);
+			continue;
+		}
+		//-------------------------------------------------- findrand
+		if ((strcmp(key, "findrand")) == 0) {
+			sum_value = 0;
+
+			for (size_t k = TEST_COUNT - 1; k > 0; k--) {
+				// printf("\tk = %lu\n", k);
+				size_t random_key = rand() % capacity;
+				// printf("random_key : %lu\n", random_key);
+				sum_value += hmap_get(hashmap, random_key);
+				// printf("found : %lu\n", hmap_get(hashmap, random_key));
+			}
+			printf("sum : %lu\n", sum_value);
 			continue;
 		}
 

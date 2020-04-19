@@ -62,8 +62,7 @@ int main(void)
 	struct hmap_entry *const hashmap =
 	    malloc(sizeof(struct hmap_entry) * capacity);
 
-	fputs(FG_BLUE REVERSE "Enter desired load factor ? " RESET,
-	      stdout);
+	fputs(FG_BLUE REVERSE "Enter desired load factor ? " RESET, stdout);
 	scanf("%f", &load_factor);
 	//-------------------------------------------------------------- benchmark
 	// setup
@@ -72,17 +71,17 @@ int main(void)
 	// #endif /* BENCHMARK */
 	START_BENCH(start);
 
-	//-------------------------------------------------------------------- setup
-
-	size_t test_count = (1 << n); // 1 << (n - 1);
+//-------------------------------------------------------------------- setup
+#define TEST_COUNT 1000
+	// size_t test_count = (1 << n); // 1 << (n - 1);
 	size_t load_count = (1 << n) * load_factor;
 	printf("load_factor = %f\n", load_factor);
 	printf("load_count  = %lu\n", load_count);
-	
+	size_t sum_value = 0;
 	char key[256];
 
 	printf(FG_BRIGHT_YELLOW REVERSE "Filling hashmap with %lu entries\n" RESET,
-	       test_count);
+	       load_count);
 
 	for (size_t k = 0; k < load_count; k++) {
 		hashmap[k].key   = k;
@@ -103,29 +102,37 @@ int main(void)
 			key[length] = '\0';
 		}
 
+		//-------------------------------------------------- exit
 		if ((strcmp(key, "exit")) == 0) {
 			break;
 		}
 
+		//-------------------------------------------------- rm
 		if ((strcmp(key, "rm")) == 0) {
-			for (size_t k = 0; k < test_count; k++) {
+			for (size_t k = 0; k < load_count; k++) {
 				hashmap[k].key   = 0;
 				hashmap[k].value = 0;
 			}
 			continue;
 		}
 
+		//-------------------------------------------------- fill
 		if ((strcmp(key, "fill")) == 0) {
-			for (size_t k = 0; k < test_count; k++) {
+			for (size_t k = 0; k < load_count; k++) {
 				hashmap[k].key   = k;
 				hashmap[k].value = k;
 			}
 			continue;
 		}
 
+		//-------------------------------------------------- find
+		/**
+		 * Test for values that do NOT exist with TEST_COUNT > load_count
+		 */
 		if ((strcmp(key, "find")) == 0) {
-			size_t sum_value = 0;
-			for (size_t k = 0; k < test_count; k++) {
+			sum_value = 0;
+			for (size_t k = 0; k < TEST_COUNT; k++) {
+				// printf("\tk = %lu\n", k);
 				for (size_t i = 0; i < capacity; i++) {
 					if (hashmap[i].key == k) {
 						sum_value += hashmap[i].value;
@@ -135,9 +142,10 @@ int main(void)
 			}
 			printf("sum : %lu\n", sum_value);
 
-			for (size_t k = test_count - 1; k > 0; k--) {
+			for (int k = TEST_COUNT - 1; k >= 0; k--) {
+				// printf("\tk = %d\n", k);
 				for (size_t i = 0; i < capacity; i++) {
-					if (hashmap[i].key == k) {
+					if (hashmap[i].key == (size_t)k) {
 						sum_value -= hashmap[i].value;
 						break;
 					}
@@ -145,8 +153,14 @@ int main(void)
 			}
 			printf("sum : %lu\n", sum_value);
 
-			for (size_t k = test_count - 1; k > 0; k--) {
-				size_t random_key = rand() % test_count;
+			continue;
+		}
+		//-------------------------------------------------- findrand
+		if ((strcmp(key, "findrand")) == 0) {
+			sum_value = 0;
+			for (size_t k = TEST_COUNT; k > 0; k--) {
+				// printf("\tk = %lu\n", k);
+				size_t random_key = rand() % capacity;
 				// printf("random_key : %lu\n", random_key);
 				for (size_t i = 0; i < capacity; i++) {
 					if (hashmap[i].key == random_key) {
@@ -161,17 +175,19 @@ int main(void)
 			continue;
 		}
 
+		//-------------------------------------------------- dump
 		if ((strcmp(key, "dump")) == 0) {
-			for (size_t k = 0; k < test_count; k++) {
+			for (size_t k = 0; k < load_count; k++) {
 				printf("%lu | %lu\n", hashmap[k].key, hashmap[k].value);
 			}
 			continue;
 		}
 
+		//-------------------------------------------------- sum
 		if ((strcmp(key, "sum")) == 0) {
 			size_t sum_key   = 0;
 			size_t sum_value = 0;
-			for (size_t k = 0; k < test_count; k++) {
+			for (size_t k = 0; k < load_count; k++) {
 				sum_key += hashmap[k].key;
 				sum_value += hashmap[k].value;
 			}
