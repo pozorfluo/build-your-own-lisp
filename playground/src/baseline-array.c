@@ -28,8 +28,7 @@
 		stop   = (float)clock() / CLOCKS_PER_SEC;                              \
 		diff   = stop - start;                                                 \
 		result = diff;                                                         \
-		printf(FG_YELLOW REVERSE "|><|" RESET FG_YELLOW " %f s\n" RESET,       \
-		       result);                                                        \
+		printf("|><| %f s\n", result);                                                 \
 	} while (0)
 
 #else
@@ -68,8 +67,7 @@ int main(void)
 	// setup
 	// #ifdef BENCHMARK
 	float start, stop, diff, bench_time;
-	// #endif /* BENCHMARK */
-	START_BENCH(start);
+// #endif /* BENCHMARK */
 
 //-------------------------------------------------------------------- setup
 #define TEST_COUNT 1000
@@ -83,11 +81,13 @@ int main(void)
 	printf(FG_BRIGHT_YELLOW REVERSE "Filling hashmap with %lu entries\n" RESET,
 	       load_count);
 
+	START_BENCH(start);
 	for (size_t k = 0; k < load_count; k++) {
 		hashmap[k].key   = k;
 		hashmap[k].value = k;
 	}
 	printf(FG_BRIGHT_YELLOW REVERSE "Done !\n" RESET);
+	fgets(key, 255, stdin);
 	//----------------------------------------------------------- input loop
 	for (;;) {
 		STOP_BENCH(start, stop, diff, bench_time);
