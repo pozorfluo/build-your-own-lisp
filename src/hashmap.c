@@ -122,9 +122,9 @@ struct hmap_entry {
 };
 
 struct hmap_buckets {
-	meta_byte *metas;     /* 1 byte per bucket,*/
-	meta_byte *distances; /* 1 byte per bucket,*/
-	size_t *entries;
+	meta_byte *restrict metas;     /* 1 byte per bucket,*/
+	meta_byte *restrict distances; /* 1 byte per bucket,*/
+	size_t *restrict entries;
 };
 
 #ifdef DEBUG_HMAP
@@ -398,10 +398,12 @@ static inline uint16_t probe_pattern(const meta_byte pattern,
  * note
  *   Using an out of bound value as an error condition means that 1 value must
  *   be reserved for it. Implicitely it says that the maximum allowed
- *   capacity is SIZE_MAX - 1.
+ *   capacity is SIZE_MAX - 1
  *
  * todo
  *   - [ ] Investigate ways to probe for Match or META_EMPTY at once
+ *   - [ ] Consider using SIZE_MAX directly as an error
+ *     + [ ] Add exists() inlinable function
  */
 size_t hmap_find(const struct hmap *const hashmap, const size_t key)
 {
@@ -902,8 +904,8 @@ void hmap_delete_hashmap(struct hmap *const hashmap)
 	// }
 
 	XFREE(hashmap->buckets.metas, "delete_hashmap");
-	XFREE(hashmap->buckets.distances, "delete_hashmap");
-	XFREE(hashmap->buckets.entries, "delete_hashmap");
+	// XFREE(hashmap->buckets.distances, "delete_hashmap");
+	// XFREE(hashmap->buckets.entries, "delete_hashmap");
 	XFREE(hashmap->store, "delete_hashmap");
 	XFREE(hashmap, "delete_hashmap");
 }
@@ -964,7 +966,7 @@ struct hmap *hmap_new(const size_t n)
 	 * note
 	 *   this assumes __WORDSIZE == 64
 	 */
-	size_t hash_shift = 64 - 7 - n;
+	const size_t hash_shift = 64 - 7 - n;
 
 #ifdef DEBUG_HMAP
 	struct hmap_stats stats_init = {0, SIZE_MAX, 0, 0, 0, 0, 0, 0, 0, n};
@@ -974,7 +976,7 @@ struct hmap *hmap_new(const size_t n)
 	struct hmap hashmap_init = {{NULL}, NULL, 0, hash_shift, capacity, 0};
 #endif /* DEBUG_HMAP */
 
-	struct hmap *new_hashmap =
+	struct hmap *const new_hashmap =
 	    XMALLOC(sizeof(struct hmap), "new_hashmap", "new_hashmap");
 	memcpy(new_hashmap, &hashmap_init, sizeof(struct hmap));
 
@@ -983,28 +985,58 @@ struct hmap *hmap_new(const size_t n)
 	}
 
 	//----------------------------------------------------- buckets init
-	MALLOC_HMAP_ARRAY(new_hashmap->buckets.metas, capacity);
-	MALLOC_HMAP_ARRAY(new_hashmap->buckets.distances, capacity);
-	MALLOC_HMAP_ARRAY(new_hashmap->buckets.entries, capacity);
+	const size_t metas_size = sizeof(*(new_hashmap->buckets.metas)) * capacity;
+	const size_t distances_size =
+	    sizeof(*(new_hashmap->buckets.distances)) * capacity;
+	const size_t entries_size =
+	    sizeof(*(new_hashmap->buckets.entries)) * capacity;
+
+	// printf(
+	//     "metas_size     : %lu\n"
+	//     "distances_size : %lu\n"
+	//     "entries_size   : %lu\n",
+	//     metas_size,
+	//     distances_size,
+	//     entries_size);
+
+	// MALLOC_HMAP_ARRAY(new_hashmap->buckets.metas, capacity);
+	// MALLOC_HMAP_ARRAY(new_hashmap->buckets.distances, capacity);
+	// MALLOC_HMAP_ARRAY(new_hashmap->buckets.entries, capacity);
+
+	char *const pool = XMALLOC(
+	    metas_size + distances_size + entries_size, "new_hashmap", "pool");
+	if (pool == NULL) {
+		goto err_free_arrays;
+	}
+	new_hashmap->buckets.metas     = (meta_byte *)pool;
+	new_hashmap->buckets.distances = (meta_byte *)(pool + metas_size);
+	new_hashmap->buckets.entries =
+	    (size_t *)(pool + metas_size + distances_size);
+
+	// printf(
+	//     "buckets.metas     : %p\n"
+	//     "buckets.distances : %p\n"
+	//     "buckets.entries   : %p\n",
+	//     (void *)new_hashmap->buckets.metas,
+	//     (void *)new_hashmap->buckets.distances,
+	//     (void *)new_hashmap->buckets.entries);
+
 
 	/* The value is passed as an int, but the function fills the block of
 	 * memory using the unsigned char conversion of this value */
-	memset(new_hashmap->buckets.metas,
-	       META_EMPTY,
-	       sizeof(*(new_hashmap->buckets.metas)) * capacity);
+	memset(new_hashmap->buckets.metas, META_EMPTY, metas_size);
+	//    sizeof(*(new_hashmap->buckets.metas)) * capacity);
 	/**
 	 * Because distances are initialized to 0
 	 * and set to 0 when removing an entry
 	 * Probing distances for 0 yields "stop buckets"
 	 * aka @home entry or empty bucket
 	 */
-	memset(new_hashmap->buckets.distances,
-	       0,
-	       sizeof(*(new_hashmap->buckets.metas)) * capacity);
+	memset(new_hashmap->buckets.distances, 0, distances_size);
+	//    sizeof(*(new_hashmap->buckets.metas)) * capacity);
 	/* Is this enough to be able to check if ptr == NULL ? */
-	memset(new_hashmap->buckets.entries,
-	       0,
-	       sizeof(*(new_hashmap->buckets.entries)) * capacity);
+	memset(new_hashmap->buckets.entries, 0, entries_size);
+	//    sizeof(*(new_hashmap->buckets.entries)) * capacity);
 
 	//------------------------------------------------------- store init
 	/**
@@ -1023,6 +1055,7 @@ err_free_arrays:
 	XFREE(new_hashmap->buckets.metas, "hmap_new err_free_arrays");
 	XFREE(new_hashmap->buckets.distances, "hmap_new err_free_arrays");
 	XFREE(new_hashmap->buckets.entries, "hmap_new err_free_arrays");
+	// XFREE(pool, "hmap_new err_free_arrays");
 	XFREE(new_hashmap->store, "hmap_new err_free_arrays");
 err_free_hashmap:
 	XFREE(new_hashmap, "new_hashmap");
@@ -1287,17 +1320,17 @@ int main(void)
 	// setup
 	// #ifdef BENCHMARK
 	float start, stop, diff, bench_time;
-	// #endif /* BENCHMARK */
+// #endif /* BENCHMARK */
 
-	//-------------------------------------------------------------------- setup
-	// #define KEYPOOL_SIZE 32
-	// char random_keys[KEYPOOL_SIZE] = {'\0'};
-	// size_t test_count = (1 << n); // 1 << (n - 1);
-	#define TEST_COUNT 1000
+//-------------------------------------------------------------------- setup
+// #define KEYPOOL_SIZE 32
+// char random_keys[KEYPOOL_SIZE] = {'\0'};
+// size_t test_count = (1 << n); // 1 << (n - 1);
+#define TEST_COUNT 1000
 	size_t load_count = (1 << n) * load_factor;
 	printf("load_factor = %f\n", load_factor);
 	printf("load_count  = %lu\n", load_count);
-	size_t capacity = hashmap->capacity;
+	size_t capacity  = hashmap->capacity;
 	size_t sum_value = 0;
 	char key[256];
 	// char *dummy_key   = NULL;
