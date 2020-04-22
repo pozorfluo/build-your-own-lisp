@@ -906,7 +906,7 @@ void hmap_delete_hashmap(struct hmap *const hashmap)
 	XFREE(hashmap->buckets.metas, "delete_hashmap");
 	// XFREE(hashmap->buckets.distances, "delete_hashmap");
 	// XFREE(hashmap->buckets.entries, "delete_hashmap");
-	XFREE(hashmap->store, "delete_hashmap");
+	// XFREE(hashmap->store, "delete_hashmap");
 	XFREE(hashmap, "delete_hashmap");
 }
 
@@ -990,6 +990,7 @@ struct hmap *hmap_new(const size_t n)
 	    sizeof(*(new_hashmap->buckets.distances)) * capacity;
 	const size_t entries_size =
 	    sizeof(*(new_hashmap->buckets.entries)) * capacity;
+	const size_t store_size = sizeof(*(new_hashmap->store)) * capacity;
 
 	// printf(
 	//     "metas_size     : %lu\n"
@@ -1003,15 +1004,21 @@ struct hmap *hmap_new(const size_t n)
 	// MALLOC_HMAP_ARRAY(new_hashmap->buckets.distances, capacity);
 	// MALLOC_HMAP_ARRAY(new_hashmap->buckets.entries, capacity);
 
-	char *const pool = XMALLOC(
-	    metas_size + distances_size + entries_size, "new_hashmap", "pool");
+	char *const pool =
+	    XMALLOC(metas_size + distances_size + entries_size + store_size,
+	            "new_hashmap",
+	            "pool");
+
 	if (pool == NULL) {
 		goto err_free_arrays;
 	}
+
 	new_hashmap->buckets.metas     = (meta_byte *)pool;
 	new_hashmap->buckets.distances = (meta_byte *)(pool + metas_size);
 	new_hashmap->buckets.entries =
 	    (size_t *)(pool + metas_size + distances_size);
+	new_hashmap->store = (struct hmap_entry *)(pool + metas_size +
+	                                           distances_size + entries_size);
 
 	// printf(
 	//     "buckets.metas     : %p\n"
@@ -1020,7 +1027,6 @@ struct hmap *hmap_new(const size_t n)
 	//     (void *)new_hashmap->buckets.metas,
 	//     (void *)new_hashmap->buckets.distances,
 	//     (void *)new_hashmap->buckets.entries);
-
 
 	/* The value is passed as an int, but the function fills the block of
 	 * memory using the unsigned char conversion of this value */
@@ -1045,18 +1051,18 @@ struct hmap *hmap_new(const size_t n)
 	 *         capacity size instead of actual_capacity size before
 	 *         actual_capacity was tossed
 	 */
-	MALLOC_HMAP_ARRAY(new_hashmap->store, capacity);
+	// MALLOC_HMAP_ARRAY(new_hashmap->store, capacity);
 	// new_hashmap->top = new_hashmap->store;
 
 	return new_hashmap;
 
 /* free(NULL) is ok, correct ? */
 err_free_arrays:
-	XFREE(new_hashmap->buckets.metas, "hmap_new err_free_arrays");
-	XFREE(new_hashmap->buckets.distances, "hmap_new err_free_arrays");
-	XFREE(new_hashmap->buckets.entries, "hmap_new err_free_arrays");
-	// XFREE(pool, "hmap_new err_free_arrays");
-	XFREE(new_hashmap->store, "hmap_new err_free_arrays");
+	// XFREE(new_hashmap->buckets.metas, "hmap_new err_free_arrays");
+	// XFREE(new_hashmap->buckets.distances, "hmap_new err_free_arrays");
+	// XFREE(new_hashmap->buckets.entries, "hmap_new err_free_arrays");
+	// XFREE(new_hashmap->store, "hmap_new err_free_arrays");
+	XFREE(pool, "hmap_new err_free_arrays");
 err_free_hashmap:
 	XFREE(new_hashmap, "new_hashmap");
 	return NULL;

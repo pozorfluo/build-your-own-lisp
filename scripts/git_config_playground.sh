@@ -117,6 +117,8 @@ git commit -m 'Make builtins variable immutable for chapter 11 : Bonus Marks
 			and that is a problem.
 	- [ ] check structure packing for added bool mutable field.'
 
+git commit -m 'Refactor new_hashmap to alloc single pool of memory for buckets'
+
 
 git push -u origin master
 
