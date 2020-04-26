@@ -61,6 +61,8 @@
 #define BENCH(_expression, _loop, _result)
 #endif /* BENCHMARK */
 //------------------------------------------------------------ MAGIC NUMBERS ---
+#define HMAP_NOT_FOUND SIZE_MAX
+
 #ifdef __AVX__
 /**
  *   _mm256_set_epi8
@@ -315,7 +317,7 @@ size_t hmap_find(const struct hmap *const hashmap, const size_t key)
 
 	/* key not found */
 	// return hashmap->capacity + 1;
-	return SIZE_MAX;
+	return HMAP_NOT_FOUND;
 }
 //----------------------------------------------------------------- Function ---
 /**
@@ -375,7 +377,7 @@ static inline size_t hmap_find_or_empty(const struct hmap *const hashmap,
 
 	/* key not found, no empty slots left */
 	// return hashmap->capacity + 1;
-	return SIZE_MAX;
+	return HMAP_NOT_FOUND;
 }
 
 //----------------------------------------------------------------- Function ---
@@ -393,7 +395,7 @@ size_t hmap_get(const struct hmap *const hashmap, const size_t key)
 	// void *value        = NULL;
 	size_t value = 0;
 
-	if (entry <= hashmap->capacity) {
+	if (entry != HMAP_NOT_FOUND) {
 		value = hashmap->store[(hashmap->buckets.entries[entry])].value;
 	}
 
@@ -551,7 +553,7 @@ size_t hmap_remove(struct hmap *const hashmap, const size_t key)
 	const size_t entry = hmap_find(hashmap, key);
 
 	/* Given key exists */
-	if (entry < hashmap->capacity) {
+	if (entry != HMAP_NOT_FOUND) {
 		/* update store */
 		destroy_entry(hashmap, entry);
 
@@ -1033,7 +1035,7 @@ int main(void)
 
 			size_t result = hmap_find(hashmap, numeric_key);
 
-			if (result > hashmap->capacity) {
+			if (result == HMAP_NOT_FOUND) {
 				puts("Key not found ! \n");
 			}
 			else {

@@ -30,6 +30,6 @@ python ./scripts/profile_hmap.py "valgrind --tool=cachegrind bin/baseline-array"
 
 
 
-cg_annotate --auto=yes cachegrind.out.30309 > cachegrind.out.annotated
+cg_annotate --auto=yes cachegrind.out.4758 src/hashmap.c > cachegrind.out.annotated
 cg_annotate --auto=yes cachegrind.out.30923 > cachegrind.out.annotated
-cg_diff cachegrind.out.30310 cachegrind.out.30923
+cg_diff cachegrind.out.30310 cachegrind.out.4758
