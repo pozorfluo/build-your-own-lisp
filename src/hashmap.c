@@ -690,9 +690,8 @@ size_t hmap_put(struct hmap *const hashmap,
 		 */
 		// size_t slingshots[PROBE_LENGTH * 2] = {0};
 		// int count                           = 0;
-		// if (candidate != home) {
-		// hashmap->buckets.distances[candidate] = candidate - home;
 		for (size_t bucket = candidate; bucket != home; bucket--) {
+			hashmap->buckets.distances[candidate] = candidate - home;
 			if (hashmap->buckets.distances[bucket] <=
 			    hashmap->buckets.distances[bucket - 1]) {
 				slingshot(hashmap, candidate, bucket);
@@ -707,9 +706,7 @@ size_t hmap_put(struct hmap *const hashmap,
 				//        slingshots[count - 2],
 				//        slingshots[count - 1]);
 				// printf(
-				//     "distance bucket:%hhu | bucket-1:%hhu -> Slingshot
-				//     %lu to
-				//     "
+				//     "distance %hhu | %hhu -> Slingshot %lu to "
 				//     "%lu\n",
 				//     hashmap->buckets.distances[bucket],
 				//     hashmap->buckets.distances[bucket - 1],

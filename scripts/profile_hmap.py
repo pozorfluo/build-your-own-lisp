@@ -69,7 +69,7 @@ bg_green = "\x1b[102m"
 
 # --------------------------------------------- handwritten tests definition ---
 tests = {
-    "n": range(2, 25),
+    "n": range(2, 22),
     # "load_factor": [0.1, 0.25, 0.5, 0.65, 0.75, 0.85, 0.90, 0.95, 0.98, 1],
     "load_factor": [0.5, 0.95],#[0.1, 0.5, 0.95, 1],
     "commands": ["rm", "fill", "rm", "fill"]#"sum", "find"] #, "findrand"],
