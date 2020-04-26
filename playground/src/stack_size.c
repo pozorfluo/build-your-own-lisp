@@ -11,5 +11,6 @@ int main(void)
 
 	printf("soft limit : %ju bytes\n", (uintmax_t)stack_limit.rlim_cur);
 	printf("hard limit : %ju bytes\n", (uintmax_t)stack_limit.rlim_max);
+	printf("see also this command :\n\t$ ulimit -a\n");
 	return 0;
 }

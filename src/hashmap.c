@@ -13,7 +13,7 @@
 #include <stdint.h>   /* uint32_t, uint64_t */
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <string.h> /* memcpy */
 
 /**
  * __rdtsc
@@ -180,6 +180,9 @@ static inline uint16_t probe_pattern(const meta_byte pattern,
 static inline void destroy_entry(struct hmap *const hashmap, const size_t entry)
     __attribute__((always_inline));
 
+void dump_hashmap(const struct hmap *const hashmap);
+
+//----------------------------------------------------------------- Function ---
 static inline size_t hash_index(const size_t hash) { return hash >> 7; }
 
 static inline meta_byte hash_meta(const size_t hash) { return hash & 0x7F; }
@@ -676,25 +679,81 @@ size_t hmap_put(struct hmap *const hashmap,
 	if (is_empty(hashmap->buckets.metas[candidate])) {
 		/**
 		 * Thierry La Fronde method : Slingshot the rich !
+		 *
+		 * note
+		 *   initial distance write in candidate bucket is necessary for the
+		 *   loop to work
+		 *
+		 * todo
+		 *   [ ] Look for ways to to avoid initial write
+		 *   [ ] Plan all slingshots, unroll per array
 		 */
+		// size_t slingshots[PROBE_LENGTH * 2] = {0};
+		// int count                           = 0;
+		// if (candidate != home) {
+		// hashmap->buckets.distances[candidate] = candidate - home;
 		for (size_t bucket = candidate; bucket != home; bucket--) {
 			if (hashmap->buckets.distances[bucket] <=
 			    hashmap->buckets.distances[bucket - 1]) {
 				slingshot(hashmap, candidate, bucket);
+
+				// slingshots[count]     = candidate;
+				// slingshots[count + 1] = bucket;
+				// count += 2;
+				// hashmap->buckets.distances[candidate] =
+				//     hashmap->buckets.distances[bucket] + candidate - bucket;
+				// printf("count = %d | %lu : %lu\n",
+				//        count,
+				//        slingshots[count - 2],
+				//        slingshots[count - 1]);
+				// printf(
+				//     "distance bucket:%hhu | bucket-1:%hhu -> Slingshot
+				//     %lu to
+				//     "
+				//     "%lu\n",
+				//     hashmap->buckets.distances[bucket],
+				//     hashmap->buckets.distances[bucket - 1],
+				//     bucket,
+				//     candidate);
+				// dump_hashmap(hashmap);
 				candidate = bucket;
+// slingshots[count] = bucket;
+// count++;
 #ifdef DEBUG_HMAP
-				printf("Slingshot %lu to %lu\n", bucket, candidate);
 				hashmap->stats.swap_count++;
 #endif /* DEBUG_HMAP */
 			}
 		}
+		// if (count > 0) {
+
+		// 	for (int i = count; i > 0; i -= 2) {
+		// 		hashmap->buckets.metas[(slingshots[i - 2])] =
+		// 		    hashmap->buckets.metas[(slingshots[i-1])];
+		// 		// printf("metas i = %d | %lu : %lu\n",
+		// 		//        i,
+		// 		//        slingshots[i - 1],
+		// 		//        slingshots[i]);
+		// 	}
+		// 	for (int i = count; i > 0; i -= 2) {
+		// 		hashmap->buckets.entries[(slingshots[i - 2])] =
+		// 		    hashmap->buckets.entries[(slingshots[i-1])];
+		// 		// printf("entries i = %d | %lu : %lu\n",
+		// 		//        i,
+		// 		//        slingshots[i - 1],
+		// 		//        slingshots[i]);
+		// 	}
+		// 	// puts("--------------------------------------------");
+		// }
+
+		// }
+
 		/**
-		 * Add entry to the store
-		 *
-		 * todo
-		 *   - [ ] Split to its own function
-		 *   - [ ] Copy to the store properly
-		 */
+		* Add entry to the store
+		*
+		* todo
+		*   - [ ] Split to its own function
+		*   - [ ] Copy to the store properly
+		*/
 		hashmap->store[hashmap->top].key   = key;
 		hashmap->store[hashmap->top].value = value;
 #ifdef DEBUG_HMAP
@@ -710,6 +769,12 @@ size_t hmap_put(struct hmap *const hashmap,
 		// meta_byte distance   = candidate - home;
 		clobber_bucket_with(
 		    hashmap, candidate, meta, candidate - home, hashmap->top);
+		// printf(
+		//     "home : %lu distance:%lu -> Clobber to "
+		//     "%lu\n",
+		// 	home,
+		//     candidate - home,
+		//     candidate);
 		hashmap->top++;
 		hashmap->count++;
 #ifdef DEBUG_HMAP
@@ -1325,7 +1390,23 @@ int main(void)
 	fputs(FG_BLUE REVERSE "Enter desired load factor ? " RESET, stdout);
 	scanf("%f", &load_factor);
 
-	//-------------------------------------------------------------- benchmark
+	//---------------------------------------------------- hmap on the stack
+	/* 1 << 18 will require just shy of 7MB on the stack */
+	// #define HMAP_SIZE (1 << 8)
+	// 	struct hmap_buckets buckets = {(meta_byte[HMAP_SIZE]){0},
+	// 	                               (meta_byte[HMAP_SIZE]){0},
+	// 	                               (size_t[HMAP_SIZE]){0}};
+	// 	struct hmap_entry entry   = {0, 0};
+	// 	struct hmap hashmap_stack = {buckets,
+	// 	                             (struct hmap_entry[HMAP_SIZE]){entry},
+	// 	                             0,
+	// 	                             64 - 15,
+	// 	                             HMAP_SIZE + PROBE_LENGTH,
+	// 	                             0};
+
+	// 	memset(hashmap_stack.buckets.metas, META_EMPTY, HMAP_SIZE);
+	// 	struct hmap *const hashmap = &hashmap_stack;
+	//------------------------------------------------------------ benchmark
 	// setup
 	// #ifdef BENCHMARK
 	float start, stop, diff, bench_time;

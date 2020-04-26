@@ -16,6 +16,7 @@ valgrind --tool=cachegrind bin/lispy
 
 # annotate profiling infos
 cg_annotate --auto=yes cachegrind.out.* > cachegrind.out.annotated
+cg_annotate --auto=yes cachegrind.out.17627 > cachegrind.out.annotated
 
 # merge profiles
 cg_merge -o outputfile file1 file2 file3 ...
