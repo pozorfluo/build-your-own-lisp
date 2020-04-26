@@ -13,6 +13,7 @@ cachegrind.out.*
 #project specific
 lispy_history.txt
 test_report.yaml
+profile_report.tsv
 
 CMakeLists.txt.user
 CMakeCache.txt
