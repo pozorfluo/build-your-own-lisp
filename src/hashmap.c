@@ -51,17 +51,17 @@
 
 // #define LOOP_SIZE 10000000
 
-#define START_BENCH(start)                                                     \
+#define START_BENCH(_start)                                                    \
 	do {                                                                       \
-		start = (float)clock() / CLOCKS_PER_SEC;                               \
+		_start = (float)clock() / CLOCKS_PER_SEC;                              \
 	} while (0)
 
-#define STOP_BENCH(start, stop, diff, result)                                  \
+#define STOP_BENCH(_start, _stop, _diff, _result)                              \
 	do {                                                                       \
-		stop   = (float)clock() / CLOCKS_PER_SEC;                              \
-		diff   = stop - start;                                                 \
-		result = diff;                                                         \
-		printf("|><| %f s\n", result);                                         \
+		_stop   = (float)clock() / CLOCKS_PER_SEC;                             \
+		_diff   = _stop - _start;                                              \
+		_result = _diff;                                                       \
+		printf("|><| %f s\n", _result);                                        \
 	} while (0)
 
 // printf(FG_YELLOW REVERSE "|><|" RESET FG_YELLOW " %f s\n" RESET,
@@ -69,9 +69,9 @@
 
 #else
 #define LOOP_SIZE 0
-#define START_BENCH(start)
-#define STOP_BENCH(start, stop, diff, result)
-#define BENCH(expression, loop, result)
+#define START_BENCH(_start)
+#define STOP_BENCH(_start, _stop, _diff, _result)
+#define BENCH(_expression, _loop, _result)
 #endif /* BENCHMARK */
 //------------------------------------------------------------ MAGIC NUMBERS ---
 #ifdef __AVX__
@@ -740,8 +740,8 @@ size_t hmap_put(struct hmap *const hashmap,
 
 //----------------------------------------------------------------- Function ---
 /**
- *   Mark metadata associated to given entry as META_EMPTY
- *   Update given hmap stats
+ * Mark metadata associated to given entry as META_EMPTY
+ * Update given hmap stats
  *   -> removed	entry index
  */
 static inline void empty_entry(struct hmap *const hashmap, const size_t entry)
@@ -1279,9 +1279,12 @@ int main(void)
 	     "\t\t+ [ ] Look for simpler ways to update the store !!\n" RESET
 	         FG_BRIGHT_YELLOW
 	     "\t- [x] Fill and read an array as a baseline\n"
-	     "\t- [ ] Add a test that does a constant number of find, get, put,\n"
+	     "\t- [x] Add a test that does a constant number of find, get, put,\n"
 	     "\t\tremove and compare output at different hmap sizes, load "
-	     "factor\n" RESET
+	     "factor\n" RESET FG_BRIGHT_GREEN
+	     "\t- [ ] Consider a Fat Pointer style struct wrapper to allow\n"
+	     "\t\tgeneric key, value type handling\n"
+	     "\t- [ ] Split hash functions to hash.c\n" RESET
 	     "\t- [ ] Refactor Slingshot sequences by array\n"
 	     "\t\t+ [ ] Slingshot ALL buckets.metas then\n"
 	     "\t\t+ [ ] Slingshot ALL buckets.distances then\n"

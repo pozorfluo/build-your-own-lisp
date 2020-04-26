@@ -18,24 +18,27 @@
 
 // #define LOOP_SIZE 10000000
 
-#define START_BENCH(start)                                                     \
+#define START_BENCH(_start)                                                    \
 	do {                                                                       \
-		start = (float)clock() / CLOCKS_PER_SEC;                               \
+		_start = (float)clock() / CLOCKS_PER_SEC;                              \
 	} while (0)
 
-#define STOP_BENCH(start, stop, diff, result)                                  \
+#define STOP_BENCH(_start, _stop, _diff, _result)                              \
 	do {                                                                       \
-		stop   = (float)clock() / CLOCKS_PER_SEC;                              \
-		diff   = stop - start;                                                 \
-		result = diff;                                                         \
-		printf("|><| %f s\n", result);                                                 \
+		_stop   = (float)clock() / CLOCKS_PER_SEC;                             \
+		_diff   = _stop - _start;                                              \
+		_result = _diff;                                                       \
+		printf("|><| %f s\n", _result);                                        \
 	} while (0)
+
+// printf(FG_YELLOW REVERSE "|><|" RESET FG_YELLOW " %f s\n" RESET,
+//        result);
 
 #else
 #define LOOP_SIZE 0
-#define START_BENCH(start)
-#define STOP_BENCH(start, stop, diff, result)
-#define BENCH(expression, loop, result)
+#define START_BENCH(_start)
+#define STOP_BENCH(_start, _stop, _diff, _result)
+#define BENCH(_expression, _loop, _result)
 #endif /* BENCHMARK */
 
 //------------------------------------------------------------- DECLARATIONS ---
