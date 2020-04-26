@@ -313,7 +313,6 @@ size_t hmap_find(const struct hmap *const hashmap, const size_t key)
 		/* chunk done */
 	} while (index < hashmap->capacity);
 
-	printf(FG_BRIGHT_RED "hmap_find failed to find key\n" RESET);
 	/* key not found */
 	// return hashmap->capacity + 1;
 	return SIZE_MAX;
