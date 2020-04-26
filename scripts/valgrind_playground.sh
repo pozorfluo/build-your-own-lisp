@@ -16,7 +16,7 @@ valgrind --tool=cachegrind bin/lispy
 
 # annotate profiling infos
 cg_annotate --auto=yes cachegrind.out.* > cachegrind.out.annotated
-cg_annotate --auto=yes cachegrind.out.17627 > cachegrind.out.annotated
+
 
 # merge profiles
 cg_merge -o outputfile file1 file2 file3 ...
@@ -27,3 +27,9 @@ cg_diff file1 file2
 # run profile script
 python ./scripts/profile_hmap.py "valgrind --tool=cachegrind bin/hashmap" -o
 python ./scripts/profile_hmap.py "valgrind --tool=cachegrind bin/baseline-array" -o
+
+
+
+cg_annotate --auto=yes cachegrind.out.30309 > cachegrind.out.annotated
+cg_annotate --auto=yes cachegrind.out.30923 > cachegrind.out.annotated
+cg_diff cachegrind.out.30310 cachegrind.out.30923
