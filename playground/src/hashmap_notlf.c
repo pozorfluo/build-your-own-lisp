@@ -451,21 +451,21 @@ size_t hmap_put(struct hmap *const hm, const size_t key, const size_t value)
 	//----------------------------------------------------- empty slot found
 	if (is_empty(hm->buckets.metas[candidate])) {
 		/* Thierry La Fronde method : Slingshot the rich ! */
-		for (size_t bucket = candidate; bucket != home; bucket--) {
-			hm->buckets.distances[candidate] = candidate - home;
+		// for (size_t bucket = candidate; bucket != home; bucket--) {
+		// 	hm->buckets.distances[candidate] = candidate - home;
 
-			if (hm->buckets.distances[bucket] <=
-			    hm->buckets.distances[bucket - 1]) {
+		// 	if (hm->buckets.distances[bucket] <=
+		// 	    hm->buckets.distances[bucket - 1]) {
 
-				hm->buckets.distances[candidate] =
-				    hm->buckets.distances[bucket] + candidate - bucket;
+		// 		hm->buckets.distances[candidate] =
+		// 		    hm->buckets.distances[bucket] + candidate - bucket;
 
-				hm->buckets.metas[candidate] = hm->buckets.metas[bucket];
+		// 		hm->buckets.metas[candidate] = hm->buckets.metas[bucket];
 
-				hm->buckets.entries[candidate] = hm->buckets.entries[bucket];
-				candidate                      = bucket;
-			}
-		}
+		// 		hm->buckets.entries[candidate] = hm->buckets.entries[bucket];
+		// 		candidate                      = bucket;
+		// 	}
+		// }
 
 		hm->buckets.metas[candidate]     = meta;
 		hm->buckets.distances[candidate] = candidate - home;

@@ -26,6 +26,8 @@ cg_diff file1 file2
 
 # run profile script
 python ./scripts/profile_hmap.py "valgrind --tool=cachegrind bin/hashmap" -o
+python ./scripts/profile_hmap.py "valgrind --tool=cachegrind bin/hashmap_bucket_aos" -o
+python ./scripts/profile_hmap.py "valgrind --tool=cachegrind bin/hashmap_bucket_soa_noprobe" -o
 python ./scripts/profile_hmap.py "valgrind --tool=cachegrind bin/baseline-array" -o
 
 
