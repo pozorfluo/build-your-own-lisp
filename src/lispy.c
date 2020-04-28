@@ -3,14 +3,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ansi_esc.h"
 #include "linenoise.h"
 #include "mpc.h"
-#include "ansi_esc.h"
 
 // #define DEBUG_MALLOC
 #include "debug_xmalloc.h"
 
-//---------------------------------------------------------- PLATFORM MACROS ---
+//------------------------------------------------------------ MAGIC NUMBERS ---
+#define WELCOME_MESSAGE                                                        \
+	FG_BRIGHT_BLUE REVERSE " Lispy version 0.11.6 " RESET FG_BRIGHT_BLUE       \
+	                       " type exit to quit" RESET
 
 //------------------------------------------------------------------- MACROS ---
 #define ARRAY_LENGTH(array) (sizeof(array) / sizeof((array)[0]))
@@ -52,7 +55,7 @@
 /**
  * Suppress compiler warning about unused parameters needed in
  * function signatures
- * 
+ *
  * todo
  *   - [ ] consider using gcc specific __attribute__((unused))
  */
@@ -102,8 +105,10 @@ struct LispEnv {
  * - [ ] rename parameters to be more consistent overall but still locally
  *       unambiguously relevant
  */
-static LispValue *
-builtin_operator(LispEnv *env, LispValue *arguments, const char *operator);
+static LispValue *builtin_operator(LispEnv *env,
+                                   LispValue *arguments,
+                                   const char *
+                                   operator);
 static LispValue *take_lispvalue(LispValue *value, const int index);
 static LispValue *pop_lispvalue(LispValue *value, const int index);
 static LispValue *eval_lispvalue(LispEnv *env, LispValue *value);
@@ -306,7 +311,7 @@ static void delete_lispvalue(LispValue *value)
 /**
  * Free given LispEnv ressources
  *   -> nothing
- * 
+ *
  * todo
  *   - [ ] see : things like Morris Traversal if this blows up
  */
@@ -1072,8 +1077,10 @@ static LispValue *builtin_def(LispEnv *env, LispValue *arguments)
  * the arguments to operate on
  *   -> pointer to Evaluation result LispValue
  */
-static LispValue *
-builtin_operator(LispEnv *env, LispValue *arguments, const char *operator)
+static LispValue *builtin_operator(LispEnv *env,
+                                   LispValue *arguments,
+                                   const char *
+                                   operator)
 {
 	UNUSED(env);
 	char *error_message = "";
@@ -1170,7 +1177,8 @@ static void add_builtin_lispenv(LispEnv *env, char *name, LispBuiltin function)
 	delete_lispvalue(value);
 }
 
-///----------------------------------------------------------------- Function ---
+///----------------------------------------------------------------- Function
+///---
 static void add_basicbuiltins_lispenv(LispEnv *env)
 {
 	add_builtin_lispenv(env, "add", builtin_add);
@@ -1365,8 +1373,7 @@ int main(void)
 	linenoiseHistorySetMaxLen(16);
 
 	//---------------------------------------------------------------- intro
-	puts(FG_BRIGHT_BLUE REVERSE " Lispy version 0.11.6 " RESET FG_BRIGHT_BLUE
-	                            " type exit to quit" RESET);
+	puts(WELCOME_MESSAGE);
 
 	//----------------------------------------------------- lisp environment
 	LispEnv *lispenv = new_lispenv();

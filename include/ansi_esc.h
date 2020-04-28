@@ -81,4 +81,4 @@
 /* codes in the sequence must be separated by ";" */
 #define ANSI(SEQUENCE) ESC "[" SEQUENCE "m"
 
-#endif // ansi_esc_h
+#endif /* ansi_esc_h */

@@ -15,54 +15,15 @@
 #include <stdlib.h>
 #include <string.h> /* memcpy */
 
-/**
- * __rdtsc
- * __builtin_ctz, __builtin_ctzl, __builtin_ctzll
- * _bit_scan_forward, _BitScanForward, _BitScanForward64
- */
-#ifdef _MSC_VER
-#include <intrin.h>
-#else
-#include <immintrin.h>
-#include <x86intrin.h>
-#endif
-
 #include "ansi_esc.h"
 
 #include "debug_xmalloc.h"
-
-//---------------------------------------------------------------- BENCHMARK ---
-#define BENCHMARK
-
-#ifdef BENCHMARK
-#include <fcntl.h>
-#include <time.h>
-#include <unistd.h>
-
-// #include <x86intrin.h>
-
-#define START_BENCH(_start)                                                    \
-	do {                                                                       \
-		_start = (float)clock() / CLOCKS_PER_SEC;                              \
-	} while (0)
-
-#define STOP_BENCH(_start, _stop, _diff, _result)                              \
-	do {                                                                       \
-		_stop   = (float)clock() / CLOCKS_PER_SEC;                             \
-		_diff   = _stop - _start;                                              \
-		_result = _diff;                                                       \
-		printf("|><| %f s\n", _result);                                        \
-	} while (0)
-
-#else
-#define LOOP_SIZE 0
-#define START_BENCH(_start)
-#define STOP_BENCH(_start, _stop, _diff, _result)
-#define BENCH(_expression, _loop, _result)
-#endif /* BENCHMARK */
+//------------------------------------------------------------ CONFIGURATION ---
+#include "configuration.h"
 //------------------------------------------------------------ MAGIC NUMBERS ---
 #define HMAP_NOT_FOUND SIZE_MAX
 
+#ifdef SIMD_PROBE
 #ifdef __AVX__
 /**
  *   _mm256_set_epi8
@@ -73,7 +34,17 @@
  *   _mm256_loadu_si256
  *   _mm256_lddqu_si256
  */
+/**
+ * __rdtsc
+ * __builtin_ctz, __builtin_ctzl, __builtin_ctzll
+ * _bit_scan_forward, _BitScanForward, _BitScanForward64
+ */
+#ifdef _MSC_VER
+#include <intrin.h>
+#else
 #include <immintrin.h>
+#include <x86intrin.h>
+#endif /* _MSC_VER */
 #define PROBE_LENGTH 32
 #else
 /**
@@ -89,8 +60,17 @@
  * require at least __SSE3__
  *   _mm_lddqu_si128
  */
+#ifdef _MSC_VER
+#include <intrin.h>
+#else
+#include <immintrin.h>
+#include <x86intrin.h>
+#endif /* _MSC_VER */
 #define PROBE_LENGTH 16
 #endif /* __AVX__ */
+#else
+#define PROBE_LENGTH 32
+#endif /* SIMD_PROBE */
 
 //------------------------------------------------------------------- MACROS ---
 
@@ -833,44 +813,7 @@ void sum_store(const struct hmap *const hashmap)
 //--------------------------------------------------------------------- MAIN ---
 int main(void)
 {
-	puts("todo\n" FG_BRIGHT_RED
-	     "\t- [ ] Consider that current SIMD implementation is flawed\n"
-	     "\t\t+ [ ] Review it\n" 
-	     "\t\t+ [ ] Investigate how aos bucket w/o simd beat it so soundly\n" 
-	     "\t- [ ] Compare to alternative implementation\n"
-	     "\t\t+ [ ] Try separate meta array, aos bucket\n" 
-	     "\t\t+ [ ] Try SIMD probe without TLF slingshots\n" 
-	     "\t\t+ [ ] Implement remove for bucket aos\n" 
-		 RESET
-	         FG_BRIGHT_YELLOW
-	     "\t- [x] Update hmap->top when doing hmap->remove\n"
-	     "\t\t+ [ ] Look for simpler ways to update the store !!\n"
-	     "\t- [x] Fill and read an array as a baseline\n"
-	     "\t- [x] Add a test that does a constant number of find, get, put,\n"
-	     "\t\tremove and compare output at different hmap sizes, load "
-	     "factor\n" RESET FG_BRIGHT_GREEN
-	     "\t- [ ] Use macros to define key, value data types and compare func\n"
-	     "\t- [ ] Consider a Fat Pointer style struct wrapper to allow\n"
-	     "\t\tgeneric key, value type handling\n"
-	     "\t- [ ] Consider storing a deep space hash and reducing with hash\n"
-	     "\t\tshift as needed instead of rehashing on resize\n"
-	     "\t- [ ] Split hash functions to hash.c\n" RESET
-	     "\t- [ ] Refactor Slingshot sequences by array\n"
-	     "\t\t+ [ ] Slingshot ALL buckets.metas then\n"
-	     "\t\t+ [ ] Slingshot ALL buckets.distances then\n"
-	     "\t\t+ [ ] Slingshot ALL buckets.entries\n"
-	     "\t- [x] Implement backward shift deletion\n"
-	     "\t- [ ] Profile core table operations\n"
-	     "\t\t+ [ ] Isolate them by using fixed size keys, a innocuous hash "
-	     "func\n"
-	     "\t- [ ] Check boundaries when doing slingshots\n"
-	     "\t- [x] Consider tossing actual_capacity \n"
-	     "\t\t+ [ ] Hunt potential off-by-1 errors checking entry vs capacity\n"
-	     "\t- [ ] Implement baseline non-SIMD linear probing\n"
-	     "\t\t+ [ ] Benchmark against SIMD wip versions\n"
-	     "\t- [x] Implement the most basic put operation to mock tables\n"
-	     "\t- [ ] Try mapping and storing primitive type/values\n"
-	     "\t\t+ [ ] Benchmark the difference with store of pointers\n");
+	puts(WELCOME_MESSAGE);
 
 #ifdef __AVX__
 	puts("__AVX__ 1");
@@ -894,13 +837,8 @@ int main(void)
 	fputs(FG_BLUE REVERSE "Enter desired load factor ? " RESET, stdout);
 	scanf("%f", &load_factor);
 
-	//------------------------------------------------------------ benchmark
-	// setup
-	float start, stop, diff, bench_time;
-
-//-------------------------------------------------------------------- setup
-
-#define TEST_COUNT 100000
+	//---------------------------------------------------------------- setup
+	SETUP_BENCH(repl);
 	size_t load_count = (1 << n) * load_factor;
 	printf("load_factor = %f\n", load_factor);
 	printf("load_count  = %lu\n", load_count);
@@ -913,7 +851,7 @@ int main(void)
 
 	printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET, hashmap->top);
 
-	START_BENCH(start);
+	START_BENCH(repl);
 	for (size_t k = 0; k < load_count; k++) {
 		hmap_put(hashmap, k, k);
 	}
@@ -923,12 +861,12 @@ int main(void)
 	fgets(key, 255, stdin);
 	//----------------------------------------------------------- input loop
 	for (;;) {
-		STOP_BENCH(start, stop, diff, bench_time);
+		STOP_BENCH(repl);
 		fputs("\x1b[102m > \x1b[0m", stdout);
 		fgets(key, 255, stdin);
 		size_t length = strlen(key);
 
-		START_BENCH(start);
+		START_BENCH(repl);
 		/* trim newline */
 		if ((length > 0) && (key[--length] == '\n')) {
 			key[length] = '\0';
@@ -1019,7 +957,6 @@ int main(void)
 
 		//------------------------------------------------------- find / put
 		if (key[0] != '\0') {
-			// START_BENCH(start);
 			char *key_end;
 			size_t numeric_key;
 			errno = 0;

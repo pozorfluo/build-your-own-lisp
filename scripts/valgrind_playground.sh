@@ -13,6 +13,7 @@ valgrind --track-origins=yes --leak-check=full --show-reachable=yes bin/lispy
 valgrind --tool=cachegrind bin/baseline-array
 valgrind --tool=cachegrind bin/hashmap
 valgrind --tool=cachegrind bin/lispy
+valgrind --tool=cachegrind bin/hashmap_bucket_aos
 
 # annotate profiling infos
 cg_annotate --auto=yes cachegrind.out.* > cachegrind.out.annotated
@@ -33,5 +34,5 @@ python ./scripts/profile_hmap.py "valgrind --tool=cachegrind bin/baseline-array"
 
 
 cg_annotate --auto=yes cachegrind.out.4758 src/hashmap.c > cachegrind.out.annotated
-cg_annotate --auto=yes cachegrind.out.30923 > cachegrind.out.annotated
+cg_annotate --auto=yes cachegrind.out.11841 > cachegrind.out.annotated
 cg_diff cachegrind.out.30310 cachegrind.out.4758

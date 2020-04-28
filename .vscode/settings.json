@@ -56,7 +56,9 @@
         "streambuf": "c",
         "cinttypes": "c",
         "cstdbool": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "benchmark.h": "c",
+        "configuration.h": "c"
     },
     "python.formatting.provider": "black",
     "python.pythonPath": "/home/spagbol/anaconda3/bin/python"
