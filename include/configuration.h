@@ -13,15 +13,22 @@
 	    " hmap version 0.26.2 " RESET FG_BRIGHT_BLUE                           \
 	    " type exit to quit\n" RESET FG_BRIGHT_RED REVERSE                     \
 	    "\t todo \n" RESET FG_BRIGHT_RED                                       \
+	    "\t- [ ] Bench murmur, reduce fibo, tab_hash\n"                        \
 	    "\t- [ ] Investigate how hmap_bucket_aos fails at load_factor=1\n"     \
 	    "\t\t+ [ ] Compare with hmap_simd\n"                                   \
 	    "\t- [ ] Consider that current SIMD implementation is flawed\n"        \
 	    "\t\t+ [ ] Review it\n"                                                \
 	    "\t\t+ [ ] Investigate how aos bucket w/o simd beat it so soundly\n"   \
+	    "\t\t+ [ ] Consider that TLF and SIMD make each other irrelevant\n"    \
 	    "\t- [ ] Compare to alternative implementation\n"                      \
 	    "\t\t+ [x] Try separate meta array, aos bucket\n"                      \
 	    "\t\t+ [x] Try SIMD probe without TLF slingshots\n"                    \
 	    "\t\t+ [x] Implement remove for bucket aos\n" RESET FG_BRIGHT_YELLOW   \
+	    "\t- [ ] Consider adding a cursor for store iteration\n"               \
+	    "\t- [x] Wrap hmap interface with an opaque pointer to an incomplete " \
+	    "type \n"                                                              \
+	    "\t\t+ [ ] see "                                                       \
+	    "https://alastairs-place.net/blog/2013/06/03/encapsulation-in-c/\n"    \
 	    "\t- [x] Update hmap->top when doing hmap->remove\n"                   \
 	    "\t\t+ [ ] Look for simpler ways to update the store !!\n"             \
 	    "\t- [x] Fill and read an array as a baseline\n"                       \
@@ -34,7 +41,9 @@
 	    "\t\tgeneric key, value type handling\n"                               \
 	    "\t- [ ] Consider storing a deep space hash and reducing with hash\n"  \
 	    "\t\tshift as needed instead of rehashing on resize\n"                 \
-	    "\t- [ ] Split hash functions to hash.c\n" RESET                       \
+	    "\t- [ ] Split hash functions to hash.c\n"                             \
+	    "\t- [ ] Implement hset\n"                                             \
+	    "\t- [ ] Consider an optional hset of all values in hmap\n" RESET      \
 	    "\t- [x] Refactor Slingshot sequences by array\n"                      \
 	    "\t\t+ [x] Slingshot ALL buckets.metas then\n"                         \
 	    "\t\t+ [x] Slingshot ALL buckets.distances then\n"                     \

@@ -833,7 +833,6 @@ int main(void)
 	float start, stop, diff, bench_time;
 
 //-------------------------------------------------------------------- setup
-
 #define TEST_COUNT 100000
 	size_t load_count = (1 << n) * load_factor;
 	printf("load_factor = %f\n", load_factor);

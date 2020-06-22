@@ -77,6 +77,7 @@ enum LispValueType {
 	LVAL_QEXPR
 };
 
+// struct LispValue *(*LispBuiltin)(struct LispEnv *, struct LispValue *);
 typedef LispValue *(*LispBuiltin)(LispEnv *, LispValue *);
 
 struct LispValue {

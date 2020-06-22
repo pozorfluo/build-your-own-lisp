@@ -126,7 +126,7 @@ git push -u origin master
 git push -u origin cache-profiling
 
 # start interactive rebase session for last 3 commits
-git rebase -i HEAD~2
+git rebase -i HEAD~3
 
 # review
 git log --graph --oneline --decorate --date-order --color --boundary @{u}

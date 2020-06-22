@@ -731,6 +731,7 @@ int main(void)
 	scanf("%f", &load_factor);
 
 	//---------------------------------------------------------------- setup
+	// #define $(__object, __method, ...) __method(__object, ##__VA_ARGS__);
 	SETUP_BENCH(repl);
 	size_t load_count = (1 << n) * load_factor;
 	printf("load_factor = %f\n", load_factor);
@@ -746,6 +747,7 @@ int main(void)
 
 	START_BENCH(repl);
 	for (size_t k = 0; k < load_count; k++) {
+		// $(hashmap, hmap_put, k, k);
 		hmap_put(hashmap, k, k);
 	}
 
