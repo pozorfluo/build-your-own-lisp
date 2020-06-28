@@ -103,7 +103,7 @@ struct hmap {
 	struct hmap_entry *store;
 	size_t top;
 	size_t hash_shift; /* shift amount necessary for desired hash depth */
-	size_t capacity;   /* now is actual capacity */
+	size_t capacity;   /* actual capacity */
 	size_t count;      /* occupied entries count */
 };
 
@@ -369,14 +369,14 @@ static inline size_t hmap_find_or_empty(const struct hmap *const hashmap,
  *   //-> NULL
  *   -> 0
  */
-size_t hmap_get(const struct hmap *const hashmap, const size_t key)
+size_t hmap_get(const struct hmap *const hm, const size_t key)
 {
-	const size_t entry = hmap_find(hashmap, key);
+	const size_t entry = hmap_find(hm, key);
 	// void *value        = NULL;
 	size_t value = 0;
 
 	if (entry != HMAP_NOT_FOUND) {
-		value = hashmap->store[(hashmap->buckets.entries[entry])].value;
+		value = hm->store[(hm->buckets.entries[entry])].value;
 	}
 
 	return value;
@@ -470,10 +470,10 @@ size_t hmap_put(struct hmap *const hm, const size_t key, const size_t value)
  * Update given hmap stats
  *   -> removed	entry index
  */
-static inline void empty_entry(struct hmap *const hashmap, const size_t entry)
+static inline void empty_entry(struct hmap *const hm, const size_t entry)
 {
-	hashmap->buckets.metas[entry] = META_EMPTY;
-	hashmap->count--;
+	hm->buckets.metas[entry] = META_EMPTY;
+	hm->count--;
 }
 //----------------------------------------------------------------- Function ---
 /**
@@ -491,25 +491,25 @@ static inline void empty_entry(struct hmap *const hashmap, const size_t entry)
  *   Free the store sequentially when deleting the hmap.
  *   Keep destroy_entry only to specifically wipe an entry from the store.
  */
-static inline void destroy_entry(struct hmap *const hashmap, const size_t entry)
+static inline void destroy_entry(struct hmap *const hm, const size_t entry)
 {
 	/**
 
 	 */
-	const size_t store_slot = hashmap->buckets.entries[entry];
-	hashmap->top--;
+	const size_t store_slot = hm->buckets.entries[entry];
+	hm->top--;
 
-	if ((hashmap->top > 0) && (hashmap->top != store_slot)) {
-		const size_t top_key = hashmap->store[hashmap->top].key;
+	if ((hm->top > 0) && (hm->top != store_slot)) {
+		const size_t top_key = hm->store[hm->top].key;
 
-		size_t top_bucket = hmap_find(hashmap, top_key);
+		size_t top_bucket = hmap_find(hm, top_key);
 
-		hashmap->buckets.entries[top_bucket] = hashmap->buckets.entries[entry];
+		hm->buckets.entries[top_bucket] = hm->buckets.entries[entry];
 
-		hashmap->store[(hashmap->buckets.entries[entry])].key =
-		    hashmap->store[hashmap->top].key;
-		hashmap->store[(hashmap->buckets.entries[entry])].value =
-		    hashmap->store[hashmap->top].value;
+		hm->store[(hm->buckets.entries[entry])].key =
+		    hm->store[hm->top].key;
+		hm->store[(hm->buckets.entries[entry])].value =
+		    hm->store[hm->top].value;
 	}
 	return;
 }
@@ -528,14 +528,14 @@ static inline void destroy_entry(struct hmap *const hashmap, const size_t entry)
  *   -> out of bound value ( > capacity )
  *
  */
-size_t hmap_remove(struct hmap *const hashmap, const size_t key)
+size_t hmap_remove(struct hmap *const hm, const size_t key)
 {
-	const size_t entry = hmap_find(hashmap, key);
+	const size_t entry = hmap_find(hm, key);
 
 	/* Given key exists */
 	if (entry != HMAP_NOT_FOUND) {
 		/* update store */
-		destroy_entry(hashmap, entry);
+		destroy_entry(hm, entry);
 
 /* probe for stop bucket */
 #ifdef __AVX__
@@ -554,7 +554,7 @@ size_t hmap_remove(struct hmap *const hashmap, const size_t key)
 		 *           distance because it may be @home
 		 */
 		size_t stop_bucket = entry + 1;
-		match_mask = probe_pattern(0, hashmap->buckets.distances + stop_bucket);
+		match_mask = probe_pattern(0, hm->buckets.distances + stop_bucket);
 
 		/* is there at least 1 slingshot job ? */
 		if (match_mask != 0) {
@@ -563,26 +563,26 @@ size_t hmap_remove(struct hmap *const hashmap, const size_t key)
 
 			/* process buckets.distances while it is hot */
 			for (size_t bucket = entry; bucket < stop_bucket; bucket++) {
-				hashmap->buckets.distances[bucket] =
-				    hashmap->buckets.distances[bucket + 1] - 1;
+				hm->buckets.distances[bucket] =
+				    hm->buckets.distances[bucket + 1] - 1;
 			}
 			/* mark entry distance in last shifted bucket as @home or empty */
-			hashmap->buckets.distances[stop_bucket - 1] = 0;
+			hm->buckets.distances[stop_bucket - 1] = 0;
 
 			/* process buckets.entries */
 			for (size_t bucket = entry; bucket < stop_bucket; bucket++) {
-				hashmap->buckets.entries[bucket] =
-				    hashmap->buckets.entries[bucket + 1];
+				hm->buckets.entries[bucket] =
+				    hm->buckets.entries[bucket + 1];
 			}
 
 			/* process buckets.metas */
 			for (size_t bucket = entry; bucket < stop_bucket; bucket++) {
-				hashmap->buckets.metas[bucket] =
-				    hashmap->buckets.metas[bucket + 1];
+				hm->buckets.metas[bucket] =
+				    hm->buckets.metas[bucket + 1];
 			}
 		}
 		/* mark entry in last shifted bucket as empty */
-		hashmap->buckets.metas[stop_bucket - 1] = META_EMPTY;
+		hm->buckets.metas[stop_bucket - 1] = META_EMPTY;
 	}
 
 	return entry;
@@ -593,11 +593,11 @@ size_t hmap_remove(struct hmap *const hashmap, const size_t key)
  * Free given Hashmap
  *   -> nothing
  */
-void hmap_delete_hashmap(struct hmap *const hashmap)
+void hmap_delete_hashmap(struct hmap *const hm)
 {
 	/* hashmap->buckets.metas is the head of the single alloc pool */
-	XFREE(hashmap->buckets.metas, "hmap_delete_hashmap");
-	XFREE(hashmap, "delete_hashmap");
+	XFREE(hm->buckets.metas, "hmap_delete_hashmap");
+	XFREE(hm, "delete_hashmap");
 }
 
 //----------------------------------------------------------------- Function ---
@@ -707,13 +707,13 @@ err_free_hashmap:
  * Dump given Hashmap content
  *   -> nothing
  */
-void dump_hashmap(const struct hmap *const hashmap)
+void dump_hashmap(const struct hmap *const hm)
 {
 	size_t empty_bucket = 0;
 	int max_distance    = 0;
 
-	for (size_t i = 0; i < hashmap->capacity; i++) {
-		if (hashmap->buckets.metas[i] == META_EMPTY) {
+	for (size_t i = 0; i < hm->capacity; i++) {
+		if (hm->buckets.metas[i] == META_EMPTY) {
 			empty_bucket++;
 			printf("\x1b[100mhashmap->\x1b[30mbucket[%lu]>> EMPTY <<\x1b[0m\n",
 			       i);
@@ -723,7 +723,7 @@ void dump_hashmap(const struct hmap *const hashmap)
 		/* Color code distance from home using ANSI esc code values */
 		int colour;
 
-		switch (hashmap->buckets.distances[i]) {
+		switch (hm->buckets.distances[i]) {
 		case 0:
 			colour = 4; // BLUE
 			break;
@@ -746,23 +746,23 @@ void dump_hashmap(const struct hmap *const hashmap)
 			colour = 7; // WHITE
 			break;
 		}
-		max_distance = (hashmap->buckets.distances[i] > max_distance)
-		                   ? hashmap->buckets.distances[i]
+		max_distance = (hm->buckets.distances[i] > max_distance)
+		                   ? hm->buckets.distances[i]
 		                   : max_distance;
 		printf("\x1b[10%dmhashmap->\x1b[30mbucket[%lu]\x1b[0m>>", colour, i);
 
 		printf(" %lu[%d] : %lu | %lu\n",
 		       hash_index(reduce_fibo(
-		           hashmap->store[(hashmap->buckets.entries[i])].key,
-		           hashmap->hash_shift)),
-		       hashmap->buckets.distances[i],
-		       hashmap->store[(hashmap->buckets.entries[i])].key,
-		       hashmap->store[(hashmap->buckets.entries[i])].value);
+		           hm->store[(hm->buckets.entries[i])].key,
+		           hm->hash_shift)),
+		       hm->buckets.distances[i],
+		       hm->store[(hm->buckets.entries[i])].key,
+		       hm->store[(hm->buckets.entries[i])].value);
 	}
 
 	printf("empty_buckets       : %lu \t-> %f%%\n",
 	       empty_bucket,
-	       (double)empty_bucket / (double)(hashmap->capacity - PROBE_LENGTH) *
+	       (double)empty_bucket / (double)(hm->capacity - PROBE_LENGTH) *
 	           100);
 	printf("max_distance        : %d\n", max_distance);
 }
@@ -773,14 +773,14 @@ void dump_hashmap(const struct hmap *const hashmap)
  * Access the store
  *   -> nothing
  */
-void sum_bucket(const struct hmap *const hashmap)
+void sum_bucket(const struct hmap *const hm)
 {
 	size_t sum_key   = 0;
 	size_t sum_value = 0;
 
-	for (size_t i = 0; i < hashmap->capacity; i++) {
-		sum_key += hashmap->store[(hashmap->buckets.entries[i])].key;
-		sum_value += hashmap->store[(hashmap->buckets.entries[i])].value;
+	for (size_t i = 0; i < hm->capacity; i++) {
+		sum_key += hm->store[(hm->buckets.entries[i])].key;
+		sum_value += hm->store[(hm->buckets.entries[i])].value;
 	}
 
 	printf(FG_BLUE REVERSE
@@ -790,17 +790,17 @@ void sum_bucket(const struct hmap *const hashmap)
 	       sum_value);
 }
 
-void sum_store(const struct hmap *const hashmap)
+void sum_store(const struct hmap *const hm)
 {
 	size_t sum_key   = 0;
 	size_t sum_value = 0;
 
 	/* first rewind 1 entry from the top */
-	size_t top = hashmap->top;
+	size_t top = hm->top;
 	while (top) {
 		top--;
-		sum_key += hashmap->store[top].key;
-		sum_value += hashmap->store[top].value;
+		sum_key += hm->store[top].key;
+		sum_value += hm->store[top].value;
 	}
 
 	printf(FG_BLUE REVERSE

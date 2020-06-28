@@ -105,7 +105,7 @@ struct hmap {
 	struct hmap_entry *store;
 	size_t top;
 	size_t hash_shift; /* shift amount necessary for desired hash depth */
-	size_t capacity;   /* now is actual capacity */
+	size_t capacity;   /* actual capacity */
 	size_t count;      /* occupied entries count */
 };
 
