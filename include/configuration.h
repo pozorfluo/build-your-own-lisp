@@ -15,6 +15,7 @@
 	    "\t todo \n" RESET FG_BRIGHT_RED                                       \
 	    "\t- [ ] Wrap up a version satisfying build-your-own-lisp use case\n"  \
 	    "\t\t+ [ ] Implement <string => int>\n"                                \
+	    "\t\t\t* [ ] Research ways to accomodate strings in the store\n"       \
 	    "\t\t\t* [ ] Test\n"                                                   \
 	    "\t\t\t* [ ] Bench different hash function\n"                          \
 	    "\t\t+ [ ] Implement <string => pointer>\n"                            \
@@ -23,6 +24,8 @@
 	    "\t\t+ [ ] Implement <string => function pointer>\n"                   \
 	    "\t\t\t* [ ] Test\n"                                                   \
 	    "\t\t\t* [ ] Bench different hash function\n"                          \
+	    "\t\t+ [ ] Investigate errors with very long collision chains on "     \
+	    "full table\n"                                                         \
 	    "\t\t+ [ ] Research hashtable resizing strategy\n"                     \
 	    "\t\t\t* [ ] Implement one, move on\n"                                 \
 	    "\t- [ ] Move on to next build your own lisp step\n" RESET             \

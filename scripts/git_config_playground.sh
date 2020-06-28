@@ -99,6 +99,9 @@ git status
 git add -A
 
 # commit, push
+git commit -m 'Plan hmap integration next steps'
+
+
 git commit -m 'Make builtins variable immutable for chapter 11 : Bonus Marks
 
 	Return an error if def is used with a symbol used for builtins or

@@ -18,59 +18,14 @@
 #include "ansi_esc.h"
 
 #include "debug_xmalloc.h"
+
 //------------------------------------------------------------ CONFIGURATION ---
 #include "configuration.h"
 //------------------------------------------------------------ MAGIC NUMBERS ---
 #define HMAP_NOT_FOUND SIZE_MAX
-
-#ifdef SIMD_PROBE
-#ifdef __AVX__
-/**
- *   _mm256_set_epi8
- *   _mm256_cmpeq_epi8
- *   _mm256_cmpgt_epi8
- *   _mm256_movemask_epi8
- *   _mm256_store_si256
- *   _mm256_loadu_si256
- *   _mm256_lddqu_si256
- */
-/**
- * __rdtsc
- * __builtin_ctz, __builtin_ctzl, __builtin_ctzll
- * _bit_scan_forward, _BitScanForward, _BitScanForward64
- */
-#ifdef _MSC_VER
-#include <intrin.h>
-#else
-#include <immintrin.h>
-#include <x86intrin.h>
-#endif /* _MSC_VER */
-#define PROBE_LENGTH 32
-#else
-/**
- * require at least __SSE2__
- *   _mm_set1_epi8
- *   _mm_cmpeq_epi8
- *   _mm_cmpgt_epi8
- *   _mm_movemask_epi8
- *   _mm_cmpeq_epi8
- *   _mm_store_si128
- *   _mm_loadu_si128
- *
- * require at least __SSE3__
- *   _mm_lddqu_si128
- */
-#ifdef _MSC_VER
-#include <intrin.h>
-#else
-#include <immintrin.h>
-#include <x86intrin.h>
-#endif /* _MSC_VER */
-#define PROBE_LENGTH 16
-#endif /* __AVX__ */
-#else
-#define PROBE_LENGTH 32
-#endif /* SIMD_PROBE */
+// #define HMAP_PROBE_LENGTH 16
+#define HMAP_PROBE_LENGTH 32
+#define HMAP_INLINE_KEY_SIZE 16
 
 //------------------------------------------------------------------- MACROS ---
 
@@ -86,20 +41,22 @@ enum meta_ctrl {
 
 struct hmap_entry {
 	size_t key;
+	// char *key; /* string key stored elsewhere */
+	// char key[HMAP_INLINE_KEY_SIZE]; /* string key stored inline */
 	size_t value;
 };
 
-struct hmap_buckets {
-	meta_byte *restrict metas;     /* 1 byte per bucket,*/
-	meta_byte *restrict distances; /* 1 byte per bucket,*/
-	size_t *restrict entries;
+struct hmap_bucket {
+	meta_byte meta;     /* 1 byte per bucket */
+	meta_byte distance; /* 1 byte per bucket */
+	size_t entry;       /* sizeof(size_t) bytes per bucket */
 };
 
 /**
  * Check packing https://godbolt.org/z/dvdKqM
  */
 struct hmap {
-	struct hmap_buckets buckets;
+	struct hmap_bucket *buckets;
 	struct hmap_entry *store;
 	size_t top;
 	size_t hash_shift; /* shift amount necessary for desired hash depth */
@@ -116,16 +73,6 @@ static inline size_t hash_index(const size_t hash)
 
 static inline meta_byte hash_meta(const size_t hash)
     __attribute__((const, always_inline));
-
-#ifdef __AVX__
-static inline uint32_t probe_pattern(const meta_byte pattern,
-                                     const meta_byte *const entry)
-    __attribute__((pure, always_inline));
-#else
-static inline uint16_t probe_pattern(const meta_byte pattern,
-                                     const meta_byte *const entry)
-    __attribute__((pure, always_inline));
-#endif /* __AVX__ */
 
 static inline void destroy_entry(struct hmap *const hashmap, const size_t entry)
     __attribute__((always_inline));
@@ -180,7 +127,7 @@ static inline int is_empty(const meta_byte meta)
 static inline int is_bucket_empty(const struct hmap *const hashmap,
                                   const size_t index)
 {
-	return is_empty(hashmap->buckets.metas[index]);
+	return is_empty(hashmap->buckets[index].meta);
 }
 
 //----------------------------------------------------------------- Function ---
@@ -196,42 +143,8 @@ static inline int is_occupied(const meta_byte meta)
 static inline int is_bucket_occupied(const struct hmap *const hashmap,
                                      const size_t index)
 {
-	return is_occupied(hashmap->buckets.metas[index]);
+	return is_occupied(hashmap->buckets[index].meta);
 }
-
-//----------------------------------------------------------------- Function ---
-/**
- * Probe metadata chunk of 16 bytes for given meta_byte pattern starting at
- * given metadata entry
- *   -> Matches bitmask
- */
-#ifdef __AVX__
-static inline uint32_t probe_pattern(const meta_byte pattern,
-                                     const meta_byte *const entry_meta)
-{
-	/* setup filter */
-	const __m256i filter = _mm256_set1_epi8(pattern);
-
-	/* filter chunks */
-	const __m256i chunk = _mm256_loadu_si256((__m256i *)(entry_meta));
-	const __m256i match = _mm256_cmpeq_epi8(filter, chunk);
-
-	return _mm256_movemask_epi8(match);
-}
-#else
-static inline uint16_t probe_pattern(const meta_byte pattern,
-                                     const meta_byte *const entry_meta)
-{
-	/* setup filter */
-	const __m128i filter = _mm_set1_epi8(pattern);
-
-	/* filter chunks */
-	const __m128i chunk = _mm_loadu_si128((__m128i *)(entry_meta));
-	const __m128i match = _mm_cmpeq_epi8(filter, chunk);
-
-	return _mm_movemask_epi8(match);
-}
-#endif /* __AVX__ */
 
 //----------------------------------------------------------------- Function ---
 /**
@@ -251,52 +164,29 @@ static inline uint16_t probe_pattern(const meta_byte pattern,
  *   - [X] Consider using SIZE_MAX directly as an error
  *     + [ ] Add exists() inlinable function
  */
-size_t hmap_find(const struct hmap *const hashmap, const size_t key)
+size_t hmap_find(const struct hmap *const hm, const size_t key)
 {
-	size_t hash    = reduce_fibo(key, hashmap->hash_shift);
+	size_t hash    = reduce_fibo(key, hm->hash_shift);
 	size_t index   = hash_index(hash);
 	meta_byte meta = hash_meta(hash);
 
-#ifdef __AVX__
-	uint32_t match_mask;
-#else
-	uint16_t match_mask;
-#endif /* __AVX__ */
-
-	meta_byte *chunk;
-
 	do {
-		chunk      = hashmap->buckets.metas + index;
-		match_mask = probe_pattern(meta, chunk);
-
-		/* loop through set bit in bitmask to access matches */
-		while (match_mask != 0) {
-			const size_t offset = __builtin_ctzl(match_mask); // uint32_t
-			size_t match        = index + offset;
-
-			if (hashmap->store[(hashmap->buckets.entries[match])].key == key) {
+		if (hm->buckets[index].meta == meta) {
+			if (hm->store[(hm->buckets[index].entry)].key == key) {
 				/* Found key ! */
-				return match;
+				return index;
 			}
-			/* remove least significant set bit */
-			match_mask ^= match_mask & (-match_mask);
 		}
-		/* no match in current chunk */
-
-		/* if there is any empty slot in the chunk that was probed */
-		/* no need to check the next */
-		/* -> key does NOT exist */
-		if (probe_pattern(META_EMPTY, chunk)) {
+		else if (hm->buckets[index].meta == META_EMPTY) {
+			/* if there is any empty slot*/
+			/* no need to check the next */
+			/* -> key does NOT exist */
 			break;
 		}
 
-		index += PROBE_LENGTH;
-		/* THIS SHOULD HARDLY EVER BE REACHED FOR LOAD FACTOR <= 0.95 */
-		/* chunk done */
-	} while (index < hashmap->capacity);
+		index++;
+	} while (index < hm->capacity);
 
-	/* key not found */
-	// return hashmap->capacity + 1;
 	return HMAP_NOT_FOUND;
 }
 //----------------------------------------------------------------- Function ---
@@ -312,51 +202,28 @@ size_t hmap_find(const struct hmap *const hashmap, const size_t key)
  * todo
  *   - [ ] Investigate ways to probe for Match or META_EMPTY at once
  */
-static inline size_t hmap_find_or_empty(const struct hmap *const hashmap,
+static inline size_t hmap_find_or_empty(const struct hmap *const hm,
                                         const size_t key,
                                         size_t index,
                                         const meta_byte meta)
 {
-#ifdef __AVX__
-	uint32_t match_mask;
-#else
-	uint16_t match_mask;
-#endif /* __AVX__ */
-
-	meta_byte *chunk;
-
 	do {
-		chunk      = hashmap->buckets.metas + index;
-		match_mask = probe_pattern(meta, chunk);
-
-		/* loop through set bit in bitmask to access matches */
-		while (match_mask != 0) {
-			const size_t offset = __builtin_ctzl(match_mask); // uint32_t
-			size_t match        = index + offset;
-
-			if (hashmap->store[(hashmap->buckets.entries[match])].key == key) {
+		if (hm->buckets[index].meta == meta) {
+			if (hm->store[(hm->buckets[index].entry)].key == key) {
 				/* Found key ! */
-				return match;
+				return index;
 			}
-			/* clear least significant set bit */
-			match_mask ^= match_mask & (-match_mask);
 		}
-		/* no match in current chunk */
-
-		/* if there is any empty slot in the chunk that was probed */
-		/* no need to check the next */
-		if ((match_mask = probe_pattern(META_EMPTY, chunk))) {
-			/* -> key does NOT exist, insert in first empty slot */
-			return index + __builtin_ctzl(match_mask);
+		else if (hm->buckets[index].meta == META_EMPTY) {
+			/* if there is any empty slot*/
+			/* no need to check the next */
+			/* -> key does NOT exist */
+			return index;
 		}
 
-		index += PROBE_LENGTH;
-		/* THIS SHOULD HARDLY EVER BE REACHED FOR LOAD FACTOR <= 0.95 */
-		/* chunk done */
-	} while (index < hashmap->capacity);
+		index++;
+	} while (index < hm->capacity);
 
-	/* key not found, no empty slots left */
-	// return hashmap->capacity + 1;
 	return HMAP_NOT_FOUND;
 }
 
@@ -376,7 +243,7 @@ size_t hmap_get(const struct hmap *const hm, const size_t key)
 	size_t value = 0;
 
 	if (entry != HMAP_NOT_FOUND) {
-		value = hm->store[(hm->buckets.entries[entry])].value;
+		value = hm->store[(hm->buckets[entry].entry)].value;
 	}
 
 	return value;
@@ -429,27 +296,27 @@ size_t hmap_put(struct hmap *const hm, const size_t key, const size_t value)
 	size_t candidate = hmap_find_or_empty(hm, key, home, meta);
 
 	//----------------------------------------------------- empty slot found
-	if (is_empty(hm->buckets.metas[candidate])) {
+	if (is_empty(hm->buckets[candidate].meta)) {
 		/* Thierry La Fronde method : Slingshot the rich ! */
 		for (size_t bucket = candidate; bucket != home; bucket--) {
-			hm->buckets.distances[candidate] = candidate - home;
+			hm->buckets[candidate].distance = candidate - home;
 
-			if (hm->buckets.distances[bucket] <=
-			    hm->buckets.distances[bucket - 1]) {
+			if (hm->buckets[bucket].distance <=
+			    hm->buckets[bucket - 1].distance) {
 
-				hm->buckets.distances[candidate] =
-				    hm->buckets.distances[bucket] + candidate - bucket;
+				hm->buckets[candidate].distance =
+				    hm->buckets[bucket].distance + candidate - bucket;
 
-				hm->buckets.metas[candidate] = hm->buckets.metas[bucket];
+				hm->buckets[candidate].meta = hm->buckets[bucket].meta;
 
-				hm->buckets.entries[candidate] = hm->buckets.entries[bucket];
-				candidate                      = bucket;
+				hm->buckets[candidate].entry = hm->buckets[bucket].entry;
+				candidate                    = bucket;
 			}
 		}
 
-		hm->buckets.metas[candidate]     = meta;
-		hm->buckets.distances[candidate] = candidate - home;
-		hm->buckets.entries[candidate]   = hm->top;
+		hm->buckets[candidate].meta     = meta;
+		hm->buckets[candidate].distance = candidate - home;
+		hm->buckets[candidate].entry    = hm->top;
 
 		hm->store[hm->top].key   = key;
 		hm->store[hm->top].value = value;
@@ -458,7 +325,7 @@ size_t hmap_put(struct hmap *const hm, const size_t key, const size_t value)
 	}
 	//------------------------------------------------------ given key found
 	else {
-		hm->store[(hm->buckets.entries[candidate])].value = value;
+		hm->store[(hm->buckets[candidate].entry)].value = value;
 	}
 	/* -> new or updated entry index */
 	return candidate;
@@ -472,7 +339,7 @@ size_t hmap_put(struct hmap *const hm, const size_t key, const size_t value)
  */
 static inline void empty_entry(struct hmap *const hm, const size_t entry)
 {
-	hm->buckets.metas[entry] = META_EMPTY;
+	hm->buckets[entry].meta = META_EMPTY;
 	hm->count--;
 }
 //----------------------------------------------------------------- Function ---
@@ -496,7 +363,7 @@ static inline void destroy_entry(struct hmap *const hm, const size_t entry)
 	/**
 
 	 */
-	const size_t store_slot = hm->buckets.entries[entry];
+	const size_t store_slot = hm->buckets[entry].entry;
 	hm->top--;
 
 	if ((hm->top > 0) && (hm->top != store_slot)) {
@@ -504,12 +371,10 @@ static inline void destroy_entry(struct hmap *const hm, const size_t entry)
 
 		size_t top_bucket = hmap_find(hm, top_key);
 
-		hm->buckets.entries[top_bucket] = hm->buckets.entries[entry];
+		hm->buckets[top_bucket].entry = hm->buckets[entry].entry;
 
-		hm->store[(hm->buckets.entries[entry])].key =
-		    hm->store[hm->top].key;
-		hm->store[(hm->buckets.entries[entry])].value =
-		    hm->store[hm->top].value;
+		hm->store[(hm->buckets[entry].entry)].key   = hm->store[hm->top].key;
+		hm->store[(hm->buckets[entry].entry)].value = hm->store[hm->top].value;
 	}
 	return;
 }
@@ -536,14 +401,6 @@ size_t hmap_remove(struct hmap *const hm, const size_t key)
 	if (entry != HMAP_NOT_FOUND) {
 		/* update store */
 		destroy_entry(hm, entry);
-
-/* probe for stop bucket */
-#ifdef __AVX__
-		uint32_t match_mask;
-#else
-		uint16_t match_mask;
-#endif /* __AVX__ */
-
 		/**
 		 * todo
 		 *   - [ ] Assess if probing at entry + 1 yelds a cache miss when
@@ -554,35 +411,31 @@ size_t hmap_remove(struct hmap *const hm, const size_t key)
 		 *           distance because it may be @home
 		 */
 		size_t stop_bucket = entry + 1;
-		match_mask = probe_pattern(0, hm->buckets.distances + stop_bucket);
 
-		/* is there at least 1 slingshot job ? */
-		if (match_mask != 0) {
-			/* slingshot entry backward, up to stop bucket */
-			stop_bucket += _bit_scan_forward(match_mask);
-
-			/* process buckets.distances while it is hot */
-			for (size_t bucket = entry; bucket < stop_bucket; bucket++) {
-				hm->buckets.distances[bucket] =
-				    hm->buckets.distances[bucket + 1] - 1;
-			}
-			/* mark entry distance in last shifted bucket as @home or empty */
-			hm->buckets.distances[stop_bucket - 1] = 0;
-
-			/* process buckets.entries */
-			for (size_t bucket = entry; bucket < stop_bucket; bucket++) {
-				hm->buckets.entries[bucket] =
-				    hm->buckets.entries[bucket + 1];
-			}
-
-			/* process buckets.metas */
-			for (size_t bucket = entry; bucket < stop_bucket; bucket++) {
-				hm->buckets.metas[bucket] =
-				    hm->buckets.metas[bucket + 1];
-			}
+		while (hm->buckets[stop_bucket].distance != 0) {
+			stop_bucket++;
 		}
+
+		for (size_t bucket = entry; bucket < stop_bucket; bucket++) {
+			hm->buckets[bucket].meta     = hm->buckets[bucket + 1].meta;
+			hm->buckets[bucket].distance = hm->buckets[bucket + 1].distance - 1;
+			hm->buckets[bucket].entry    = hm->buckets[bucket + 1].entry;
+		}
+		/* mark entry distance in last shifted bucket as @home or empty */
+		hm->buckets[stop_bucket - 1].distance = 0;
+
 		/* mark entry in last shifted bucket as empty */
-		hm->buckets.metas[stop_bucket - 1] = META_EMPTY;
+		hm->buckets[stop_bucket - 1].meta = META_EMPTY;
+
+		// /* process buckets.entries */
+		// for (size_t bucket = entry; bucket < stop_bucket; bucket++) {
+		// 	hm->buckets[bucket].entry = hm->buckets[bucket + 1].entry;
+		// }
+
+		// /* process buckets.metas */
+		// for (size_t bucket = entry; bucket < stop_bucket; bucket++) {
+		// 	hm->buckets[bucket].meta = hm->buckets[bucket + 1].meta;
+		// }
 	}
 
 	return entry;
@@ -593,16 +446,16 @@ size_t hmap_remove(struct hmap *const hm, const size_t key)
  * Free given Hashmap
  *   -> nothing
  */
-void hmap_delete_hashmap(struct hmap *const hm)
+void hmap_delete_hashmap(struct hmap *const hashmap)
 {
-	/* hashmap->buckets.metas is the head of the single alloc pool */
-	XFREE(hm->buckets.metas, "hmap_delete_hashmap");
-	XFREE(hm, "delete_hashmap");
+	/* hashmap->buckets is the head of the single alloc pool */
+	XFREE(hashmap->buckets, "hmap_delete_hashmap");
+	XFREE(hashmap, "delete_hashmap");
 }
 
 //----------------------------------------------------------------- Function ---
 /**
- * Create a new hmap of capacity equal to 2^(given n) + PROBE_LENGTH
+ * Create a new hmap of capacity equal to 2^(given n) + HMAP_PROBE_LENGTH
  *
  *   Enforce n >= 1
  *   Allocate a Hashmap
@@ -633,7 +486,7 @@ struct hmap *hmap_new(const size_t n)
 
 	//-------------------------------------------------------- hmap init
 	/* actual capacity */
-	capacity += PROBE_LENGTH;
+	capacity += HMAP_PROBE_LENGTH;
 
 	/**
 	 * shift amount necessary for desired hash depth including the 7 bits
@@ -644,7 +497,7 @@ struct hmap *hmap_new(const size_t n)
 	 */
 	const size_t hash_shift = 64 - 7 - n;
 
-	struct hmap hashmap_init = {{NULL}, NULL, 0, hash_shift, capacity, 0};
+	struct hmap hashmap_init = {NULL, NULL, 0, hash_shift, capacity, 0};
 
 	struct hmap *const new_hashmap =
 	    XMALLOC(sizeof(struct hmap), "new_hashmap", "new_hashmap");
@@ -655,41 +508,38 @@ struct hmap *hmap_new(const size_t n)
 	}
 
 	//----------------------------------------------------- buckets init
-	const size_t metas_size = sizeof(*(new_hashmap->buckets.metas)) * capacity;
-	const size_t distances_size =
-	    sizeof(*(new_hashmap->buckets.distances)) * capacity;
-	const size_t entries_size =
-	    sizeof(*(new_hashmap->buckets.entries)) * capacity;
-	const size_t store_size = sizeof(*(new_hashmap->store)) * capacity;
+	const size_t buckets_size = sizeof(*(new_hashmap->buckets)) * capacity;
+	const size_t store_size   = sizeof(*(new_hashmap->store)) * capacity;
 
 	char *const pool =
-	    XMALLOC(metas_size + distances_size + entries_size + store_size,
-	            "new_hashmap",
-	            "pool");
+	    XMALLOC(buckets_size + store_size, "new_hashmap", "pool");
 
 	if (pool == NULL) {
 		goto err_free_pool;
 	}
 
-	new_hashmap->buckets.metas     = (meta_byte *)pool;
-	new_hashmap->buckets.distances = (meta_byte *)(pool + metas_size);
-	new_hashmap->buckets.entries =
-	    (size_t *)(pool + metas_size + distances_size);
-	new_hashmap->store = (struct hmap_entry *)(pool + metas_size +
-	                                           distances_size + entries_size);
+	new_hashmap->buckets = (struct hmap_bucket *)pool;
+	new_hashmap->store   = (struct hmap_entry *)(pool + buckets_size);
 
 	/* The value is passed as an int, but the function fills the block of
 	 * memory using the unsigned char conversion of this value */
-	memset(new_hashmap->buckets.metas, META_EMPTY, metas_size);
+	memset(new_hashmap->buckets, 0, buckets_size);
+
+	for (size_t i = 0; i < capacity; i++) {
+		new_hashmap->buckets[i].meta = META_EMPTY;
+		// printf("init bucket[%lu] = {%02hhd, %02hhd, %lu}\n",
+		//        i,
+		//        new_hashmap->buckets[i].meta,
+		//        new_hashmap->buckets[i].distance,
+		//        new_hashmap->buckets[i].entry);
+	}
 	/**
 	 * Because distances are initialized to 0
 	 * and set to 0 when removing an entry
 	 * Probing distances for 0 yields "stop buckets"
 	 * aka @home entry or empty bucket
 	 */
-	memset(new_hashmap->buckets.distances, 0, distances_size);
 	/* Is this enough to be able to check if ptr == NULL ? */
-	memset(new_hashmap->buckets.entries, 0, entries_size);
 
 	//------------------------------------------------------- store init
 	return new_hashmap;
@@ -713,7 +563,7 @@ void dump_hashmap(const struct hmap *const hm)
 	int max_distance    = 0;
 
 	for (size_t i = 0; i < hm->capacity; i++) {
-		if (hm->buckets.metas[i] == META_EMPTY) {
+		if (hm->buckets[i].meta == META_EMPTY) {
 			empty_bucket++;
 			printf("\x1b[100mhashmap->\x1b[30mbucket[%lu]>> EMPTY <<\x1b[0m\n",
 			       i);
@@ -723,7 +573,7 @@ void dump_hashmap(const struct hmap *const hm)
 		/* Color code distance from home using ANSI esc code values */
 		int colour;
 
-		switch (hm->buckets.distances[i]) {
+		switch (hm->buckets[i].distance) {
 		case 0:
 			colour = 4; // BLUE
 			break;
@@ -746,24 +596,22 @@ void dump_hashmap(const struct hmap *const hm)
 			colour = 7; // WHITE
 			break;
 		}
-		max_distance = (hm->buckets.distances[i] > max_distance)
-		                   ? hm->buckets.distances[i]
+		max_distance = (hm->buckets[i].distance > max_distance)
+		                   ? hm->buckets[i].distance
 		                   : max_distance;
 		printf("\x1b[10%dmhashmap->\x1b[30mbucket[%lu]\x1b[0m>>", colour, i);
 
 		printf(" %lu[%d] : %lu | %lu\n",
-		       hash_index(reduce_fibo(
-		           hm->store[(hm->buckets.entries[i])].key,
-		           hm->hash_shift)),
-		       hm->buckets.distances[i],
-		       hm->store[(hm->buckets.entries[i])].key,
-		       hm->store[(hm->buckets.entries[i])].value);
+		       hash_index(reduce_fibo(hm->store[(hm->buckets[i].entry)].key,
+		                              hm->hash_shift)),
+		       hm->buckets[i].distance,
+		       hm->store[(hm->buckets[i].entry)].key,
+		       hm->store[(hm->buckets[i].entry)].value);
 	}
 
 	printf("empty_buckets       : %lu \t-> %f%%\n",
 	       empty_bucket,
-	       (double)empty_bucket / (double)(hm->capacity - PROBE_LENGTH) *
-	           100);
+	       (double)empty_bucket / (double)(hm->capacity - HMAP_PROBE_LENGTH) * 100);
 	printf("max_distance        : %d\n", max_distance);
 }
 
@@ -779,8 +627,8 @@ void sum_bucket(const struct hmap *const hm)
 	size_t sum_value = 0;
 
 	for (size_t i = 0; i < hm->capacity; i++) {
-		sum_key += hm->store[(hm->buckets.entries[i])].key;
-		sum_value += hm->store[(hm->buckets.entries[i])].value;
+		sum_key += hm->store[(hm->buckets[i].entry)].key;
+		sum_value += hm->store[(hm->buckets[i].entry)].value;
 	}
 
 	printf(FG_BLUE REVERSE
@@ -790,17 +638,17 @@ void sum_bucket(const struct hmap *const hm)
 	       sum_value);
 }
 
-void sum_store(const struct hmap *const hm)
+void sum_store(const struct hmap *const hashmap)
 {
 	size_t sum_key   = 0;
 	size_t sum_value = 0;
 
 	/* first rewind 1 entry from the top */
-	size_t top = hm->top;
+	size_t top = hashmap->top;
 	while (top) {
 		top--;
-		sum_key += hm->store[top].key;
-		sum_value += hm->store[top].value;
+		sum_key += hashmap->store[top].key;
+		sum_value += hashmap->store[top].value;
 	}
 
 	printf(FG_BLUE REVERSE
@@ -817,11 +665,17 @@ int main(void)
 
 #ifdef __AVX__
 	puts("__AVX__ 1");
-	printf("PROBE_LENGTH %d\n", PROBE_LENGTH);
+	printf("HMAP_PROBE_LENGTH %d\n", HMAP_PROBE_LENGTH);
 #endif /* __AVX__ */
 
 	printf("__WORDSIZE %d\n", __WORDSIZE);
 	printf("RAND_MAX  %d\n", RAND_MAX);
+	printf("SIZE_MAX  %lu\n", SIZE_MAX);
+	printf("size_t %lu bytes\n", sizeof(size_t));
+	printf("struct hmap        %lu bytes\n", sizeof(struct hmap));
+	printf("struct hmap_bucket %lu bytes\n", sizeof(struct hmap_bucket));
+	printf("struct hmap_entry  %lu bytes\n", sizeof(struct hmap_entry));
+	printf("struct meta_byte   %lu bytes\n", sizeof(meta_byte));
 
 	// uint32_t seed = 31;
 	size_t n = 8;
@@ -853,6 +707,7 @@ int main(void)
 
 	START_BENCH(repl);
 	for (size_t k = 0; k < load_count; k++) {
+		// $(hashmap, hmap_put, k, k);
 		hmap_put(hashmap, k, k);
 	}
 
