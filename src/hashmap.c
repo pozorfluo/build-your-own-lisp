@@ -25,7 +25,7 @@
 #define HMAP_NOT_FOUND SIZE_MAX
 // #define HMAP_PROBE_LENGTH 16
 #define HMAP_PROBE_LENGTH 32
-#define HMAP_INLINE_KEY_SIZE 16
+// #define HMAP_INLINE_KEY_SIZE 16
 
 //------------------------------------------------------------------- MACROS ---
 

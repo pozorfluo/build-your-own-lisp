@@ -12,26 +12,30 @@
 	FG_BRIGHT_BLUE REVERSE                                                     \
 	    " hmap version 0.26.2 " RESET FG_BRIGHT_BLUE                           \
 	    " type exit to quit\n" RESET FG_BRIGHT_RED REVERSE                     \
-	    "\t todo \n" RESET FG_BRIGHT_RED                                       \
-	    "\t- [ ] Wrap up a version satisfying build-your-own-lisp use case\n"  \
-	    "\t\t+ [ ] Implement <string => int>\n"                                \
-	    "\t\t\t* [ ] Research ways to accomodate strings in the store\n"       \
-	    "\t\t\t* [ ] Test\n"                                                   \
-	    "\t\t\t* [ ] Bench different hash function\n"                          \
-	    "\t\t+ [ ] Implement <string => pointer>\n"                            \
-	    "\t\t\t* [ ] Test\n"                                                   \
-	    "\t\t\t* [ ] Bench different hash function\n"                          \
-	    "\t\t+ [ ] Implement <string => function pointer>\n"                   \
-	    "\t\t\t* [ ] Test\n"                                                   \
-	    "\t\t\t* [ ] Bench different hash function\n"                          \
-	    "\t\t+ [ ] Investigate errors with very long collision chains on "     \
+	    "   todo \n" RESET FG_BRIGHT_RED                                       \
+	    "  - [ ] Wrap up a version satisfying build-your-own-lisp use case\n"  \
+	    "    + [ ] Implement <string => int>\n"                                \
+	    "      * [ ] Research ways to accomodate strings in the store\n"       \
+	    "      * [ ] Consider making fixed size of inlined key a parameter "   \
+	    "of hmap_new \n"                                                       \
+	    "      * [ ] Test\n"                                                   \
+	    "      * [ ] Bench different hash function\n"                          \
+	    "    + [ ] Implement <string => pointer>\n"                            \
+	    "      * [ ] Test\n"                                                   \
+	    "      * [ ] Bench different hash function\n"                          \
+	    "    + [ ] Implement <string => function pointer>\n"                   \
+	    "      * [ ] Test\n"                                                   \
+	    "      * [ ] Bench different hash function\n"                          \
+	    "    + [ ] Investigate errors with very long collision chains on "     \
 	    "full table\n"                                                         \
-	    "\t\t+ [ ] Research hashtable resizing strategy\n"                     \
-	    "\t\t\t* [ ] Implement one, move on\n"                                 \
-	    "\t- [ ] Move on to next build your own lisp step\n" RESET             \
+	    "    + [ ] Research hashtable resizing strategy\n"                     \
+	    "      * [ ] Implement one, move on\n"                                 \
+	    "      * [ ] Consider separately allocing the store and buckets to  "  \
+	    "allow resizing in place\n"                                            \
+	    "  - [ ] Move on to next build your own lisp step\n" RESET             \
 	        FG_BRIGHT_YELLOW                                                   \
-	    "\t- [ ] Bench against array\n"                                        \
-	    "\t\t+ [ ] Find break even point for hmap vs array\n"
+	    "  - [ ] Bench against array\n"                                        \
+	    "    + [ ] Find break even point for hmap vs array\n"
 
 #define SIMD_PROBE
 #define BENCHMARK
