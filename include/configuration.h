@@ -14,6 +14,7 @@
 	    " type exit to quit\n" RESET FG_BRIGHT_RED REVERSE                     \
 	    "   todo \n" RESET FG_BRIGHT_RED                                       \
 	    "  - [ ] Wrap up a version satisfying build-your-own-lisp use case\n"  \
+	    "    + [ ] Set up a interface with tentative implementation asap\n"    \
 	    "    + [ ] Implement <string => int>\n"                                \
 	    "      * [ ] Research ways to accomodate strings in the store\n"       \
 	    "      * [ ] Consider making fixed size of inlined key a parameter "   \
@@ -35,7 +36,13 @@
 	    "  - [ ] Move on to next build your own lisp step\n" RESET             \
 	        FG_BRIGHT_YELLOW                                                   \
 	    "  - [ ] Bench against array\n"                                        \
-	    "    + [ ] Find break even point for hmap vs array\n"
+	    "    + [ ] Find break even point for hmap vs array\n" RESET            \
+	        FG_BRIGHT_GREEN                                                    \
+	    "  - [ ] Consider 1 full bytes of secondary hash in meta, 7 bits of "  \
+	    "distance + 1 bit of ctrl for empty slots\n"                           \
+	    "  - [ ] Consider for wraparound that some version of abseil hashmap " \
+	    "replicates a probe sized chunk of data from the beginning at the "    \
+	    "end\n"
 
 #define SIMD_PROBE
 #define BENCHMARK
