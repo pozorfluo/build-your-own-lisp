@@ -38,6 +38,12 @@
 	    "  - [ ] Bench against array\n"                                        \
 	    "    + [ ] Find break even point for hmap vs array\n" RESET            \
 	        FG_BRIGHT_GREEN                                                    \
+	    "  - [ ] Consider a compact alternative where small kvps are in a "    \
+	    "separate array from metadata and are moved around. It saves 8 bytes " \
+	    "from the pointer, an indirection but loses store pointer stability"   \
+	    "  - [ ] Consider that if you store the full hash instead of "         \
+	    "pointer/index to the store you lose store stability, ease of "        \
+	    "iteration, and will have to move kvp around on resize"                \
 	    "  - [ ] Consider 1 full bytes of secondary hash in meta, 7 bits of "  \
 	    "distance + 1 bit of ctrl for empty slots\n"                           \
 	    "  - [ ] Consider for wraparound that some version of abseil hashmap " \
