@@ -25,7 +25,7 @@
 #define HMAP_NOT_FOUND SIZE_MAX
 // #define HMAP_PROBE_LENGTH 16
 #define HMAP_PROBE_LENGTH 32
-// #define HMAP_INLINE_KEY_SIZE 16
+#define HMAP_INLINE_KEY_SIZE 16
 
 //------------------------------------------------------------------- MACROS ---
 
@@ -40,9 +40,10 @@ enum meta_ctrl {
 };
 
 struct hmap_entry {
-	size_t key;
+	// size_t key;
 	// char *key; /* string key stored elsewhere */
-	// char key[HMAP_INLINE_KEY_SIZE]; /* string key stored inline */
+	char key[HMAP_INLINE_KEY_SIZE]; /* string key stored inline are not null
+	                                   terminated */
 	size_t value;
 };
 
@@ -59,6 +60,7 @@ struct hmap {
 	struct hmap_bucket *buckets;
 	struct hmap_entry *store;
 	size_t top;
+	size_t key_size;
 	size_t hash_shift; /* shift amount necessary for desired hash depth */
 	size_t capacity;   /* actual capacity */
 	size_t count;      /* occupied entries count */
@@ -77,11 +79,11 @@ static inline meta_byte hash_meta(const size_t hash)
 static inline void destroy_entry(struct hmap *const hashmap, const size_t entry)
     __attribute__((always_inline));
 
-size_t hmap_find(const struct hmap *const hashmap, const size_t key)
+size_t hmap_find(const struct hmap *const hashmap, const char *const key)
     __attribute__((pure));
 
 static inline size_t hmap_find_or_empty(const struct hmap *const hashmap,
-                                        const size_t key,
+                                        const char *const key,
                                         size_t index,
                                         const meta_byte meta)
     __attribute__((pure, always_inline));
@@ -164,7 +166,7 @@ static inline int is_bucket_occupied(const struct hmap *const hashmap,
  *   - [X] Consider using SIZE_MAX directly as an error
  *     + [ ] Add exists() inlinable function
  */
-size_t hmap_find(const struct hmap *const hm, const size_t key)
+size_t hmap_find(const struct hmap *const hm, const char *const key)
 {
 	size_t hash    = reduce_fibo(key, hm->hash_shift);
 	size_t index   = hash_index(hash);
@@ -203,7 +205,7 @@ size_t hmap_find(const struct hmap *const hm, const size_t key)
  *   - [ ] Investigate ways to probe for Match or META_EMPTY at once
  */
 static inline size_t hmap_find_or_empty(const struct hmap *const hm,
-                                        const size_t key,
+                                        const char *const key,
                                         size_t index,
                                         const meta_byte meta)
 {
@@ -236,7 +238,7 @@ static inline size_t hmap_find_or_empty(const struct hmap *const hm,
  *   //-> NULL
  *   -> 0
  */
-size_t hmap_get(const struct hmap *const hm, const size_t key)
+size_t hmap_get(const struct hmap *const hm, const char *const key)
 {
 	const size_t entry = hmap_find(hm, key);
 	// void *value        = NULL;
@@ -285,7 +287,9 @@ size_t hmap_get(const struct hmap *const hm, const size_t key)
  * todo
  *   - [ ] Add hmap fitness / resize trigger logic
  */
-size_t hmap_put(struct hmap *const hm, const size_t key, const size_t value)
+size_t hmap_put(struct hmap *const hm,
+                const char *const key,
+                const size_t value)
 {
 	/* Prepare temp entry */
 	const size_t hash    = reduce_fibo(key, hm->hash_shift);
@@ -318,7 +322,8 @@ size_t hmap_put(struct hmap *const hm, const size_t key, const size_t value)
 		hm->buckets[candidate].distance = candidate - home;
 		hm->buckets[candidate].entry    = hm->top;
 
-		hm->store[hm->top].key   = key;
+		// hm->store[hm->top].key   = key;
+		strncpy(hm->store[hm->top].key, key, HMAP_INLINE_KEY_SIZE);
 		hm->store[hm->top].value = value;
 		hm->top++;
 		hm->count++;
@@ -373,7 +378,13 @@ static inline void destroy_entry(struct hmap *const hm, const size_t entry)
 
 		hm->buckets[top_bucket].entry = hm->buckets[entry].entry;
 
-		hm->store[(hm->buckets[entry].entry)].key   = hm->store[hm->top].key;
+		// strncpy(hm->store[(hm->buckets[entry].entry)].key,
+		//         hm->store[hm->top].key,
+		//         HMAP_INLINE_KEY_SIZE);
+		memcpy(hm->store[(hm->buckets[entry].entry)].key,
+		        hm->store[hm->top].key,
+		        HMAP_INLINE_KEY_SIZE);
+		// hm->store[(hm->buckets[entry].entry)].key   = hm->store[hm->top].key;
 		hm->store[(hm->buckets[entry].entry)].value = hm->store[hm->top].value;
 	}
 	return;
@@ -393,7 +404,7 @@ static inline void destroy_entry(struct hmap *const hm, const size_t entry)
  *   -> out of bound value ( > capacity )
  *
  */
-size_t hmap_remove(struct hmap *const hm, const size_t key)
+size_t hmap_remove(struct hmap *const hm, const char *const key)
 {
 	const size_t entry = hmap_find(hm, key);
 
@@ -611,7 +622,8 @@ void dump_hashmap(const struct hmap *const hm)
 
 	printf("empty_buckets       : %lu \t-> %f%%\n",
 	       empty_bucket,
-	       (double)empty_bucket / (double)(hm->capacity - HMAP_PROBE_LENGTH) * 100);
+	       (double)empty_bucket / (double)(hm->capacity - HMAP_PROBE_LENGTH) *
+	           100);
 	printf("max_distance        : %d\n", max_distance);
 }
 
@@ -627,7 +639,7 @@ void sum_bucket(const struct hmap *const hm)
 	size_t sum_value = 0;
 
 	for (size_t i = 0; i < hm->capacity; i++) {
-		sum_key += hm->store[(hm->buckets[i].entry)].key;
+		// sum_key += hm->store[(hm->buckets[i].entry)].key;
 		sum_value += hm->store[(hm->buckets[i].entry)].value;
 	}
 
@@ -647,7 +659,7 @@ void sum_store(const struct hmap *const hashmap)
 	size_t top = hashmap->top;
 	while (top) {
 		top--;
-		sum_key += hashmap->store[top].key;
+		// sum_key += hashmap->store[top].key;
 		sum_value += hashmap->store[top].value;
 	}
 

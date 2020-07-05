@@ -40,7 +40,8 @@
 	        FG_BRIGHT_GREEN                                                    \
 	    "  - [ ] Consider a compact alternative where small kvps are in a "    \
 	    "separate array from metadata and are moved around. It saves 8 bytes " \
-	    "from the pointer, an indirection but loses store pointer stability"   \
+	    "from the pointer and fan indirection but loses store pointer "        \
+	    "stability"                                                            \
 	    "  - [ ] Consider that if you store the full hash instead of "         \
 	    "pointer/index to the store you lose store stability, ease of "        \
 	    "iteration, and will have to move kvp around on resize"                \
