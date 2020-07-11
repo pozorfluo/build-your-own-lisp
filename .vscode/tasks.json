@@ -25,6 +25,7 @@
                 "-O3",
                 "-ftree-vectorize",
                 "-fopt-info-vec-optimized",
+                "-fwhole-program",
                 // "-fopt-info-vec-all",
                 "${file}",
                 // "${workspaceRoot}/src/mpc.c",

@@ -18,7 +18,7 @@
 #include "ansi_esc.h"
 
 #include "debug_xmalloc.h"
-
+#include "limits.h" /* UINT_MAX */
 //------------------------------------------------------------ CONFIGURATION ---
 #include "configuration.h"
 //------------------------------------------------------------ MAGIC NUMBERS ---
@@ -26,6 +26,9 @@
 // #define HMAP_PROBE_LENGTH 16
 #define HMAP_PROBE_LENGTH 32
 #define HMAP_INLINE_KEY_SIZE 16
+#define HFUNC hash_perl
+#define HFIBO 11400714819323198485llu
+#define HSEED 11400714819323198485llu
 
 //------------------------------------------------------------------- MACROS ---
 
@@ -67,6 +70,18 @@ struct hmap {
 };
 
 //----------------------------------------------------- FORWARD DECLARATIONS ---
+static inline size_t hash_perl(const char *const key)
+    __attribute__((pure, always_inline));
+
+static inline size_t hash_multiplicative(const char *const key)
+    __attribute__((pure, always_inline));
+
+static inline size_t hash_djb2(const char *const key)
+    __attribute__((pure, always_inline));
+
+static inline size_t hash_djb2_alt(const char *const key)
+    __attribute__((pure, always_inline));
+
 static inline size_t reduce_fibo(const size_t hash, const size_t shift)
     __attribute__((const, always_inline));
 
@@ -115,7 +130,95 @@ static inline meta_byte hash_meta(const size_t hash) { return hash & 0x7F; }
 static inline size_t reduce_fibo(const size_t hash, const size_t shift)
 {
 	const size_t xor_hash = hash ^ (hash >> shift);
-	return (11400714819323198485llu * xor_hash) >> shift;
+	return (HFIBO * xor_hash) >> shift;
+}
+
+/**
+ * Return a multiplicative style hash for given key
+ *
+ * see Linear congruential generator
+ * todo Check what happens with the while loop on compilation
+ */
+static inline size_t hash_multiplicative(const char *key)
+{
+	register size_t hash            = 0;
+	register size_t i               = HMAP_INLINE_KEY_SIZE;
+	register const unsigned char *c = (const unsigned char *)key;
+
+	while (i--) {
+		hash = HSEED * hash + *c++;
+	}
+
+	return hash;
+}
+/**
+ * Return a perl style hash for given key
+ *
+ * todo Check what happens with the while loop on compilation
+ */
+static inline size_t hash_perl(const char *key)
+{
+	register size_t hash            = HSEED;
+	register size_t i               = HMAP_INLINE_KEY_SIZE;
+	register const unsigned char *c = (const unsigned char *)key;
+
+	while (i--) {
+		hash += *c++;
+		hash += hash << 10;
+		hash ^= hash >> 6;
+	}
+	hash += hash << 3;
+	hash ^= hash >> 11;
+	hash += hash << 15;
+
+	return hash;
+}
+
+/**
+ * Return a djb2 style hash for given key
+ */
+size_t hash_djb2(const char *key)
+{
+	register size_t hash            = 5381;
+	register size_t i               = HMAP_INLINE_KEY_SIZE;
+	register const unsigned char *c = (const unsigned char *)key;
+
+	while (i--) {
+		hash += (hash <<5)+ *c++;
+	}
+
+	return hash;
+}
+/**
+ * Return a djb2_alt style hash for given key
+ */
+size_t hash_djb2_alt(const char *key)
+{
+	register size_t hash            = 5381;
+	register size_t i               = HMAP_INLINE_KEY_SIZE;
+	register const unsigned char *c = (const unsigned char *)key;
+
+	while (i--) {
+		hash *= 33 ^ *c++;
+	}
+
+	return hash;
+}
+
+/**
+ * Return a djb2 style hash for given key
+ */
+size_t hash_djb2(const char *key)
+{
+	register size_t hash            = 5381;
+	register size_t i               = HMAP_INLINE_KEY_SIZE;
+	register const unsigned char *c = (const unsigned char *)key;
+
+	while (i--) {
+		hash += (hash <<5)+ *c++;
+	}
+
+	return hash;
 }
 //----------------------------------------------------------------- Function ---
 /**
@@ -382,8 +485,8 @@ static inline void destroy_entry(struct hmap *const hm, const size_t entry)
 		//         hm->store[hm->top].key,
 		//         HMAP_INLINE_KEY_SIZE);
 		memcpy(hm->store[(hm->buckets[entry].entry)].key,
-		        hm->store[hm->top].key,
-		        HMAP_INLINE_KEY_SIZE);
+		       hm->store[hm->top].key,
+		       HMAP_INLINE_KEY_SIZE);
 		// hm->store[(hm->buckets[entry].entry)].key   = hm->store[hm->top].key;
 		hm->store[(hm->buckets[entry].entry)].value = hm->store[hm->top].value;
 	}
@@ -683,6 +786,7 @@ int main(void)
 	printf("__WORDSIZE %d\n", __WORDSIZE);
 	printf("RAND_MAX  %d\n", RAND_MAX);
 	printf("SIZE_MAX  %lu\n", SIZE_MAX);
+	printf("UINT_MAX  %lu\n", UINT_MAX);
 	printf("size_t %lu bytes\n", sizeof(size_t));
 	printf("struct hmap        %lu bytes\n", sizeof(struct hmap));
 	printf("struct hmap_bucket %lu bytes\n", sizeof(struct hmap_bucket));
