@@ -151,6 +151,7 @@ static inline size_t hash_multiplicative(const char *key)
 
 	return hash;
 }
+
 /**
  * Return a perl style hash for given key
  *
@@ -205,21 +206,6 @@ size_t hash_djb2_alt(const char *key)
 	return hash;
 }
 
-/**
- * Return a djb2 style hash for given key
- */
-size_t hash_djb2(const char *key)
-{
-	register size_t hash            = 5381;
-	register size_t i               = HMAP_INLINE_KEY_SIZE;
-	register const unsigned char *c = (const unsigned char *)key;
-
-	while (i--) {
-		hash += (hash <<5)+ *c++;
-	}
-
-	return hash;
-}
 //----------------------------------------------------------------- Function ---
 /**
  * Check if bucket at given index in given hashmap is empty
