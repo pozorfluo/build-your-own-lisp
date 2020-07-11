@@ -38,6 +38,8 @@
 	    "  - [ ] Bench against array\n"                                        \
 	    "    + [ ] Find break even point for hmap vs array\n" RESET            \
 	        FG_BRIGHT_GREEN                                                    \
+	    "  - [ ] Consider unions for k and v of types up to size of pointer"   \
+	    "  - [ ] Consider parameterizing size of k and v"                      \
 	    "  - [ ] Consider a compact alternative where small kvps are in a "    \
 	    "separate array from metadata and are moved around. It saves 8 bytes " \
 	    "from the pointer and fan indirection but loses store pointer "        \
