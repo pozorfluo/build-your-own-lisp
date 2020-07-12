@@ -13,6 +13,11 @@
 	    " hmap version 0.26.3 " RESET FG_BRIGHT_BLUE                           \
 	    " type exit to quit\n" RESET FG_BRIGHT_RED REVERSE                     \
 	    "   todo \n" RESET FG_BRIGHT_RED                                       \
+	    "  - [ ] Handle any key size lower or equal to HMAP_INLINE_KEY_SIZE\n" \
+	    "    + [ ] Replace memcpy on put\n"                                    \
+	    "    + [ ] Replace memcmp on find\n"                                   \
+	    "      * [ ] Research efficient alt shortcircuit to compare\n"         \
+	    "    + [ ] Think about a useful thing to do or not do on delete\n"     \
 	    "  - [ ] Wrap up a version satisfying build-your-own-lisp use case\n"  \
 	    "    + [ ] Set up a interface with tentative implementation asap\n"    \
 	    "    + [ ] Implement <string => int>\n"                                \
