@@ -248,8 +248,8 @@ int main(void)
 
 	puts("\nhash tests :\n");
 	size_t hash;
-	uint_fast32_t hash32;
-	Hash128 hash128;
+	// uint_fast32_t hash32;
+	// Hash128 hash128;
 
 	uint_fast16_t seed = 41;
 
@@ -274,34 +274,34 @@ int main(void)
 	printf("%016lx\n", hash);
 
 	//---------------------------------------------------------- bench B
-	START_BENCH(start);
-	for (size_t i = 0; i < test_count; i++) {
-		for (size_t i = 0; i < KEYPOOL_SIZE; i++) {
-			hash32 = murmurhash3_x86_32(
-			    &random_keys[i], strlen(&random_keys[i]), seed);
-			hash = mod_2n1(hash32, 11);
-			// printf("%08lx : %s\n", hash32, &random_keys[i]);
-		}
-	}
-	STOP_BENCH(start, stop, diff, bench_time);
-	printf("bench murmurhash3_x86_32   \t: %f \n", bench_time);
-	printf("%08lx %08lx\n", hash32, hash);
+	// START_BENCH(start);
+	// for (size_t i = 0; i < test_count; i++) {
+	// 	for (size_t i = 0; i < KEYPOOL_SIZE; i++) {
+	// 		hash32 = murmurhash3_x86_32(
+	// 		    &random_keys[i], strlen(&random_keys[i]), seed);
+	// 		hash = mod_2n1(hash32, 11);
+	// 		// printf("%08lx : %s\n", hash32, &random_keys[i]);
+	// 	}
+	// }
+	// STOP_BENCH(start, stop, diff, bench_time);
+	// printf("bench murmurhash3_x86_32   \t: %f \n", bench_time);
+	// printf("%08lx %08lx\n", hash32, hash);
 
 	//---------------------------------------------------------- bench C
-	START_BENCH(start);
-	for (size_t i = 0; i < test_count; i++) {
-		for (size_t i = 0; i < KEYPOOL_SIZE; i++) {
-			hash128 =
-			    murmurhash3_x64(&random_keys[i], strlen(&random_keys[i]), seed);
-			hash = mod_hash128(hash128, 11);
-			// printf(
-			//     "%016lx %016lx: %s\n", hash128.hi, hash128.lo,
-			//     &random_keys[i]);
-		}
-	}
-	STOP_BENCH(start, stop, diff, bench_time);
-	printf("bench murmurhash3_x64   \t: %f \n", bench_time);
-	printf("%016lx %016lx : %08lx\n", hash128.hi, hash128.lo, hash);
+	// START_BENCH(start);
+	// for (size_t i = 0; i < test_count; i++) {
+	// 	for (size_t i = 0; i < KEYPOOL_SIZE; i++) {
+	// 		hash128 =
+	// 		    murmurhash3_x64(&random_keys[i], strlen(&random_keys[i]), seed);
+	// 		hash = mod_hash128(hash128, 11);
+	// 		// printf(
+	// 		//     "%016lx %016lx: %s\n", hash128.hi, hash128.lo,
+	// 		//     &random_keys[i]);
+	// 	}
+	// }
+	// STOP_BENCH(start, stop, diff, bench_time);
+	// printf("bench murmurhash3_x64   \t: %f \n", bench_time);
+	// printf("%016lx %016lx : %08lx\n", hash128.hi, hash128.lo, hash);
 
 	//---------------------------------------------------------- bench D
 	char *dummy_key;

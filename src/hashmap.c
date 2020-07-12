@@ -26,10 +26,9 @@
 // #define HMAP_PROBE_LENGTH 16
 #define HMAP_PROBE_LENGTH 32
 #define HMAP_INLINE_KEY_SIZE 16
-#define HFUNC hash_perl
+#define HFUNC hash_multiplicative
 #define HFIBO 11400714819323198485llu
 #define HSEED 11400714819323198485llu
-
 //------------------------------------------------------------------- MACROS ---
 
 //------------------------------------------------------------- DECLARATIONS ---
@@ -63,7 +62,7 @@ struct hmap {
 	struct hmap_bucket *buckets;
 	struct hmap_entry *store;
 	size_t top;
-	size_t key_size;
+	// size_t key_size;
 	size_t hash_shift; /* shift amount necessary for desired hash depth */
 	size_t capacity;   /* actual capacity */
 	size_t count;      /* occupied entries count */
@@ -185,7 +184,7 @@ size_t hash_djb2(const char *key)
 	register const unsigned char *c = (const unsigned char *)key;
 
 	while (i--) {
-		hash += (hash <<5)+ *c++;
+		hash += (hash << 5) + *c++;
 	}
 
 	return hash;
@@ -257,13 +256,16 @@ static inline int is_bucket_occupied(const struct hmap *const hashmap,
  */
 size_t hmap_find(const struct hmap *const hm, const char *const key)
 {
-	size_t hash    = reduce_fibo(key, hm->hash_shift);
+	size_t hash    = reduce_fibo(HFUNC(key), hm->hash_shift);
 	size_t index   = hash_index(hash);
 	meta_byte meta = hash_meta(hash);
 
 	do {
 		if (hm->buckets[index].meta == meta) {
-			if (hm->store[(hm->buckets[index].entry)].key == key) {
+			// if (hm->store[(hm->buckets[index].entry)].key == key) {
+			if (!memcmp(hm->store[(hm->buckets[index].entry)].key,
+			           key,
+			           HMAP_INLINE_KEY_SIZE)) {
 				/* Found key ! */
 				return index;
 			}
@@ -300,7 +302,10 @@ static inline size_t hmap_find_or_empty(const struct hmap *const hm,
 {
 	do {
 		if (hm->buckets[index].meta == meta) {
-			if (hm->store[(hm->buckets[index].entry)].key == key) {
+			if (!memcmp(hm->store[(hm->buckets[index].entry)].key,
+			           key,
+			           HMAP_INLINE_KEY_SIZE)) {
+				
 				/* Found key ! */
 				return index;
 			}
@@ -381,7 +386,7 @@ size_t hmap_put(struct hmap *const hm,
                 const size_t value)
 {
 	/* Prepare temp entry */
-	const size_t hash    = reduce_fibo(key, hm->hash_shift);
+	const size_t hash    = reduce_fibo(HFUNC(key), hm->hash_shift);
 	const size_t home    = hash_index(hash);
 	const meta_byte meta = hash_meta(hash);
 
@@ -412,7 +417,8 @@ size_t hmap_put(struct hmap *const hm,
 		hm->buckets[candidate].entry    = hm->top;
 
 		// hm->store[hm->top].key   = key;
-		strncpy(hm->store[hm->top].key, key, HMAP_INLINE_KEY_SIZE);
+		// strncpy(hm->store[hm->top].key, key, HMAP_INLINE_KEY_SIZE);
+		memcpy(hm->store[hm->top].key, key, HMAP_INLINE_KEY_SIZE);
 		hm->store[hm->top].value = value;
 		hm->top++;
 		hm->count++;
@@ -454,24 +460,18 @@ static inline void empty_entry(struct hmap *const hm, const size_t entry)
  */
 static inline void destroy_entry(struct hmap *const hm, const size_t entry)
 {
-	/**
-
-	 */
 	const size_t store_slot = hm->buckets[entry].entry;
 	hm->top--;
 
 	if ((hm->top > 0) && (hm->top != store_slot)) {
-		const size_t top_key = hm->store[hm->top].key;
+		const char *const top_key = hm->store[hm->top].key;
 
 		size_t top_bucket = hmap_find(hm, top_key);
 
 		hm->buckets[top_bucket].entry = hm->buckets[entry].entry;
 
-		// strncpy(hm->store[(hm->buckets[entry].entry)].key,
-		//         hm->store[hm->top].key,
-		//         HMAP_INLINE_KEY_SIZE);
 		memcpy(hm->store[(hm->buckets[entry].entry)].key,
-		       hm->store[hm->top].key,
+		       top_key,
 		       HMAP_INLINE_KEY_SIZE);
 		// hm->store[(hm->buckets[entry].entry)].key   = hm->store[hm->top].key;
 		hm->store[(hm->buckets[entry].entry)].value = hm->store[hm->top].value;
@@ -701,12 +701,13 @@ void dump_hashmap(const struct hmap *const hm)
 		                   : max_distance;
 		printf("\x1b[10%dmhashmap->\x1b[30mbucket[%lu]\x1b[0m>>", colour, i);
 
-		printf(" %lu[%d] : %lu | %lu\n",
-		       hash_index(reduce_fibo(hm->store[(hm->buckets[i].entry)].key,
-		                              hm->hash_shift)),
-		       hm->buckets[i].distance,
-		       hm->store[(hm->buckets[i].entry)].key,
-		       hm->store[(hm->buckets[i].entry)].value);
+		printf(
+		    " %lu[%d] : %.16s | %lu\n",
+		    hash_index(reduce_fibo(HFUNC(hm->store[(hm->buckets[i].entry)].key),
+		                           hm->hash_shift)),
+		    hm->buckets[i].distance,
+		    hm->store[(hm->buckets[i].entry)].key,
+		    hm->store[(hm->buckets[i].entry)].value);
 	}
 
 	printf("empty_buckets       : %lu \t-> %f%%\n",
@@ -772,7 +773,7 @@ int main(void)
 	printf("__WORDSIZE %d\n", __WORDSIZE);
 	printf("RAND_MAX  %d\n", RAND_MAX);
 	printf("SIZE_MAX  %lu\n", SIZE_MAX);
-	printf("UINT_MAX  %lu\n", UINT_MAX);
+	printf("UINT_MAX  %u\n", UINT_MAX);
 	printf("size_t %lu bytes\n", sizeof(size_t));
 	printf("struct hmap        %lu bytes\n", sizeof(struct hmap));
 	printf("struct hmap_bucket %lu bytes\n", sizeof(struct hmap_bucket));
@@ -798,9 +799,10 @@ int main(void)
 	size_t load_count = (1 << n) * load_factor;
 	printf("load_factor = %f\n", load_factor);
 	printf("load_count  = %lu\n", load_count);
-	size_t capacity  = hashmap->capacity;
+	// size_t capacity  = hashmap->capacity;
 	size_t sum_value = 0;
 	char key[256];
+	char random_key[HMAP_INLINE_KEY_SIZE] = {'\0'};
 
 	printf(FG_BRIGHT_YELLOW REVERSE "Filling hashmap with %lu entries\n" RESET,
 	       load_count);
@@ -809,8 +811,11 @@ int main(void)
 
 	START_BENCH(repl);
 	for (size_t k = 0; k < load_count; k++) {
-		// $(hashmap, hmap_put, k, k);
-		hmap_put(hashmap, k, k);
+
+		for (size_t i = 0; i < HMAP_INLINE_KEY_SIZE; i++) {
+			random_key[i] = (char)(rand() % 26 + 0x61);
+		}
+		hmap_put(hashmap, random_key, k);
 	}
 
 	printf(FG_BRIGHT_YELLOW REVERSE "Done !\n" RESET);
@@ -836,8 +841,9 @@ int main(void)
 
 		//-------------------------------------------------- rm
 		if ((strcmp(key, "rm")) == 0) {
-			for (size_t k = 0; k < load_count; k++) {
-				hmap_remove(hashmap, k);
+			// for (size_t k = 0; k < load_count; k++) {
+			while (hashmap->top) {
+				hmap_remove(hashmap, hashmap->store[hashmap->top - 1].key);
 			}
 			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
 			       hashmap->top);
@@ -847,7 +853,10 @@ int main(void)
 		//-------------------------------------------------- fill
 		if ((strcmp(key, "fill")) == 0) {
 			for (size_t k = 0; k < load_count; k++) {
-				hmap_put(hashmap, k, k);
+				for (size_t i = 0; i < HMAP_INLINE_KEY_SIZE; i++) {
+					random_key[i] = (char)(rand() % 26 + 0x61);
+				}
+				hmap_put(hashmap, random_key, k);
 			}
 			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
 			       hashmap->top);
@@ -879,17 +888,19 @@ int main(void)
 		if ((strcmp(key, "find")) == 0) {
 			sum_value = 0;
 			for (size_t k = 0; k < TEST_COUNT; k++) {
-				sum_value += hmap_get(hashmap, k);
+				sum_value += hmap_get(hashmap, hashmap->store[k].key);
 			}
 			printf("sum : %lu\n", sum_value);
 
 			for (int k = TEST_COUNT - 1; k >= 0; k--) {
-				sum_value -= hmap_get(hashmap, k);
+				sum_value -= hmap_get(hashmap, hashmap->store[k].key);
 			}
 			printf("sum : %lu\n", sum_value);
 
 			for (size_t k = TEST_COUNT; k > 0; k--) {
-				size_t random_key = rand() % capacity;
+				for (size_t i = 0; i < HMAP_INLINE_KEY_SIZE; i++) {
+					random_key[i] = (char)(rand() % 26 + 0x61);
+				}
 				sum_value += hmap_get(hashmap, random_key);
 			}
 			printf("sum : %lu\nTEST_COUNT : %d\n", sum_value, TEST_COUNT);
@@ -900,7 +911,9 @@ int main(void)
 			sum_value = 0;
 
 			for (size_t k = TEST_COUNT - 1; k > 0; k--) {
-				size_t random_key = rand() % capacity;
+				for (size_t i = 0; i < HMAP_INLINE_KEY_SIZE; i++) {
+					random_key[i] = (char)(rand() % 26 + 0x61);
+				}
 				sum_value += hmap_get(hashmap, random_key);
 			}
 			printf("sum : %lu\nTEST_COUNT : %d\n", sum_value, TEST_COUNT);
@@ -914,38 +927,38 @@ int main(void)
 
 		//------------------------------------------------------- find / put
 		if (key[0] != '\0') {
-			char *key_end;
-			size_t numeric_key;
-			errno = 0;
-			// Allow seed written in bases other than 10
-			// Prefix with 0x for base 16
-			// Prefix 0 for base 8
-			numeric_key = strtoumax(key, &key_end, 0);
+			// char *key_end;
+			// size_t numeric_key;
+			// errno = 0;
+			// // Allow seed written in bases other than 10
+			// // Prefix with 0x for base 16
+			// // Prefix 0 for base 8
+			// numeric_key = strtoumax(key, &key_end, 0);
 
-			// Abort on errors
-			if ((errno != 0) && (numeric_key == 0)) {
-				perror("Error : strtoumax () could NOT process given seed ");
-				continue;
-			}
-			// Abort if seed is only junk or prefixed with junk
-			// Ignore junk after valid seed though
-			// Note : a leading 0 means base 8, thus 09 will yield 0 as 9
-			//        is considered junk in base 8
-			if (key_end == key) {
-				printf("Error : could NOT process given seed : junk !\n");
-				continue;
-			}
+			// // Abort on errors
+			// if ((errno != 0) && (numeric_key == 0)) {
+			// 	perror("Error : strtoumax () could NOT process given seed ");
+			// 	continue;
+			// }
+			// // Abort if seed is only junk or prefixed with junk
+			// // Ignore junk after valid seed though
+			// // Note : a leading 0 means base 8, thus 09 will yield 0 as 9
+			// //        is considered junk in base 8
+			// if (key_end == key) {
+			// 	printf("Error : could NOT process given seed : junk !\n");
+			// 	continue;
+			// }
 
-			size_t result = hmap_find(hashmap, numeric_key);
+			size_t result = hmap_find(hashmap, key);
 
 			if (result == HMAP_NOT_FOUND) {
 				puts("Key not found ! \n");
 			}
 			else {
-				printf("Looking for %lu -> found @ %lu\n", numeric_key, result);
-				printf("\t\t-> value : %lu\n", hmap_get(hashmap, numeric_key));
+				printf("Looking for %.16s -> found @ %lu\n", key, result);
+				printf("\t\t-> value : %lu\n", hmap_get(hashmap, key));
 				printf("Removing entry !\n");
-				hmap_remove(hashmap, numeric_key);
+				hmap_remove(hashmap, key);
 				printf(FG_YELLOW REVERSE "hmap->top : %lu\n" RESET,
 				       hashmap->top);
 			}

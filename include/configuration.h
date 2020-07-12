@@ -10,7 +10,7 @@
 //------------------------------------------------------------ CONFIGURATION ---
 #define WELCOME_MESSAGE                                                        \
 	FG_BRIGHT_BLUE REVERSE                                                     \
-	    " hmap version 0.26.2 " RESET FG_BRIGHT_BLUE                           \
+	    " hmap version 0.26.3 " RESET FG_BRIGHT_BLUE                           \
 	    " type exit to quit\n" RESET FG_BRIGHT_RED REVERSE                     \
 	    "   todo \n" RESET FG_BRIGHT_RED                                       \
 	    "  - [ ] Wrap up a version satisfying build-your-own-lisp use case\n"  \
@@ -38,15 +38,15 @@
 	    "  - [ ] Bench against array\n"                                        \
 	    "    + [ ] Find break even point for hmap vs array\n" RESET            \
 	        FG_BRIGHT_GREEN                                                    \
-	    "  - [ ] Consider unions for k and v of types up to size of pointer"   \
-	    "  - [ ] Consider parameterizing size of k and v"                      \
+	    "  - [ ] Consider unions for k and v of types up to size of pointer\n" \
+	    "  - [ ] Consider parameterizing size of k and v\n"                    \
 	    "  - [ ] Consider a compact alternative where small kvps are in a "    \
 	    "separate array from metadata and are moved around. It saves 8 bytes " \
 	    "from the pointer and fan indirection but loses store pointer "        \
-	    "stability"                                                            \
+	    "stability\n"                                                          \
 	    "  - [ ] Consider that if you store the full hash instead of "         \
 	    "pointer/index to the store you lose store stability, ease of "        \
-	    "iteration, and will have to move kvp around on resize"                \
+	    "iteration, and will have to move kvp around on resize\n"              \
 	    "  - [ ] Consider 1 full bytes of secondary hash in meta, 7 bits of "  \
 	    "distance + 1 bit of ctrl for empty slots\n"                           \
 	    "  - [ ] Consider for wraparound that some version of abseil hashmap " \
