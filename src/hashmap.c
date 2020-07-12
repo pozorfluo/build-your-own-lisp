@@ -783,16 +783,18 @@ int main(void)
 	// uint32_t seed = 31;
 	size_t n = 8;
 	float load_factor;
+	int unused_result __attribute__((unused));
+	char * unused_result_s __attribute__((unused));
 
 	fputs(FG_BRIGHT_BLUE REVERSE
 	      "Table size is 2^n. Enter n ( default n = 8 ) ? " RESET,
 	      stdout);
-	scanf("%lu", &n);
+	unused_result = scanf("%lu", &n);
 
 	struct hmap *const hashmap = hmap_new(n);
 
 	fputs(FG_BLUE REVERSE "Enter desired load factor ? " RESET, stdout);
-	scanf("%f", &load_factor);
+	unused_result = scanf("%f", &load_factor);
 
 	//---------------------------------------------------------------- setup
 	SETUP_BENCH(repl);
@@ -820,12 +822,12 @@ int main(void)
 
 	printf(FG_BRIGHT_YELLOW REVERSE "Done !\n" RESET);
 	printf(FG_YELLOW REVERSE "hmap->top : %lu\n" RESET, hashmap->top);
-	fgets(key, 255, stdin);
+	unused_result_s = fgets(key, 255, stdin);
 	//----------------------------------------------------------- input loop
 	for (;;) {
 		STOP_BENCH(repl);
 		fputs("\x1b[102m > \x1b[0m", stdout);
-		fgets(key, 255, stdin);
+		unused_result_s = fgets(key, 255, stdin);
 		size_t length = strlen(key);
 
 		START_BENCH(repl);
