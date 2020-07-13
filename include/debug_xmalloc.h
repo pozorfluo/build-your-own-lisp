@@ -3,8 +3,8 @@
  * Help follow malloc / free where needed
  */
 
-#ifndef debug_xmalloc_h
-#define debug_xmalloc_h
+#ifndef DEBUG_XMALLOC_H
+#define DEBUG_XMALLOC_H
 //------------------------------------------------------------- DEBUG MACROS ---
 
 #ifdef DEBUG_MALLOC
@@ -57,4 +57,4 @@ void xfree(void *pointer, const char *pointer_name, const char *origin)
 #define XFREE(_pointer, _origin) free(_pointer)
 #endif
 
-#endif // debug_xmalloc_h	
+#endif // DEBUG_XMALLOC_H	

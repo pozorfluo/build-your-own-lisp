@@ -7,8 +7,8 @@
  *   [] clarify which are bits to be expanded into sequence
  */
 
-#ifndef ansi_esc_h
-#define ansi_esc_h
+#ifndef ANSI_ESC_H
+#define ANSI_ESC_H
 
 //-------------------------------------------------------------- ANSI MACROS ---
 
@@ -81,4 +81,4 @@
 /* codes in the sequence must be separated by ";" */
 #define ANSI(SEQUENCE) ESC "[" SEQUENCE "m"
 
-#endif /* ansi_esc_h */
+#endif /* ANSI_ESC_H */

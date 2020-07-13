@@ -11,8 +11,8 @@
  *   compile and run any of them on any platform, but your performance with the
  *   non-native version will be less than optimal.
  */
-#ifndef hash_murmur3_nose_h
-#define hash_murmur3_nose_h
+#ifndef HASH_MURMUR3_NOSE_H
+#define HASH_MURMUR3_NOSE_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,4 +47,4 @@ Hash128 murmurhash3_x64(const void *key, const size_t len, const uint32_t seed)
 }
 #endif // __cplusplus
 
-#endif // hash_murmur3_nose_h
+#endif // HASH_MURMUR3_NOSE_H

@@ -4,15 +4,27 @@
  *
  */
 
-#ifndef configuration_h
-#define configuration_h
+#ifndef CONFIGURATION_H
+#define CONFIGURATION_H
 
 //------------------------------------------------------------ CONFIGURATION ---
+// #define SIMD_PROBE
+#define HMAP_INLINE_KEY_SIZE 16
+#define HFUNC hash_perl
+#define HREDUCE reduce_fibo
+#define HCMP strncmp
+#define HCOPY strcpy
+#define BENCHMARK
+#define TEST_COUNT 1000000
+#include "benchmark.h"
+
 #define WELCOME_MESSAGE                                                        \
 	FG_BRIGHT_BLUE REVERSE                                                     \
 	    " hmap version 0.26.3 " RESET FG_BRIGHT_BLUE                           \
 	    " type exit to quit\n" RESET FG_BRIGHT_RED REVERSE                     \
 	    "   todo \n" RESET FG_BRIGHT_RED                                       \
+	    "  - [ ] Consider reading fixed size keys as n size_t\n"               \
+	    "  - [ ] Decide on return value for key not found on hmap_get\n"       \
 	    "  - [ ] Handle any key size lower or equal to HMAP_INLINE_KEY_SIZE\n" \
 	    "    + [ ] Replace memcpy on put\n"                                    \
 	    "    + [ ] Replace memcmp on find\n"                                   \
@@ -43,7 +55,8 @@
 	    "  - [ ] Bench against array\n"                                        \
 	    "    + [ ] Find break even point for hmap vs array\n" RESET            \
 	        FG_BRIGHT_GREEN                                                    \
-	    "  - [ ] Consider unions for k and v of types up to size of pointer\n" \
+	    "  - [ ] Consider unions for k and v of types up to size of pointer "  \
+	    "+ size_t for data length\n"                                           \
 	    "  - [ ] Consider parameterizing size of k and v\n"                    \
 	    "  - [ ] Consider a compact alternative where small kvps are in a "    \
 	    "separate array from metadata and are moved around. It saves 8 bytes " \
@@ -58,9 +71,4 @@
 	    "replicates a probe sized chunk of data from the beginning at the "    \
 	    "end\n"
 
-#define SIMD_PROBE
-#define BENCHMARK
-#define TEST_COUNT 1000000
-#include "benchmark.h"
-
-#endif /* configuration_h */
+#endif /* CONFIGURATION_H */

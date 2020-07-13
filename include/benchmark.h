@@ -9,8 +9,8 @@
  */
 
 //---------------------------------------------------------------- BENCHMARK ---
-#ifndef benchmark_h
-#define benchmark_h
+#ifndef BENCHMARK_H
+#define BENCHMARK_H
 
 #ifdef BENCHMARK
 #include <fcntl.h>
@@ -39,4 +39,4 @@
 #define START_BENCH(_prefix)
 #define STOP_BENCH(_prefix)
 #endif /* BENCHMARK */
-#endif /* benchmark_h */
+#endif /* BENCHMARK_H */
