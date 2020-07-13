@@ -15,6 +15,7 @@
 #define HCMP strncmp
 #define HCOPY strcpy
 #define BENCHMARK
+// #define TEST_REGISTER
 #define TEST_COUNT 1000000
 #include "benchmark.h"
 
@@ -23,7 +24,10 @@
 	    " hmap version 0.26.3 " RESET FG_BRIGHT_BLUE                           \
 	    " type exit to quit\n" RESET FG_BRIGHT_RED REVERSE                     \
 	    "   todo \n" RESET FG_BRIGHT_RED                                       \
-	    "  - [ ] Consider reading fixed size keys as n size_t\n"               \
+	    "  - [ ] Reconsider tab_hash\n"                                        \
+	    "  - [x] Consider reading fixed size keys as n size_t\n"               \
+	    "    + [x] Use it for HFUNC\n"                                         \  
+	    "    + [ ] Use it for HCMP\n"                                          \
 	    "  - [ ] Decide on return value for key not found on hmap_get\n"       \
 	    "  - [ ] Handle any key size lower or equal to HMAP_INLINE_KEY_SIZE\n" \
 	    "    + [ ] Replace memcpy on put\n"                                    \
