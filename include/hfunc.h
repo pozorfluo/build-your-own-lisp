@@ -64,6 +64,13 @@ static inline size_t reduce_fibo(const size_t hash, const size_t shift)
 	const size_t xor_hash = hash ^ (hash >> shift);
 	return (HFIBO * xor_hash) >> shift;
 }
+
+static inline size_t hash_fixed128(const char *key)
+{
+	size_t k1 = *(size_t *)key;
+	size_t k2 =  *(size_t *)(key + 8);
+	return k1 ^ k2;
+}
 //----------------------------------------------------------------- Function ---
 /**
  * Return a multiplicative style hash for given key.
