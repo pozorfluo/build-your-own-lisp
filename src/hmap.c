@@ -315,10 +315,26 @@ size_t hmap_put(struct hmap *const hm,
 		hm->buckets[candidate].meta     = meta;
 		hm->buckets[candidate].distance = candidate - home;
 		hm->buckets[candidate].entry    = hm->top;
+		/*
+		[0][1][2][3][4][5][6][7][8][9][A][B][C][D][E][F]
 
-		// hm->store[hm->top].key   = key;
-		// strncpy(hm->store[hm->top].key, key, HMAP_INLINE_KEY_SIZE);
-		memcpy(hm->store[hm->top].key, key, strlen(key));
+		*/
+		// char padded_key[HMAP_INLINE_KEY_SIZE + 1] = {'\0'};
+
+		/* Same as strncpy but not caring about result being null terminated */
+		size_t key_size = strnlen(key, HMAP_INLINE_KEY_SIZE);
+		// if (key_size != HMAP_INLINE_KEY_SIZE) {
+		// 	memset(hm->store[hm->top].key + key_size,
+		// 	       '\0',
+		// 	       HMAP_INLINE_KEY_SIZE - key_size);
+		// }
+		char *ptr     = hm->store[hm->top].key;
+		size_t length = HMAP_INLINE_KEY_SIZE;
+		while (length--) {
+			*ptr++ = '\0';
+		}
+		memcpy(hm->store[hm->top].key, key, key_size);
+
 		hm->store[hm->top].value = value;
 		hm->top++;
 		hm->count++;
@@ -368,13 +384,15 @@ static inline void destroy_entry(struct hmap *const hm, const size_t entry)
 
 		const size_t top_bucket = hmap_find(hm, top_key);
 
-		hm->buckets[top_bucket].entry = hm->buckets[entry].entry;
+		hm->buckets[top_bucket].entry         = hm->buckets[entry].entry;
 		hm->store[(hm->buckets[entry].entry)] = hm->store[hm->top];
 		// memcpy(hm->store[(hm->buckets[entry].entry)].key,
 		//        top_key,
 		//        HMAP_INLINE_KEY_SIZE);
-		// // hm->store[(hm->buckets[entry].entry)].key   = hm->store[hm->top].key;
-		// hm->store[(hm->buckets[entry].entry)].value = hm->store[hm->top].value;
+		// // hm->store[(hm->buckets[entry].entry)].key   =
+		// hm->store[hm->top].key;
+		// hm->store[(hm->buckets[entry].entry)].value =
+		// hm->store[hm->top].value;
 	}
 	return;
 }
@@ -575,37 +593,42 @@ void dump_hashmap(const struct hmap *const hm)
 
 		switch (hm->buckets[i].distance) {
 		case 0:
-			colour = 4; // BLUE
+			colour = 7; // WHITE
 			break;
 		case 1:
-			colour = 6; // CYAN
-			break;
-		case 2:
 			colour = 2; // GREEN
 			break;
+		case 2:
+			colour = 6; // CYAN
+			break;
 		case 3:
-			colour = 3; // YELLOW
+			colour = 4; // BLUE
 			break;
 		case 4:
-			colour = 1; // RED
-			break;
-		case 5:
 			colour = 5; // MAGENTA
 			break;
+		case 5:
+			colour = 3; // YELLOW
+			break;
 		default:
-			colour = 7; // WHITE
+			colour = 1; // RED
 			break;
 		}
 		max_distance = (hm->buckets[i].distance > max_distance)
 		                   ? hm->buckets[i].distance
 		                   : max_distance;
-		printf("\x1b[10%dmhashmap->\x1b[30mbucket[%lu]\x1b[0m>>", colour, i);
+		printf("\x1b[10%dmhmap->\x1b[30mbucket[%lu]\x1b[0m>>", colour, i);
 
 		printf(
-		    " %lu[%d] : %.16s | %lu\n",
+		    " home[%lu] d[%d] stored @[%lu] ",
 		    hash_index(reduce_fibo(HFUNC(hm->store[(hm->buckets[i].entry)].key),
 		                           hm->hash_shift)),
 		    hm->buckets[i].distance,
+			hm->buckets[i].entry);
+
+		printf("    \t: %*.*s | %lu\n",
+			HMAP_INLINE_KEY_SIZE,
+			HMAP_INLINE_KEY_SIZE,
 		    hm->store[(hm->buckets[i].entry)].key,
 		    hm->store[(hm->buckets[i].entry)].value);
 	}
@@ -711,7 +734,7 @@ int main(void)
 	char random_key[HMAP_INLINE_KEY_SIZE] = {'\0'};
 
 //------------------------------------------------- random keys pool
-#define KEYPOOL_SIZE 4096
+#define KEYPOOL_SIZE (2 << 16)
 	char random_keys[KEYPOOL_SIZE] = {'\0'};
 	int r;
 
@@ -743,12 +766,18 @@ int main(void)
 	printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET, hashmap->top);
 
 	START_BENCH(repl);
+
+	size_t start;
 	for (size_t k = 0; k < load_count; k++) {
-		for (size_t i = 0; i < HMAP_INLINE_KEY_SIZE; i++) {
-			random_key[i] = (char)(rand() % 26 + 0x61);
-		}
-		hmap_put(hashmap, random_key, k);
-		// hmap_put(hashmap, &random_keys[rand() % KEYPOOL_SIZE], k);
+		do{
+			start = rand() % KEYPOOL_SIZE;
+		}while(!random_keys[start]);
+
+		// for (size_t i = 0; i < HMAP_INLINE_KEY_SIZE; i++) {
+		// 	random_key[i] = (char)(rand() % 26 + 0x61);
+		// }
+		// hmap_put(hashmap, random_key, k);
+		hmap_put(hashmap, &random_keys[start], k);
 	}
 
 	printf(FG_BRIGHT_YELLOW REVERSE "Done !\n" RESET);
@@ -777,19 +806,21 @@ int main(void)
 			// for (size_t k = 0; k < load_count; k++) {
 			size_t is_stuck = hashmap->top;
 			while (hashmap->top) {
-				printf(FG_BRIGHT_YELLOW REVERSE
-				       "hmap->top : %lu"
-				       " : %.*s" 
-				       " : %.lu" 
-				       " : %.lu\n" 
-					   RESET,
-				       hashmap->top,
-					   HMAP_INLINE_KEY_SIZE,
-				       hashmap->store[hashmap->top - 1].key,
-				       hashmap->store[hashmap->top - 1].value,
-					   hmap_find(hashmap, hashmap->store[hashmap->top - 1].key));
+				printf(
+				    FG_BRIGHT_YELLOW REVERSE
+				    "hmap->top : %lu"
+				    " : %.*s"
+				    " : %.lu"
+				    " : %.lu\n" RESET,
+				    hashmap->top,
+				    HMAP_INLINE_KEY_SIZE,
+				    hashmap->store[hashmap->top - 1].key,
+				    hashmap->store[hashmap->top - 1].value,
+				    hmap_find(hashmap, hashmap->store[hashmap->top - 1].key));
 				hmap_remove(hashmap, hashmap->store[hashmap->top - 1].key);
-				if(hashmap->top == is_stuck) { break;}
+				if (hashmap->top == is_stuck) {
+					break;
+				}
 				is_stuck = hashmap->top;
 			}
 			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
@@ -827,6 +858,37 @@ int main(void)
 			continue;
 		}
 
+		//-------------------------------------------------- findall
+		if ((strcmp(key, "findall")) == 0) {
+			size_t store_index = hashmap->top;
+			size_t result, found_store_index;
+			while (--store_index) {
+				result = hmap_find(hashmap, hashmap->store[store_index].key);
+				found_store_index = hashmap->buckets[result].entry;
+				if (result == HMAP_NOT_FOUND) {
+					puts("Key not found ! \n");
+				}
+
+				if (found_store_index != store_index) {
+					printf(FG_BRIGHT_RED REVERSE " [ Find error !] " RESET);
+				}
+				else {
+					printf(FG_BRIGHT_GREEN REVERSE " [ OK ] " RESET);
+				}
+				printf(FG_BRIGHT_YELLOW REVERSE
+				       " store[%lu]:found[%lu]:bucket[%lu] " RESET
+				       "    \t : %.*s"
+				       " | %.lu \n",
+				       store_index,
+				       found_store_index,
+				       result,
+				       HMAP_INLINE_KEY_SIZE,
+				       hashmap->store[store_index].key,
+				       hashmap->store[store_index].value);
+			}
+			printf("sum : %lu\nTEST_COUNT : %d\n", sum_value, TEST_COUNT);
+			continue;
+		}
 		//-------------------------------------------------- findin
 		if ((strcmp(key, "findin")) == 0) {
 			sum_value = 0;
