@@ -30,7 +30,7 @@ static inline size_t hash_perl(const char *const key)
     __attribute__((pure, always_inline));
 
 static inline size_t hash_multiplicative(const char *const key,
-                                         const size_t shift)
+                                         size_t length)
     __attribute__((pure, always_inline));
 
 static inline size_t hash_djb2(const char *const key)
