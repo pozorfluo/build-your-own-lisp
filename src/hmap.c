@@ -147,7 +147,7 @@ static inline int compare_fixed128_keys(const char *const key_a,
  * char padded_key[HMAP_INLINE_KEY_SIZE] = {'\0'};
  **/
 static inline void prepare_key(char *buffer,
-							   char *key, 
+							   const char *key, 
 							   const size_t length)
 {
 	size_t key_size = strnlen(key, length);
@@ -377,7 +377,7 @@ size_t hmap_put(struct hmap *const hm,
 			// printf("%lu\n", length);
 			*dest++ = '\0';
 		}
-		memcpy(hm->store[hm->top].key, key, key_size);
+		memcpy(hm->store[hm->top].key, key, HMAP_INLINE_KEY_SIZE);
 
 		hm->store[hm->top].value = value;
 		hm->top++;
