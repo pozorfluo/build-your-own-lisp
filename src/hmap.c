@@ -101,6 +101,7 @@ static inline int is_empty(const meta_byte meta)
 {
 	return (meta == META_EMPTY);
 }
+//----------------------------------------------------------------- Function ---
 static inline int is_bucket_empty(const struct hmap *const hashmap,
                                   const size_t index)
 {
@@ -115,12 +116,27 @@ static inline int is_occupied(const meta_byte meta)
 {
 	return (meta >= META_OCCUPIED);
 }
-
+//----------------------------------------------------------------- Function ---
 static inline int is_bucket_occupied(const struct hmap *const hashmap,
                                      const size_t index)
 {
 	return is_occupied(hashmap->buckets[index].meta);
 }
+//----------------------------------------------------------------- Function ---
+/**
+ * Compare given fixed size 16 bytes string keys
+ *     If bytes comparison matches over length
+ *       -> 0
+ *     Else
+ *       -> 1
+ */
+static inline int compare_fixed128_keys(const char *const key_a,
+                                        const char *const key_b)
+{
+	return !((*(uint64_t *)key_a) && (*(uint64_t *)key_b) &&
+	         (*(uint64_t *)key_a + 8) && (*(uint64_t *)key_b + 8));
+}
+
 //----------------------------------------------------------------- Function ---
 /**
  * Locate given key in given hmap
@@ -148,9 +164,9 @@ size_t hmap_find(const struct hmap *const hm, const char *const key)
 	do {
 		if (hm->buckets[index].meta == meta) {
 			// if (hm->store[(hm->buckets[index].entry)].key == key) {
-			if (HCMP(hm->store[(hm->buckets[index].entry)].key,
-			         key,
-			         HMAP_INLINE_KEY_SIZE) == 0) {
+			if (HCMP(hm->store[(hm->buckets[index].entry)].key, key
+			         //  ,HMAP_INLINE_KEY_SIZE
+			         ) == 0) {
 				/* Found key ! */
 				return index;
 			}
@@ -187,9 +203,9 @@ static inline size_t hmap_find_or_empty(const struct hmap *const hm,
 {
 	do {
 		if (hm->buckets[index].meta == meta) {
-			if (HCMP(hm->store[(hm->buckets[index].entry)].key,
-			         key,
-			         HMAP_INLINE_KEY_SIZE) == 0) {
+			if (HCMP(hm->store[(hm->buckets[index].entry)].key, key
+			         //  ,HMAP_INLINE_KEY_SIZE
+			         ) == 0) {
 				/* Found key ! */
 				return index;
 			}
@@ -302,7 +318,7 @@ size_t hmap_put(struct hmap *const hm,
 
 		// hm->store[hm->top].key   = key;
 		// strncpy(hm->store[hm->top].key, key, HMAP_INLINE_KEY_SIZE);
-		memcpy(hm->store[hm->top].key, key, HMAP_INLINE_KEY_SIZE);
+		memcpy(hm->store[hm->top].key, key, strlen(key));
 		hm->store[hm->top].value = value;
 		hm->top++;
 		hm->count++;
@@ -350,15 +366,15 @@ static inline void destroy_entry(struct hmap *const hm, const size_t entry)
 	if ((hm->top > 0) && (hm->top != store_slot)) {
 		const char *const top_key = hm->store[hm->top].key;
 
-		size_t top_bucket = hmap_find(hm, top_key);
+		const size_t top_bucket = hmap_find(hm, top_key);
 
 		hm->buckets[top_bucket].entry = hm->buckets[entry].entry;
-
-		memcpy(hm->store[(hm->buckets[entry].entry)].key,
-		       top_key,
-		       HMAP_INLINE_KEY_SIZE);
-		// hm->store[(hm->buckets[entry].entry)].key   = hm->store[hm->top].key;
-		hm->store[(hm->buckets[entry].entry)].value = hm->store[hm->top].value;
+		hm->store[(hm->buckets[entry].entry)] = hm->store[hm->top];
+		// memcpy(hm->store[(hm->buckets[entry].entry)].key,
+		//        top_key,
+		//        HMAP_INLINE_KEY_SIZE);
+		// // hm->store[(hm->buckets[entry].entry)].key   = hm->store[hm->top].key;
+		// hm->store[(hm->buckets[entry].entry)].value = hm->store[hm->top].value;
 	}
 	return;
 }
@@ -728,11 +744,11 @@ int main(void)
 
 	START_BENCH(repl);
 	for (size_t k = 0; k < load_count; k++) {
-
 		for (size_t i = 0; i < HMAP_INLINE_KEY_SIZE; i++) {
 			random_key[i] = (char)(rand() % 26 + 0x61);
 		}
 		hmap_put(hashmap, random_key, k);
+		// hmap_put(hashmap, &random_keys[rand() % KEYPOOL_SIZE], k);
 	}
 
 	printf(FG_BRIGHT_YELLOW REVERSE "Done !\n" RESET);
@@ -759,14 +775,27 @@ int main(void)
 		//-------------------------------------------------- rm
 		if ((strcmp(key, "rm")) == 0) {
 			// for (size_t k = 0; k < load_count; k++) {
+			size_t is_stuck = hashmap->top;
 			while (hashmap->top) {
+				printf(FG_BRIGHT_YELLOW REVERSE
+				       "hmap->top : %lu"
+				       " : %.*s" 
+				       " : %.lu" 
+				       " : %.lu\n" 
+					   RESET,
+				       hashmap->top,
+					   HMAP_INLINE_KEY_SIZE,
+				       hashmap->store[hashmap->top - 1].key,
+				       hashmap->store[hashmap->top - 1].value,
+					   hmap_find(hashmap, hashmap->store[hashmap->top - 1].key));
 				hmap_remove(hashmap, hashmap->store[hashmap->top - 1].key);
+				if(hashmap->top == is_stuck) { break;}
+				is_stuck = hashmap->top;
 			}
 			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
 			       hashmap->top);
 			continue;
 		}
-
 		//-------------------------------------------------- fill
 		if ((strcmp(key, "fill")) == 0) {
 			for (size_t k = 0; k < load_count; k++) {

@@ -39,7 +39,8 @@ void print_bits(const size_t n, void const *const data)
 int main(void)
 {
 	// char buffer[HMAP_INLINE_KEY_SIZE] = "0123456789abcdef";
-	char buffer[HMAP_INLINE_KEY_SIZE] = "abcd\0\0\0\0\0\0\0\0\0\0\0\0";
+	// char buffer[HMAP_INLINE_KEY_SIZE] = "abcd\0\0\0\0\0\0\0\0\0\0\0\0";
+	char buffer[HMAP_INLINE_KEY_SIZE] = "qyvoqerqvnzvarjd";
 
 	printf("__WORDSIZE %d\n", __WORDSIZE);
 	printf("SIZE_MAX  %lu\n", SIZE_MAX);

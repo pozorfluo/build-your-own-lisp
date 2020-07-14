@@ -12,7 +12,7 @@
 #define HMAP_INLINE_KEY_SIZE 16
 #define HFUNC hash_fixed128
 #define HREDUCE reduce_fibo
-#define HCMP strncmp
+#define HCMP compare_fixed128_keys
 #define HCOPY strcpy
 #define BENCHMARK
 // #define TEST_REGISTER
@@ -25,9 +25,11 @@
 	    " type exit to quit\n" RESET FG_BRIGHT_RED REVERSE                     \
 	    "   todo \n" RESET FG_BRIGHT_RED                                       \
 	    "  - [ ] Reconsider tab_hash\n"                                        \
-	    "  - [x] Consider reading fixed size keys as n size_t\n"               \
-	    "    + [x] Use it for HFUNC\n"                                         \  
-	    "    + [ ] Use it for HCMP\n"                                          \
+	    "  - [x] Consider reading fixed size keys as n uint64_t\n"             \
+	    "    + [x] Use it for HFUNC\n"                                         \
+	    "    + [x] Use it for HCMP\n"                                          \
+	    "    + [ ] Investigate qyvoqerqvnzvarjd strings not found\n"           \
+	    "    + [ ] Consider padding strings to HMAP_INLINE_KEY_SIZE\n"           \
 	    "  - [ ] Decide on return value for key not found on hmap_get\n"       \
 	    "  - [ ] Handle any key size lower or equal to HMAP_INLINE_KEY_SIZE\n" \
 	    "    + [ ] Replace memcpy on put\n"                                    \

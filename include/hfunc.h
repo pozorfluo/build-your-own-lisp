@@ -67,8 +67,8 @@ static inline size_t reduce_fibo(const size_t hash, const size_t shift)
 
 static inline size_t hash_fixed128(const char *key)
 {
-	size_t k1 = *(size_t *)key;
-	size_t k2 =  *(size_t *)(key + 8);
+	size_t k1 = *(uint64_t *)key;
+	size_t k2 =  *(uint64_t *)(key + 8);
 	return k1 ^ k2;
 }
 //----------------------------------------------------------------- Function ---
