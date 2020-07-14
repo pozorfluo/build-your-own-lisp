@@ -78,8 +78,7 @@ static inline void destroy_entry(struct hmap *const hashmap, const size_t entry)
     __attribute__((always_inline));
 
 static inline size_t find_n(const struct hmap *const hm,
-                            const char *const key,
-                            const size_t length) __attribute__((pure));
+                            const char *const key) __attribute__((pure));
 
 size_t hmap_find(const struct hmap *const hashmap, const char *const key)
     __attribute__((pure));
@@ -142,21 +141,32 @@ static inline int compare_fixed128_keys(const char *const key_a,
 }
 
 //----------------------------------------------------------------- Function ---
-size_t hmap_find(const struct hmap *const hm, const char *const key)
+/**
+ * Truncate or pad with \0 given key to given length as a copy in given buffer.
+ * 
+ * char padded_key[HMAP_INLINE_KEY_SIZE] = {'\0'};
+ **/
+static inline void prepare_key(char *buffer,
+							   char *key, 
+							   const size_t length)
 {
-	// /* truncate or pad with \0 given key to HMAP_INLINE_KEY_SIZE */
-	// size_t key_size = strnlen(key, HMAP_INLINE_KEY_SIZE);
-	// if (key_size != HMAP_INLINE_KEY_SIZE) {
-	// 	char padded_key[HMAP_INLINE_KEY_SIZE] = {'\0'};
-	// 	char *dest                            = &padded_key;
-	// 	char *src                             = key;
-	// 	while (key_size--) {
-	// 		*dest++ = *src++;
-	// 	}
-	// 	key = &padded_key;
+	size_t key_size = strnlen(key, length);
+
+	// if (key_size != length) {
+		// char *dest = buffer;
+		// char *src  = key;
+		while (key_size--) {
+			// *dest++ = *src++;
+			*buffer++ = *key++;
+		}
 	// }
 
-	return find_n(hm, key, strnlen(key, HMAP_INLINE_KEY_SIZE));
+	// return buffer;
+}
+//----------------------------------------------------------------- Function ---
+size_t hmap_find(const struct hmap *const hm, const char *const key)
+{
+	return find_n(hm, key);//, strnlen(key, HMAP_INLINE_KEY_SIZE));
 }
 
 //----------------------------------------------------------------- Function ---
@@ -178,10 +188,10 @@ size_t hmap_find(const struct hmap *const hm, const char *const key)
  *     + [ ] Add exists() inlinable function
  */
 static inline size_t find_n(const struct hmap *const hm,
-                            const char *const key,
-                            const size_t length)
+                            const char *const key)
+                            // const size_t length)
 {
-	size_t hash    = HREDUCE(HFUNC(key, length), hm->hash_shift);
+	size_t hash    = HREDUCE(HFUNC(key), hm->hash_shift);
 	size_t index   = hash_index(hash);
 	meta_byte meta = hash_meta(hash);
 
@@ -268,7 +278,11 @@ static inline size_t find_or_empty(const struct hmap *const hm,
 size_t hmap_get(const struct hmap *const hm, const char *const key)
 {
 	// const size_t entry = hmap_find(hm, key);
-	const size_t entry = find_n(hm, key, strnlen(key, HMAP_INLINE_KEY_SIZE));
+	/* Prepare temp entry */
+	char padded_key[HMAP_INLINE_KEY_SIZE] = {'\0'};
+	prepare_key(padded_key, key, HMAP_INLINE_KEY_SIZE);
+
+	const size_t entry = find_n(hm, key);//, strnlen(key, HMAP_INLINE_KEY_SIZE));
 	// void *value        = NULL;
 	size_t value = 0;
 
@@ -320,8 +334,11 @@ size_t hmap_put(struct hmap *const hm,
                 const size_t value)
 {
 	/* Prepare temp entry */
-	const size_t key_size = strnlen(key, HMAP_INLINE_KEY_SIZE);
-	const size_t hash     = HREDUCE(HFUNC(key, key_size), hm->hash_shift);
+	char padded_key[HMAP_INLINE_KEY_SIZE] = {'\0'};
+	prepare_key(padded_key, key, HMAP_INLINE_KEY_SIZE);
+
+	// const size_t key_size = strnlen(key, HMAP_INLINE_KEY_SIZE);
+	const size_t hash     = HREDUCE(HFUNC(key), hm->hash_shift);
 	const size_t home     = hash_index(hash);
 	const meta_byte meta  = hash_meta(hash);
 
@@ -380,11 +397,11 @@ size_t hmap_put(struct hmap *const hm,
  * Update given hmap stats
  *   -> removed	entry index
  */
-static inline void empty_entry(struct hmap *const hm, const size_t entry)
-{
-	hm->buckets[entry].meta = META_EMPTY;
-	hm->count--;
-}
+// static inline void empty_entry(struct hmap *const hm, const size_t entry)
+// {
+// 	hm->buckets[entry].meta = META_EMPTY;
+// 	hm->count--;
+// }
 //----------------------------------------------------------------- Function ---
 /**
  * Free given hmap_entry
@@ -411,7 +428,7 @@ static inline void destroy_entry(struct hmap *const hm, const size_t entry)
 		const char *const top_key = hm->store[hm->top].key;
 
 		// const size_t top_bucket = hmap_find(hm, top_key);
-		const size_t top_bucket = find_n(hm, top_key, HMAP_INLINE_KEY_SIZE);
+		const size_t top_bucket = find_n(hm, top_key);//, HMAP_INLINE_KEY_SIZE);
 
 		hm->buckets[top_bucket].entry         = hm->buckets[entry].entry;
 		hm->store[(hm->buckets[entry].entry)] = hm->store[hm->top];
@@ -442,7 +459,7 @@ static inline void destroy_entry(struct hmap *const hm, const size_t entry)
  */
 size_t hmap_remove(struct hmap *const hm, const char *const key)
 {
-	const size_t entry = find_n(hm, key, strnlen(key, HMAP_INLINE_KEY_SIZE));
+	const size_t entry = find_n(hm, key);//, strnlen(key, HMAP_INLINE_KEY_SIZE));
 
 	/* Given key exists */
 	if (entry != HMAP_NOT_FOUND) {
@@ -678,8 +695,7 @@ void dump_hashmap(const struct hmap *const hm)
 		printf(
 		    FG_BRIGHT_BLACK REVERSE
 		    " home[%lu] d[%d] m[%d] stored @[%lu] " RESET,
-		    hash_index(HREDUCE(HFUNC(key, strnlen(key, HMAP_INLINE_KEY_SIZE)),
-		                       hm->hash_shift)),
+		    hash_index(HREDUCE(HFUNC(key), hm->hash_shift)),  // strnlen(key, HMAP_INLINE_KEY_SIZE)),
 		    hm->buckets[i].distance,
 		    hm->buckets[i].meta,
 		    hm->buckets[i].entry);
