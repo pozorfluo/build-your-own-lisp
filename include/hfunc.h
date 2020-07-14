@@ -3,7 +3,8 @@
  * Collection of hash functions and hash reductions.
  *
  * todo Consider testing Lemire's fast range.
- *        See https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
+ *        See
+ * https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
  *        See https://github.com/lemire/fastrange/blob/master/fastrange.h
  */
 
@@ -11,7 +12,7 @@
 #ifndef HFUNC_H
 #define HFUNC_H
 
-#include <stddef.h>   /* size_t */
+#include <stddef.h> /* size_t */
 
 //------------------------------------------------------------ CONFIGURATION ---
 #include "configuration.h"
@@ -28,7 +29,8 @@
 static inline size_t hash_perl(const char *const key)
     __attribute__((pure, always_inline));
 
-static inline size_t hash_multiplicative(const char *const key)
+static inline size_t hash_multiplicative(const char *const key,
+                                         const size_t shift)
     __attribute__((pure, always_inline));
 
 static inline size_t hash_djb2(const char *const key)
@@ -64,11 +66,11 @@ static inline size_t reduce_fibo(const size_t hash, const size_t shift)
 	const size_t xor_hash = hash ^ (hash >> shift);
 	return (HFIBO * xor_hash) >> shift;
 }
-
+//----------------------------------------------------------------- Function ---
 static inline size_t hash_fixed128(const char *key)
 {
 	size_t k1 = *(uint64_t *)key;
-	size_t k2 =  *(uint64_t *)(key + 8);
+	size_t k2 = *(uint64_t *)(key + 8);
 	return k1 ^ k2;
 }
 //----------------------------------------------------------------- Function ---
@@ -78,13 +80,13 @@ static inline size_t hash_fixed128(const char *key)
  * see Linear congruential generator.
  * todo Check what happens with the while loop on compilation.
  */
-static inline size_t hash_multiplicative(const char *key)
+static inline size_t hash_multiplicative(const char *key, size_t length)
 {
-	HFUNC_REGISTER size_t hash            = 0;
-	HFUNC_REGISTER size_t i               = HMAP_INLINE_KEY_SIZE;
+	HFUNC_REGISTER size_t hash = 0;
+	// HFUNC_REGISTER size_t i               = length;
 	HFUNC_REGISTER const unsigned char *c = (const unsigned char *)key;
 
-	while (i--) {
+	while (length--) {
 		hash = HSEED * hash + *c++;
 	}
 
@@ -157,7 +159,7 @@ static inline size_t hash_kh_str(const char *key)
 	HFUNC_REGISTER const unsigned char *c = (const unsigned char *)key;
 
 	while (i--) {
-		hash = (hash << 5)- hash + *c++;
+		hash = (hash << 5) - hash + *c++;
 	}
 
 	return hash;
