@@ -380,11 +380,11 @@ size_t hmap_put(struct hmap *const hm,
  * Update given hmap stats
  *   -> removed	entry index
  */
-static inline void empty_entry(struct hmap *const hm, const size_t entry)
-{
-	hm->buckets[entry].meta = META_EMPTY;
-	hm->count--;
-}
+// static inline void empty_entry(struct hmap *const hm, const size_t entry)
+// {
+// 	hm->buckets[entry].meta = META_EMPTY;
+// 	hm->count--;
+// }
 //----------------------------------------------------------------- Function ---
 /**
  * Free given hmap_entry
@@ -409,19 +409,16 @@ static inline void destroy_entry(struct hmap *const hm, const size_t entry)
 
 	if ((hm->top > 0) && (hm->top != store_slot)) {
 		const char *const top_key = hm->store[hm->top].key;
-
-		// const size_t top_bucket = hmap_find(hm, top_key);
-		const size_t top_bucket = find_n(hm, top_key, HMAP_INLINE_KEY_SIZE);
-
-		hm->buckets[top_bucket].entry         = hm->buckets[entry].entry;
+		const size_t top_bucket =
+		    find_n(hm, top_key, strnlen(top_key, HMAP_INLINE_KEY_SIZE));
+		printf(FG_BRIGHT_CYAN REVERSE
+		       "top key    : %s \n"
+		       "top bucket : %lu \n" RESET,
+		       top_key,
+		       top_bucket);
+		hm->buckets[top_bucket].entry = hm->buckets[entry].entry;
+		// hm->buckets[top_bucket]               = hm->buckets[entry];
 		hm->store[(hm->buckets[entry].entry)] = hm->store[hm->top];
-		// memcpy(hm->store[(hm->buckets[entry].entry)].key,
-		//        top_key,
-		//        HMAP_INLINE_KEY_SIZE);
-		// // hm->store[(hm->buckets[entry].entry)].key   =
-		// hm->store[hm->top].key;
-		// hm->store[(hm->buckets[entry].entry)].value =
-		// hm->store[hm->top].value;
 	}
 	return;
 }
@@ -439,6 +436,13 @@ static inline void destroy_entry(struct hmap *const hm, const size_t entry)
  * Else
  *   -> out of bound value ( > capacity )
  *
+ * todo
+ *   - [ ] Assess if probing at entry + 1 yelds a cache miss when
+ *         read/writing to entry
+ *     + [ ] Do not bother ! probing at (advertised)capacity + 1 will
+ *            try to read 1 bucket out of bound !!
+ *     + [ ] Be careful though, you are going to have to ignore entry
+ *           distance because it may be @home
  */
 size_t hmap_remove(struct hmap *const hm, const char *const key)
 {
@@ -448,27 +452,14 @@ size_t hmap_remove(struct hmap *const hm, const char *const key)
 	if (entry != HMAP_NOT_FOUND) {
 		/* update store */
 		destroy_entry(hm, entry);
-		/**
-		 * todo
-		 *   - [ ] Assess if probing at entry + 1 yelds a cache miss when
-		 *         read/writing to entry
-		 *     + [ ] Do not bother ! probing at (advertised)capacity + 1 will
-		 *            try to read 1 bucket out of bound !!
-		 *     + [ ] Be careful though, you are going to have to ignore entry
-		 *           distance because it may be @home
-		 */
+
 		size_t stop_bucket = entry + 1;
 
-		// while (hm->buckets[stop_bucket].distance != 0) {
 		while (hm->buckets[stop_bucket].distance) {
 			stop_bucket++;
 		}
 
 		for (size_t bucket = entry; bucket < stop_bucket; bucket++) {
-			// hm->buckets[bucket].meta     = hm->buckets[bucket + 1].meta;
-			// hm->buckets[bucket].distance = hm->buckets[bucket + 1].distance -
-			// 1;
-			// hm->buckets[bucket].entry    = hm->buckets[bucket + 1].entry;
 			hm->buckets[bucket] = hm->buckets[bucket + 1];
 			hm->buckets[bucket].distance--;
 		}
@@ -477,16 +468,6 @@ size_t hmap_remove(struct hmap *const hm, const char *const key)
 
 		/* mark entry in last shifted bucket as empty */
 		hm->buckets[stop_bucket - 1].meta = META_EMPTY;
-
-		// /* process buckets.entries */
-		// for (size_t bucket = entry; bucket < stop_bucket; bucket++) {
-		// 	hm->buckets[bucket].entry = hm->buckets[bucket + 1].entry;
-		// }
-
-		// /* process buckets.metas */
-		// for (size_t bucket = entry; bucket < stop_bucket; bucket++) {
-		// 	hm->buckets[bucket].meta = hm->buckets[bucket + 1].meta;
-		// }
 	}
 
 	return entry;
@@ -794,7 +775,7 @@ uint64_t mcg64()
 //--------------------------------------------------------------------- MAIN ---
 /**
  * Quick and Dirty REPL for test purposes only.
- */ 
+ */
 int main(void)
 {
 	puts(WELCOME_MESSAGE);
@@ -843,7 +824,7 @@ int main(void)
 	// size_t capacity  = hashmap->capacity;
 	size_t sum_value = 0;
 	char key[256];
-	char random_key[HMAP_INLINE_KEY_SIZE] = {'\0'};
+	char random_key[HMAP_INLINE_KEY_SIZE + 1] = {'\0'};
 
 	printf(FG_BRIGHT_YELLOW REVERSE "Filling hashmap with %lu entries\n" RESET,
 	       load_count);
@@ -852,9 +833,19 @@ int main(void)
 
 	START_BENCH(repl);
 
+	// while (hashmap->top < load_count) {
+	// 	*(uint64_t *)(random_key)                            = mcg64();
+	// 	*(uint64_t *)(random_key + HMAP_INLINE_KEY_SIZE / 2) = mcg64();
+	// 	hmap_put(hashmap, random_key, hashmap->count);
+	// }
+
+	size_t rand_length;
 	while (hashmap->top < load_count) {
-		*(uint64_t *)(random_key)                            = mcg64();
-		*(uint64_t *)(random_key + HMAP_INLINE_KEY_SIZE / 2) = mcg64();
+		rand_length = rand() % 16;
+		for (size_t i = 0; i < rand_length; i++) {
+			random_key[i] = (char)(rand() % 26 + 0x61);
+		}
+		random_key[rand_length + 1] = '\0';
 		hmap_put(hashmap, random_key, hashmap->count);
 	}
 
@@ -909,8 +900,9 @@ int main(void)
 		//-------------------------------------------------- fill
 		if ((strcmp(key, "fill")) == 0) {
 			while (hashmap->top < load_count) {
-				*(uint64_t *)(random_key)                            = mcg64();
-				*(uint64_t *)(random_key + HMAP_INLINE_KEY_SIZE / 2) = mcg64();
+				*(uint64_t *)(random_key) = rand();
+				// *(uint64_t *)(random_key + HMAP_INLINE_KEY_SIZE / 2) =
+				//     hashmap->top;
 				hmap_put(hashmap, random_key, hashmap->count);
 			}
 			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,

@@ -10,9 +10,9 @@
 //------------------------------------------------------------ CONFIGURATION ---
 // #define SIMD_PROBE
 #define HMAP_INLINE_KEY_SIZE 16
-#define HFUNC hash_multiplicative // hash_fixed128
+#define HFUNC hash_multiplicative
 #define HREDUCE reduce_fibo
-#define HCMP strncmp // compare_fixed128_keys
+#define HCMP strncmp
 #define HCOPY strcpy
 #define BENCHMARK
 // #define TEST_REGISTER

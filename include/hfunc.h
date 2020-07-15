@@ -26,20 +26,19 @@
 #define HFIBO 11400714819323198485llu
 #define HSEED 11400714819323198485llu
 //------------------------------------------------------------- DECLARATIONS ---
-static inline size_t hash_perl(const char *const key)
+static inline size_t hash_perl(const char *const key, size_t length)
     __attribute__((pure, always_inline));
 
-static inline size_t hash_multiplicative(const char *const key,
-                                         size_t length)
+static inline size_t hash_multiplicative(const char *const key, size_t length)
     __attribute__((pure, always_inline));
 
-static inline size_t hash_djb2(const char *const key)
+static inline size_t hash_djb2(const char *const key, size_t length)
     __attribute__((pure, always_inline));
 
-static inline size_t hash_djb2_alt(const char *const key)
+static inline size_t hash_djb2_alt(const char *const key, size_t length)
     __attribute__((pure, always_inline));
 
-static inline size_t hash_kh_str(const char *const key)
+static inline size_t hash_kh_str(const char *const key, size_t length)
     __attribute__((pure, always_inline));
 
 static inline size_t reduce_fibo(const size_t hash, const size_t shift)
@@ -80,7 +79,7 @@ static inline size_t hash_fixed128(const char *key)
  * see Linear congruential generator.
  * todo Check what happens with the while loop on compilation.
  */
-static inline size_t hash_multiplicative(const char *key, size_t length)
+static inline size_t hash_multiplicative(const char *const key, size_t length)
 {
 	HFUNC_REGISTER size_t hash = 0;
 	// HFUNC_REGISTER size_t i               = length;
@@ -98,13 +97,13 @@ static inline size_t hash_multiplicative(const char *key, size_t length)
  *
  * todo Check what happens with the while loop on compilation.
  */
-static inline size_t hash_perl(const char *key)
+static inline size_t hash_perl(const char *const key, size_t length)
 {
-	HFUNC_REGISTER size_t hash            = HSEED;
-	HFUNC_REGISTER size_t i               = HMAP_INLINE_KEY_SIZE;
+	HFUNC_REGISTER size_t hash = HSEED;
+	// HFUNC_REGISTER size_t i               = HMAP_INLINE_KEY_SIZE;
 	HFUNC_REGISTER const unsigned char *c = (const unsigned char *)key;
 
-	while (i--) {
+	while (length--) {
 		hash += *c++;
 		hash += hash << 10;
 		hash ^= hash >> 6;
@@ -119,13 +118,13 @@ static inline size_t hash_perl(const char *key)
 /**
  * Return a djb2 style hash for given key.
  */
-static inline size_t hash_djb2(const char *key)
+static inline size_t hash_djb2(const char *const key, size_t length)
 {
-	HFUNC_REGISTER size_t hash            = 5381;
-	HFUNC_REGISTER size_t i               = HMAP_INLINE_KEY_SIZE;
+	HFUNC_REGISTER size_t hash = 5381;
+	// HFUNC_REGISTER size_t i               = HMAP_INLINE_KEY_SIZE;
 	HFUNC_REGISTER const unsigned char *c = (const unsigned char *)key;
 
-	while (i--) {
+	while (length--) {
 		hash += (hash << 5) + *c++;
 	}
 
@@ -135,13 +134,13 @@ static inline size_t hash_djb2(const char *key)
 /**
  * Return a djb2_alt style hash for given key.
  */
-static inline size_t hash_djb2_alt(const char *key)
+static inline size_t hash_djb2_alt(const char *const key, size_t length)
 {
-	HFUNC_REGISTER size_t hash            = 5381;
-	HFUNC_REGISTER size_t i               = HMAP_INLINE_KEY_SIZE;
+	HFUNC_REGISTER size_t hash = 5381;
+	// HFUNC_REGISTER size_t i               = HMAP_INLINE_KEY_SIZE;
 	HFUNC_REGISTER const unsigned char *c = (const unsigned char *)key;
 
-	while (i--) {
+	while (length--) {
 		hash *= 33 ^ *c++;
 	}
 
@@ -152,13 +151,13 @@ static inline size_t hash_djb2_alt(const char *key)
 /**
  * Return a kh_hash_str style hash for given key.
  */
-static inline size_t hash_kh_str(const char *key)
+static inline size_t hash_kh_str(const char *const key, size_t length)
 {
-	HFUNC_REGISTER size_t hash            = HSEED;
-	HFUNC_REGISTER size_t i               = HMAP_INLINE_KEY_SIZE;
+	HFUNC_REGISTER size_t hash = HSEED;
+	// HFUNC_REGISTER size_t i               = HMAP_INLINE_KEY_SIZE;
 	HFUNC_REGISTER const unsigned char *c = (const unsigned char *)key;
 
-	while (i--) {
+	while (length--) {
 		hash = (hash << 5) - hash + *c++;
 	}
 
