@@ -967,7 +967,7 @@ int main(void)
 				       hashmap->top);
 				size_t store_index = hashmap->top;
 				size_t result, found_store_index;
-				while (--store_index) {
+				while (store_index--) {
 					result =
 					    hmap_find(hashmap, hashmap->store[store_index].key);
 					found_store_index = hashmap->buckets[result].entry;
@@ -1012,7 +1012,7 @@ int main(void)
 				size_t error_count     = 0;
 				sum_value              = 0;
 
-				while (--store_index) {
+				while (store_index--) {
 					result =
 					    hmap_find(hashmap, hashmap->store[store_index].key);
 					if (result == HMAP_NOT_FOUND) {
