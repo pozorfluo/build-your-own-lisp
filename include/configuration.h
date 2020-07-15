@@ -25,7 +25,9 @@
 	    " type exit to quit\n" RESET FG_BRIGHT_RED REVERSE                     \
 	    "   todo \n" RESET FG_BRIGHT_RED                                       \
 	    "  - [ ] Reconsider tab_hash\n"                                        \
-	    "  - [ ] Consider that hmap count and top and redundant\n"             \
+	    "  - [ ] Implement Resize\n"                                           \
+	    "  - [ ] Consider that hmap count and top and "                        \
+	    "redundant\n" FG_BRIGHT_YELLOW                                         \
 	    "  - [ ] Consider reading fixed size keys as n uint64_t\n"             \
 	    "    + [x] Use it for HFUNC\n"                                         \
 	    "    + [x] Use it for HCMP\n"                                          \
@@ -59,7 +61,6 @@
 	    "      * [ ] Consider separately allocing the store and buckets to  "  \
 	    "allow resizing in place\n"                                            \
 	    "  - [ ] Move on to next build your own lisp step\n" RESET             \
-	        FG_BRIGHT_YELLOW                                                   \
 	    "  - [ ] Bench against array\n"                                        \
 	    "    + [ ] Find break even point for hmap vs array\n" RESET            \
 	        FG_BRIGHT_GREEN                                                    \
