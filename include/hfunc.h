@@ -8,14 +8,12 @@
  *        See https://github.com/lemire/fastrange/blob/master/fastrange.h
  */
 
-//-------------------------------------------------------------------- HFUNC ---
 #ifndef HFUNC_H
 #define HFUNC_H
 
 #include <stddef.h> /* size_t */
 
 //------------------------------------------------------------ CONFIGURATION ---
-#include "configuration.h"
 
 #ifdef TEST_REGISTER
 #define HFUNC_REGISTER register

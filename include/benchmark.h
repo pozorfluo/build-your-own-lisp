@@ -35,7 +35,7 @@
 	} while (0)
 
 #else
-#define SETUP_BENCH
+#define SETUP_BENCH(_prefix)
 #define START_BENCH(_prefix)
 #define STOP_BENCH(_prefix)
 #endif /* BENCHMARK */
