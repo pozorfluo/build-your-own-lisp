@@ -243,7 +243,6 @@ void dump_stats(const struct hmap *const hm)
 
 	printf(FG_YELLOW REVERSE "hmap->top      : %lu\n" RESET, hm->top);
 	printf(FG_YELLOW REVERSE "hmap->capacity : %lu\n" RESET, hm->capacity);
-	printf(FG_YELLOW REVERSE "hmap->count    : %lu\n" RESET, hm->count);
 
 	printf("empty_buckets       : %lu \t-> %f%%\n",
 	       empty_bucket,
@@ -363,7 +362,7 @@ int main(void)
 	// while (hashmap->top < load_count) {
 	// 	*(uint64_t *)(random_key)                            = mcg64();
 	// 	*(uint64_t *)(random_key + HMAP_INLINE_KEY_SIZE / 2) = mcg64();
-	// 	hmap_put(hashmap, random_key, hashmap->count);
+	// 	hmap_put(hashmap, random_key, hashmap->top);
 	// }
 
 	size_t rand_length;
@@ -430,7 +429,7 @@ int main(void)
 				*(uint64_t *)(random_key) = rand();
 				// *(uint64_t *)(random_key + HMAP_INLINE_KEY_SIZE / 2) =
 				//     hashmap->top;
-				hmap_put(hashmap, random_key, hashmap->count);
+				hmap_put(hashmap, random_key, hashmap->top);
 			}
 			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
 			       hashmap->top);
@@ -442,12 +441,16 @@ int main(void)
 			dump_hashmap(hashmap);
 			continue;
 		}
-		//-------------------------------------------------- dump
+		//-------------------------------------------------- stats
 		if ((strcmp(key, "stats")) == 0) {
 			dump_stats(hashmap);
 			continue;
 		}
-
+		//-------------------------------------------------- clear
+		if ((strcmp(key, "clear")) == 0) {
+			hmap_clear(hashmap);
+			continue;
+		}
 		//-------------------------------------------------- sumb
 		if ((strcmp(key, "sumb")) == 0) {
 			sum_bucket(hashmap);
@@ -563,7 +566,7 @@ int main(void)
 
 			for (size_t k = 0; k < TEST_COUNT; k++) {
 				sum_value +=
-				    hmap_get(hashmap, hashmap->store[k % hashmap->count].key);
+				    hmap_get(hashmap, hashmap->store[k % hashmap->top].key);
 			}
 
 			printf("sum : %lu\nTEST_COUNT : %d\n", sum_value, TEST_COUNT);
@@ -575,7 +578,7 @@ int main(void)
 
 			for (size_t k = 0; k < TEST_COUNT; k++) {
 				sum_value += hmap_get(
-				    hashmap, hashmap->store[rand() % hashmap->count].key);
+				    hashmap, hashmap->store[rand() % hashmap->top].key);
 			}
 
 			printf("sum : %lu\nTEST_COUNT : %d\n", sum_value, TEST_COUNT);

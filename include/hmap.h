@@ -53,11 +53,10 @@ struct hmap_bucket {
 struct hmap {
 	struct hmap_bucket *buckets;
 	struct hmap_entry *store;
-	size_t top;
+	size_t top; /* occupied entries count, cursor to next free store slot */
 	// size_t key_size;
 	size_t hash_shift; /* shift amount necessary for desired hash depth */
 	size_t capacity;   /* actual capacity */
-	size_t count;      /* occupied entries count */
 };
 
 size_t hmap_find(const struct hmap *const hashmap, const char *const key)
@@ -72,6 +71,8 @@ size_t hmap_put(struct hmap *const hm,
 size_t hmap_remove(struct hmap *const hm, const char *const key);
 
 struct hmap *hmap_new(const size_t n);
+
+void hmap_clear(struct hmap *const hm);
 
 void hmap_free(struct hmap *const hashmap);
 

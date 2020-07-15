@@ -9,8 +9,8 @@
 
 #include <errno.h>
 #include <stdint.h> /* uint32_t, uint64_t */
-#include <stdlib.h> /* malloc */
 #include <stdio.h>
+#include <stdlib.h> /* malloc */
 #include <string.h> /* memcpy, strlen, strnlen */
 
 #include "ansi_esc.h"
@@ -139,12 +139,15 @@ static inline size_t find_n(const struct hmap *const hm,
 	//        index,
 	//        meta);
 
+	putchar('\n');
 	do {
 		if (hm->buckets[index].meta == meta) {
 			// if (hm->store[(hm->buckets[index].entry)].key == key) {
+			putchar('.');
 			if (HCMP(hm->store[(hm->buckets[index].entry)].key,
 			         key,
 			         HMAP_INLINE_KEY_SIZE) == 0) {
+				putchar('!');
 				/* Found key ! */
 				return index;
 			}
@@ -153,9 +156,10 @@ static inline size_t find_n(const struct hmap *const hm,
 			/* if there is any empty slot*/
 			/* no need to check the next */
 			/* -> key does NOT exist */
+			putchar('o');
 			break;
 		}
-
+		putchar('x');
 		index++;
 	} while (index < hm->capacity);
 
@@ -179,11 +183,14 @@ static inline size_t find_or_empty(const struct hmap *const hm,
                                    size_t index,
                                    const meta_byte meta)
 {
+	putchar('\n');
 	do {
 		if (hm->buckets[index].meta == meta) {
+			putchar('.');
 			if (HCMP(hm->store[(hm->buckets[index].entry)].key,
 			         key,
 			         HMAP_INLINE_KEY_SIZE) == 0) {
+				putchar('!');
 				/* Found key ! */
 				return index;
 			}
@@ -192,9 +199,10 @@ static inline size_t find_or_empty(const struct hmap *const hm,
 			/* if there is any empty slot*/
 			/* no need to check the next */
 			/* -> key does NOT exist */
+			putchar('o');
 			return index;
 		}
-
+		putchar('x');
 		index++;
 	} while (index < hm->capacity);
 
@@ -241,7 +249,7 @@ size_t hmap_get(const struct hmap *const hm, const char *const key)
  *         Slingshot it to candidate empty bucket !
  *         Make current entry the new candidate empty bucket
  *     Slingshot given entry to wherever candidate empty bucket is
- *     Increment hmap entry count
+ *     Increment hmap entry count / store cursor
  *       -> new entry index
  *
  * note
@@ -282,6 +290,7 @@ size_t hmap_put(struct hmap *const hm,
 			if (hm->buckets[bucket].distance <=
 			    hm->buckets[bucket - 1].distance) {
 
+				printf("slingshot[ %lu -> %lu ]\n", candidate, bucket);
 				hm->buckets[candidate].distance =
 				    hm->buckets[bucket].distance + candidate - bucket;
 
@@ -309,7 +318,6 @@ size_t hmap_put(struct hmap *const hm,
 
 		hm->store[hm->top].value = value;
 		hm->top++;
-		hm->count++;
 	}
 	//------------------------------------------------------ given key found
 	else {
@@ -328,7 +336,7 @@ size_t hmap_put(struct hmap *const hm,
 // static inline void empty_entry(struct hmap *const hm, const size_t entry)
 // {
 // 	hm->buckets[entry].meta = META_EMPTY;
-// 	hm->count--;
+// 	hm->top--;
 // }
 //----------------------------------------------------------------- Function ---
 /**
@@ -350,7 +358,6 @@ static inline void destroy_entry(struct hmap *const hm, const size_t entry)
 {
 	const size_t store_slot = hm->buckets[entry].entry;
 	hm->top--;
-	hm->count--;
 
 	if ((hm->top > 0) && (hm->top != store_slot)) {
 		const char *const top_key = hm->store[hm->top].key;
@@ -409,6 +416,8 @@ size_t hmap_remove(struct hmap *const hm, const char *const key)
 		for (size_t bucket = entry; bucket < stop_bucket; bucket++) {
 			hm->buckets[bucket] = hm->buckets[bucket + 1];
 			hm->buckets[bucket].distance--;
+
+			printf("backwardshiftdel[ %lu -> %lu ]\n", bucket + 1, bucket);
 		}
 		/* mark entry distance in last shifted bucket as @home or empty */
 		hm->buckets[stop_bucket - 1].distance = 0;
@@ -422,14 +431,34 @@ size_t hmap_remove(struct hmap *const hm, const char *const key)
 
 //----------------------------------------------------------------- Function ---
 /**
+ * Clear given Hashmap entries.
+ * Does not clear the store.
+ *   -> nothing
+ */
+void hmap_clear(struct hmap *const hm)
+{
+	size_t capacity           = hm->capacity;
+	const size_t buckets_size = sizeof(*(hm->buckets)) * capacity;
+
+	memset(hm->buckets, 0, buckets_size);
+
+	for (size_t i = 0; i < capacity; i++) {
+		hm->buckets[i].meta = META_EMPTY;
+	}
+
+	hm->top = 0;
+}
+
+//----------------------------------------------------------------- Function ---
+/**
  * Free given Hashmap
  *   -> nothing
  */
-void hmap_free(struct hmap *const hashmap)
+void hmap_free(struct hmap *const hm)
 {
 	/* hashmap->buckets is the head of the single alloc pool */
-	XFREE(hashmap->buckets, "hmap_delete_hashmap");
-	XFREE(hashmap, "delete_hashmap");
+	XFREE(hm->buckets, "hmap_delete_hashmap");
+	XFREE(hm, "delete_hashmap");
 }
 
 //----------------------------------------------------------------- Function ---
@@ -476,7 +505,7 @@ struct hmap *hmap_new(const size_t n)
 	 */
 	const size_t hash_shift = 64 - 7 - n;
 
-	struct hmap hashmap_init = {NULL, NULL, 0, hash_shift, capacity, 0};
+	struct hmap hashmap_init = {NULL, NULL, 0, hash_shift, capacity};
 
 	struct hmap *const new_hashmap =
 	    XMALLOC(sizeof(struct hmap), "new_hashmap", "new_hashmap");
