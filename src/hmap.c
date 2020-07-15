@@ -411,11 +411,13 @@ static inline void destroy_entry(struct hmap *const hm, const size_t entry)
 		const char *const top_key = hm->store[hm->top].key;
 		const size_t top_bucket =
 		    find_n(hm, top_key, strnlen(top_key, HMAP_INLINE_KEY_SIZE));
+
 		printf(FG_BRIGHT_CYAN REVERSE
 		       "top key    : %s \n"
 		       "top bucket : %lu \n" RESET,
 		       top_key,
 		       top_bucket);
+
 		hm->buckets[top_bucket].entry = hm->buckets[entry].entry;
 		// hm->buckets[top_bucket]               = hm->buckets[entry];
 		hm->store[(hm->buckets[entry].entry)] = hm->store[hm->top];
@@ -681,6 +683,25 @@ void dump_hashmap(const struct hmap *const hm)
 	           100);
 	printf("max_distance        : %d\n", max_distance);
 }
+//----------------------------------------------------------------- Function ---
+/**
+ * Dump given Hashmap store
+ *   -> nothing
+ */
+void dump_store(const struct hmap *const hm)
+{
+
+	for (size_t i = 0; i < hm->top; i++) {
+		printf(FG_BRIGHT_BLACK REVERSE "\n store @[%lu] " RESET, i);
+		printf("%*.*s | %lu\n",
+			HMAP_INLINE_KEY_SIZE,
+			HMAP_INLINE_KEY_SIZE,
+			hm->store[i].key,
+			hm->store[i].value
+		);
+		print_bits(HMAP_INLINE_KEY_SIZE, hm->store[i].key);
+	}
+}
 
 //----------------------------------------------------------------- Function ---
 /**
@@ -841,12 +862,12 @@ int main(void)
 
 	size_t rand_length;
 	while (hashmap->top < load_count) {
-		rand_length = rand() % 16;
+		rand_length = rand() % 15 + 1;
 		for (size_t i = 0; i < rand_length; i++) {
 			random_key[i] = (char)(rand() % 26 + 0x61);
 		}
 		random_key[rand_length + 1] = '\0';
-		hmap_put(hashmap, random_key, hashmap->count);
+		hmap_put(hashmap, random_key, rand_length);
 	}
 
 	printf(FG_BRIGHT_YELLOW REVERSE "Done !\n" RESET);
@@ -931,6 +952,11 @@ int main(void)
 		if ((strcmp(key, "sum")) == 0) {
 			printf(FG_BLUE REVERSE "store sum_value        : %lu\n" RESET,
 			       sum_store(hashmap));
+			continue;
+		}
+		//-------------------------------------------------- store
+		if ((strcmp(key, "store")) == 0) {
+			dump_store(hashmap);
 			continue;
 		}
 
