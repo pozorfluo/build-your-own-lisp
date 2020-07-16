@@ -83,7 +83,7 @@
 	    "  - [ ] Consider parameterizing size of k and v\n"                    \
 	    "  - [ ] Consider a compact alternative where small kvps are in a "    \
 	    "separate array from metadata and are moved around. It saves 8 bytes " \
-	    "from the pointer and fan indirection but loses store pointer "        \
+	    "from the pointer and an indirection but loses store pointer "         \
 	    "stability\n"                                                          \
 	    "  - [ ] Consider that if you store the full hash instead of "         \
 	    "pointer/index to the store you lose store stability, ease of "        \
@@ -318,26 +318,34 @@ uint64_t mcg64()
 int main(void)
 {
 	puts(WELCOME_MESSAGE);
-
+#define STRINGIFY(_arg) #_arg
+#define XSTRINFIGY(_arg) STRINGIFY(_arg)
 #ifdef __AVX__
 	puts("__AVX__ 1");
-	printf("HMAP_PROBE_LENGTH %d\n", HMAP_PROBE_LENGTH);
 #endif /* __AVX__ */
 
-	printf("__WORDSIZE %d\n", __WORDSIZE);
-	printf("RAND_MAX  %d\n", RAND_MAX);
-	printf("SIZE_MAX  %lu\n", SIZE_MAX);
-	printf("UINT_MAX  %u\n", UINT_MAX);
-	printf("UINT64_MAX  %lu\n", UINT64_MAX);
-	printf("size_t %lu bytes\n", sizeof(size_t));
-	printf("struct hmap        %lu bytes\n", sizeof(struct hmap));
-	printf("struct hmap_bucket %lu bytes\n", sizeof(struct hmap_bucket));
-	printf("struct hmap_entry  %lu bytes\n", sizeof(struct hmap_entry));
-	printf("struct meta_byte   %lu bytes\n", sizeof(meta_byte));
-	// printf("HFUNC  %s\n", HFUNC);
-	// printf("HREDUCE  %s\n", HREDUCE);
-	// printf("HCMP  %s\n", HCMP);
-	// printf("HCOPY  %s\n", HCOPY);
+	printf("__WORDSIZE           %d\n", __WORDSIZE);
+	printf("RAND_MAX             %d\n", RAND_MAX);
+	printf("SIZE_MAX             %lu\n", SIZE_MAX);
+	printf("UINT_MAX             %u\n", UINT_MAX);
+	printf("UINT64_MAX           %lu\n", UINT64_MAX);
+	printf("HMAP_NOT_FOUND       %lu\n", HMAP_NOT_FOUND);
+	printf("size_t               %lu bytes\n", sizeof(size_t));
+	printf("struct hmap          %lu bytes\n", sizeof(struct hmap));
+	printf("struct hmap_bucket   %lu bytes\n", sizeof(struct hmap_bucket));
+	printf("struct hmap_entry    %lu bytes\n", sizeof(struct hmap_entry));
+	printf("struct meta_byte     %lu bytes\n", sizeof(meta_byte));
+	puts("HFUNC                " XSTRINFIGY(HFUNC));
+	puts("HREDUCE              " XSTRINFIGY(HREDUCE));
+	puts("HCMP                 " XSTRINFIGY(HCMP));
+	puts("HWIDTH               " XSTRINFIGY(HWIDTH));
+	puts("HMAP_INLINE_KEY_SIZE " XSTRINFIGY(HMAP_INLINE_KEY_SIZE));
+	puts("HMAP_MAX_LOAD        " XSTRINFIGY(HMAP_MAX_LOAD));
+	puts("HMAP_PROBE_LENGTH    " XSTRINFIGY(HMAP_PROBE_LENGTH));
+#ifdef HWIDTH_64
+	puts("64");
+#endif
+	// puts("HCOPY   "XSTRINFIGY(HCOPY));
 
 	// uint32_t seed = 31;
 	size_t n = 8;

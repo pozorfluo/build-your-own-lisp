@@ -7,14 +7,22 @@
 #define HMAP_H
 
 #include <stddef.h> /* size_t */
+#include <stdint.h>  /* SIZE_MAX */
 //------------------------------------------------------------ CONFIGURATION ---
 // #define SIMD_PROBE
+#if SIZE_MAX == 0xffffffffffffffffllu
+#define HWIDTH_64
+#define HWIDTH 64
+#else
+#define HWIDTH 32
+#endif
 #define HMAP_INLINE_KEY_SIZE 16
 #define HMAP_MAX_LOAD 0.75
 #define HFUNC hash_fnv1a
 #define HREDUCE reduce_fibo
 #define HCMP strncmp
-#define HCOPY strcpy
+// #define HCOPY strcpy
+
 //------------------------------------------------------------ MAGIC NUMBERS ---
 #define HMAP_NOT_FOUND SIZE_MAX
 #define HMAP_PROBE_LENGTH 32
