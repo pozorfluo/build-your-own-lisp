@@ -43,9 +43,11 @@ struct hmap_entry {
 };
 
 struct hmap_bucket {
-	meta_byte meta;     /* 1 byte per bucket */
-	meta_byte distance; /* 1 byte per bucket */
-	size_t entry;       /* sizeof(size_t) bytes per bucket */
+	meta_byte meta;
+	meta_byte distance;
+	size_t entry; /* __WORDSIZE hash xored with entry ptr */
+	/* 6 bytes of padding to use for metadata, entry type union info, bigger
+	 * meta_byte... */
 };
 
 /**

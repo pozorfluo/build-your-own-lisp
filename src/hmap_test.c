@@ -25,12 +25,14 @@
 	    " hmap version 0.26.3 " RESET FG_BRIGHT_BLUE                           \
 	    " type exit to quit\n" RESET FG_BRIGHT_RED REVERSE                     \
 	    "   todo \n" RESET FG_BRIGHT_RED                                       \
+	    "  - [ ] Consider storing __WORDSIZE hash xored with entry ptr\n"      \
+	    "    + [ ] Iterate over the store to rebuild map on resize"           \
 	    "  - [ ] Implement ILL STORE\n"                                        \
 	    "    + [ ] Track empty store slots with a stack using an internal "    \
-		"linked list in the empty slots themselves\n"                          \
+	    "linked list in the empty slots themselves\n"                          \
 	    "    + [ ] Point top to empty slot where next entry is pushed\n"       \
 	    "    + [ ] Use union on entry value, either its a value or the index " \
-		"of the next empty slot\n"                                             \
+	    "of the next empty slot\n"                                             \
 	    "  - [ ] Redo Packing\n"                                               \
 	    "    + [ ] Use the 6 bytes of padding in buckets for extra hash\n"     \
 	    "    + [ ] Consider inlining entry in bucket\n"                        \
