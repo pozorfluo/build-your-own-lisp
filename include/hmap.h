@@ -10,6 +10,7 @@
 //------------------------------------------------------------ CONFIGURATION ---
 // #define SIMD_PROBE
 #define HMAP_INLINE_KEY_SIZE 16
+#define HMAP_MAX_LOAD 0.75
 #define HFUNC hash_fnv1a
 #define HREDUCE reduce_fibo
 #define HCMP strncmp

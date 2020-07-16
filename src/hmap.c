@@ -486,61 +486,57 @@ void hmap_free(struct hmap *const hm)
  */
 struct hmap *hmap_new(const size_t n)
 {
-	//---------------------------------------------- advertised capacity
 	/* tab_hash requires a mininum of 8 bits of hash space */
 	/* including the 7 bits required for meta_byte */
 	size_t capacity = (n < 1) ? (1u << 1) : (1u << n);
-	// const size_t hash_depth = capacity << 7;
 
-	//-------------------------------------------------------- hmap init
-	/* actual capacity */
+	/* map actual capacity, store is smaller depending on set HMAP_MAX_LOAD */
 	capacity += HMAP_PROBE_LENGTH;
 
 	/**
 	 * shift amount necessary for desired hash depth including the 7 bits
 	 * required for meta_byte with reduce function
-	 *
-	 * note
-	 *   this assumes __WORDSIZE == 64
 	 */
-	const size_t hash_shift = 64 - 7 - n;
+	const size_t hash_shift = __WORDSIZE - 7 - n;
 
-	struct hmap hashmap_init = {NULL, NULL, 0, hash_shift, capacity};
+	struct hmap *const new_hm =
+	    XMALLOC(sizeof(struct hmap), "new_hm", "new_hm");
 
-	struct hmap *const new_hashmap =
-	    XMALLOC(sizeof(struct hmap), "new_hashmap", "new_hashmap");
-	memcpy(new_hashmap, &hashmap_init, sizeof(struct hmap));
-
-	if (new_hashmap == NULL) {
+	if (new_hm == NULL) {
 		goto err_free_hashmap;
 	}
 
-	//----------------------------------------------------- buckets init
-	const size_t buckets_size = sizeof(*(new_hashmap->buckets)) * capacity;
-	const size_t store_size   = sizeof(*(new_hashmap->store)) * capacity;
+	const size_t buckets_size = sizeof(*(new_hm->buckets)) * capacity;
+	const size_t store_size =
+	    sizeof(*(new_hm->store)) * capacity * HMAP_MAX_LOAD + 1;
 
-	char *const pool =
-	    XMALLOC(buckets_size + store_size, "new_hashmap", "pool");
+	char *const pool = XMALLOC(buckets_size + store_size, "new_hm", "pool");
 
 	if (pool == NULL) {
 		goto err_free_pool;
 	}
 
-	new_hashmap->buckets = (struct hmap_bucket *)pool;
-	new_hashmap->store   = (struct hmap_entry *)(pool + buckets_size);
+	struct hmap init_hm = {.buckets = (struct hmap_bucket *)pool,
+	                       .store = (struct hmap_entry *)(pool + buckets_size),
+	                       .top   = 0,
+	                       .hash_shift = hash_shift,
+	                       .capacity   = capacity};
+	*new_hm = init_hm;
 
-	/* The value is passed as an int, but the function fills the block of
-	 * memory using the unsigned char conversion of this value */
-	memset(new_hashmap->buckets, 0, buckets_size);
+	/* XMALLOC is calling calloc / takes cares of setting mem to 0 */
+	// memset(new_hm->buckets, 0, buckets_size);
 
 	for (size_t i = 0; i < capacity; i++) {
-		new_hashmap->buckets[i].meta = META_EMPTY;
+		new_hm->buckets[i].meta = META_EMPTY;
 		// printf("init bucket[%lu] = {%02hhd, %02hhd, %lu}\n",
 		//        i,
-		//        new_hashmap->buckets[i].meta,
-		//        new_hashmap->buckets[i].distance,
-		//        new_hashmap->buckets[i].entry);
+		//        new_hm->buckets[i].meta,
+		//        new_hm->buckets[i].distance,
+		//        new_hm->buckets[i].entry);
 	}
+
+	printf(FG_BRIGHT_CYAN REVERSE " store_size : %lu \n" RESET,
+	       (size_t)(capacity * HMAP_MAX_LOAD + 1));
 	/**
 	 * Because distances are initialized to 0
 	 * and set to 0 when removing an entry
@@ -550,12 +546,12 @@ struct hmap *hmap_new(const size_t n)
 	/* Is this enough to be able to check if ptr == NULL ? */
 
 	//------------------------------------------------------- store init
-	return new_hashmap;
+	return new_hm;
 
 /* free(NULL) is ok, correct ? */
 err_free_pool:
 	XFREE(pool, "hmap_new err_free_arrays");
 err_free_hashmap:
-	XFREE(new_hashmap, "new_hashmap");
+	XFREE(new_hm, "new_hm");
 	return NULL;
 }

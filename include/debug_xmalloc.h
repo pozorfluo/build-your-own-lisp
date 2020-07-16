@@ -53,7 +53,8 @@ void xfree(void *pointer, const char *pointer_name, const char *origin)
 #define XFREE(_pointer, _origin) xfree(_pointer, #_pointer, _origin)
 
 #else
-#define XMALLOC(_size, _origin, _destination) malloc(_size)
+// #define XMALLOC(_size, _origin, _destination) malloc(_size)
+#define XMALLOC(_size, _origin, _destination) calloc(1, _size)
 #define XFREE(_pointer, _origin) free(_pointer)
 #endif
 
