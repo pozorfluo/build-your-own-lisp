@@ -38,6 +38,9 @@ static inline size_t hash_djb2_alt(const char *const key, size_t length)
 
 static inline size_t hash_kh_str(const char *const key, size_t length)
     __attribute__((pure, always_inline));
+	
+static inline size_t hash_fnv1a(const char *const key, size_t length)
+    __attribute__((pure, always_inline));
 
 static inline size_t reduce_fibo(const size_t hash, const size_t shift)
     __attribute__((const, always_inline));
@@ -85,6 +88,24 @@ static inline size_t hash_multiplicative(const char *const key, size_t length)
 
 	while (length--) {
 		hash = HSEED * hash + *c++;
+	}
+
+	return hash;
+}
+//----------------------------------------------------------------- Function ---
+/**
+ * Return a 64 bits fnv-1a style hash for given key.
+ */
+static inline size_t hash_fnv1a(const char *const key, size_t length)
+{
+	HFUNC_REGISTER size_t hash = 0;
+	// HFUNC_REGISTER size_t i               = length;
+	HFUNC_REGISTER const unsigned char *c = (const unsigned char *)key;
+
+	while (length--) {
+		hash ^= *c++;
+		hash += (hash << 1) + (hash << 4) + (hash << 5) + (hash << 7) +
+		        (hash << 8) + (hash << 40);
 	}
 
 	return hash;
