@@ -97,7 +97,8 @@
 //------------------------------------------------------------ MAGIC NUMBERS ---
 
 //------------------------------------------------------------------- MACROS ---
-
+#define STRINGIFY(_arg) #_arg
+#define XSTRINFIGY(_arg) STRINGIFY(_arg)
 //------------------------------------------------------------- DECLARATIONS ---
 
 //----------------------------------------------------- FORWARD DECLARATIONS ---
@@ -318,8 +319,6 @@ uint64_t mcg64()
 int main(void)
 {
 	puts(WELCOME_MESSAGE);
-#define STRINGIFY(_arg) #_arg
-#define XSTRINFIGY(_arg) STRINGIFY(_arg)
 #ifdef __AVX__
 	puts("__AVX__ 1");
 #endif /* __AVX__ */
@@ -348,24 +347,25 @@ int main(void)
 	// puts("HCOPY   "XSTRINFIGY(HCOPY));
 
 	// uint32_t seed = 31;
-	size_t n = 8;
+	size_t requested_capacity = 100;
 	float load_factor;
 	int unused_result __attribute__((unused));
 	char *unused_result_s __attribute__((unused));
 
 	fputs(FG_BRIGHT_BLUE REVERSE
-	      "Table size is 2^n. Enter n ( default n = 8 ) ? " RESET,
+	    //   "Table size is 2^n. Enter n ( default n = 8 ) ? " RESET,
+	      "Enter requested capacity ? " RESET,
 	      stdout);
-	unused_result = scanf("%lu", &n);
+	unused_result = scanf("%lu", &requested_capacity);
 
-	struct hmap *const hashmap = hmap_new(n);
+	struct hmap *const hashmap = hmap_new(requested_capacity);
 
 	fputs(FG_BLUE REVERSE "Enter desired load factor ? " RESET, stdout);
 	unused_result = scanf("%f", &load_factor);
 
 	//---------------------------------------------------------------- setup
 	SETUP_BENCH(repl);
-	size_t load_count = (1 << n) * load_factor;
+	size_t load_count = requested_capacity * load_factor;
 	printf("load_factor = %f\n", load_factor);
 	printf("load_count  = %lu\n", load_count);
 	// size_t capacity  = hashmap->capacity;

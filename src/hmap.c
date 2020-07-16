@@ -37,6 +37,26 @@ static inline size_t find_or_empty(const struct hmap *const hashmap,
                                    const meta_byte meta)
     __attribute__((pure, always_inline));
 
+static inline size_t next_pow2(size_t v) __attribute__((const, always_inline));
+//----------------------------------------------------------------- Function ---
+/**
+ * Return next higher power of 2.
+ *
+ * see https://graphics.stanford.edu/~seander/bithacks.html
+ */
+static inline size_t next_pow2(size_t v)
+{
+	v--;
+	v |= v >> 1;
+	v |= v >> 2;
+	v |= v >> 4;
+	v |= v >> 8;
+	v |= v >> 16;
+#ifdef HWIDTH_64
+	v |= v >> 32;
+#endif
+	return ++v;
+}
 //----------------------------------------------------------------- Function ---
 static inline size_t hash_index(const size_t hash) { return hash >> 7; }
 //----------------------------------------------------------------- Function ---
@@ -484,20 +504,25 @@ void hmap_free(struct hmap *const hm)
  *     + [ ] Compute next 2^(n) - 1 from requested_capacity
  *   - [ ] Clear confusion around n / shift amount and rename n
  */
-struct hmap *hmap_new(const size_t n)
+struct hmap *hmap_new(const size_t requested_capacity)
 {
 	/* tab_hash requires a mininum of 8 bits of hash space */
 	/* including the 7 bits required for meta_byte */
-	size_t capacity = (n < 1) ? (1u << 1) : (1u << n);
+	// size_t capacity = (n < 1) ? (1u << 1) : (1u << n);
 
-	/* map actual capacity, store is smaller depending on set HMAP_MAX_LOAD */
-	capacity += HMAP_PROBE_LENGTH;
+	/* map actual capacity */
+	size_t map_capacity =
+	    next_pow2(requested_capacity / HMAP_MAX_LOAD) + HMAP_PROBE_LENGTH;
 
 	/**
 	 * shift amount necessary for desired hash depth including the 7 bits
 	 * required for meta_byte with reduce function
+	 * 
+	 * todo
+	 *   - [ ] Look for a portable __builtin_clzll alternative
 	 */
-	const size_t hash_shift = __WORDSIZE - 7 - n;
+	const size_t hash_shift =
+	    HWIDTH - 7 - ((HWIDTH - 1) - __builtin_clzll(map_capacity));
 
 	struct hmap *const new_hm =
 	    XMALLOC(sizeof(struct hmap), "new_hm", "new_hm");
@@ -506,9 +531,9 @@ struct hmap *hmap_new(const size_t n)
 		goto err_free_hashmap;
 	}
 
-	const size_t buckets_size = sizeof(*(new_hm->buckets)) * capacity;
+	const size_t buckets_size = sizeof(*(new_hm->buckets)) * map_capacity;
 	const size_t store_size =
-	    sizeof(*(new_hm->store)) * capacity * HMAP_MAX_LOAD + 1;
+	    sizeof(*(new_hm->store)) * (requested_capacity + 1);
 
 	char *const pool = XMALLOC(buckets_size + store_size, "new_hm", "pool");
 
@@ -520,23 +545,22 @@ struct hmap *hmap_new(const size_t n)
 	                       .store = (struct hmap_entry *)(pool + buckets_size),
 	                       .top   = 0,
 	                       .hash_shift = hash_shift,
-	                       .capacity   = capacity};
+	                       .capacity   = map_capacity};
 	*new_hm = init_hm;
 
 	/* XMALLOC is calling calloc / takes cares of setting mem to 0 */
 	// memset(new_hm->buckets, 0, buckets_size);
 
-	for (size_t i = 0; i < capacity; i++) {
+	for (size_t i = 0; i < map_capacity; i++) {
 		new_hm->buckets[i].meta = META_EMPTY;
-		// printf("init bucket[%lu] = {%02hhd, %02hhd, %lu}\n",
-		//        i,
-		//        new_hm->buckets[i].meta,
-		//        new_hm->buckets[i].distance,
-		//        new_hm->buckets[i].entry);
 	}
 
 	printf(FG_BRIGHT_CYAN REVERSE " store_size : %lu \n" RESET,
-	       (size_t)(capacity * HMAP_MAX_LOAD + 1));
+	       (size_t)(requested_capacity + 1));
+	printf(FG_CYAN REVERSE " capacity : %lu \n" RESET,
+	       (size_t)(map_capacity));
+	printf(FG_BLUE REVERSE " hash_shift : %lu \n" RESET,
+	       (size_t)(hash_shift));
 	/**
 	 * Because distances are initialized to 0
 	 * and set to 0 when removing an entry
