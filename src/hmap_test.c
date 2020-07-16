@@ -25,11 +25,17 @@
 	    " hmap version 0.26.3 " RESET FG_BRIGHT_BLUE                           \
 	    " type exit to quit\n" RESET FG_BRIGHT_RED REVERSE                     \
 	    "   todo \n" RESET FG_BRIGHT_RED                                       \
+	    "  - [ ] Implement ILL STORE\n"                                        \
+	    "    + [ ] Track empty store slots with a stack using an internal "    \
+		"linked list in the empty slots themselves\n"                          \
+	    "    + [ ] Point top to empty slot where next entry is pushed\n"       \
+	    "    + [ ] Use union on entry value, either its a value or the index " \
+		"of the next empty slot\n"                                             \
 	    "  - [ ] Redo Packing\n"                                               \
 	    "    + [ ] Use the 6 bytes of padding in buckets for extra hash\n"     \
 	    "    + [ ] Consider inlining entry in bucket\n"                        \
 	    "  - [ ] Implement Resize\n"                                           \
-	    "  - [x] Consider that hmap count and top and "                        \
+	    "  - [x] Consider that hmap count and top are "                        \
 	    "redundant\n" FG_BRIGHT_YELLOW                                         \
 	    "  - [x] Reconsider tab_hash\n"                                        \
 	    "  - [ ] Consider reading fixed size keys as n uint64_t\n"             \
