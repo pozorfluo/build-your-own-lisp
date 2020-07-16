@@ -25,9 +25,7 @@
 	    " hmap version 0.26.3 " RESET FG_BRIGHT_BLUE                           \
 	    " type exit to quit\n" RESET FG_BRIGHT_RED REVERSE                     \
 	    "   todo \n" RESET FG_BRIGHT_RED                                       \
-	    "  - [ ] Use requested capacity to set store size\n"                   \
-	    "    + [ ] Derive n, map capacity from store size / HMAP_MAX_LOAD"     \
-	    "  - [ ] Consider storing __WORDSIZE hash xored with entry ptr\n"      \
+	    "  - [ ] Consider storing sizeof(size_t) hash xored with entry ptr\n"  \
 	    "    + [ ] Iterate over the store to rebuild map on resize"            \
 	    "  - [ ] Implement ILL STORE\n"                                        \
 	    "    + [ ] Track empty store slots with a stack using an internal "    \
@@ -39,6 +37,8 @@
 	    "    + [ ] Use the 6 bytes of padding in buckets for extra hash\n"     \
 	    "    + [ ] Consider inlining entry in bucket\n"                        \
 	    "  - [ ] Implement Resize\n"                                           \
+	    "  - [x] Use requested capacity to set store size\n"                   \
+	    "    + [x] Derive n, map capacity from store size / HMAP_MAX_LOAD"     \
 	    "  - [x] Consider that hmap count and top are "                        \
 	    "redundant\n" FG_BRIGHT_YELLOW                                         \
 	    "  - [x] Reconsider tab_hash\n"                                        \
@@ -353,7 +353,7 @@ int main(void)
 	char *unused_result_s __attribute__((unused));
 
 	fputs(FG_BRIGHT_BLUE REVERSE
-	    //   "Table size is 2^n. Enter n ( default n = 8 ) ? " RESET,
+	      //   "Table size is 2^n. Enter n ( default n = 8 ) ? " RESET,
 	      "Enter requested capacity ? " RESET,
 	      stdout);
 	unused_result = scanf("%lu", &requested_capacity);
