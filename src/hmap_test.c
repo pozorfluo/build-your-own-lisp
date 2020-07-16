@@ -25,8 +25,10 @@
 	    " hmap version 0.26.3 " RESET FG_BRIGHT_BLUE                           \
 	    " type exit to quit\n" RESET FG_BRIGHT_RED REVERSE                     \
 	    "   todo \n" RESET FG_BRIGHT_RED                                       \
+	    "  - [ ] Use requested capacity to set store size\n"                   \
+	    "    + [ ] Derive n, map capacity from store size / HMAP_MAX_LOAD"     \
 	    "  - [ ] Consider storing __WORDSIZE hash xored with entry ptr\n"      \
-	    "    + [ ] Iterate over the store to rebuild map on resize"           \
+	    "    + [ ] Iterate over the store to rebuild map on resize"            \
 	    "  - [ ] Implement ILL STORE\n"                                        \
 	    "    + [ ] Track empty store slots with a stack using an internal "    \
 	    "linked list in the empty slots themselves\n"                          \
