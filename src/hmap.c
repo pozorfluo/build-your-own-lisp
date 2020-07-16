@@ -139,15 +139,15 @@ static inline size_t find_n(const struct hmap *const hm,
 	//        index,
 	//        meta);
 
-	putchar('\n');
+	// putchar('\n');
 	do {
 		if (hm->buckets[index].meta == meta) {
 			// if (hm->store[(hm->buckets[index].entry)].key == key) {
-			putchar('.');
+			// putchar('.');
 			if (HCMP(hm->store[(hm->buckets[index].entry)].key,
 			         key,
 			         HMAP_INLINE_KEY_SIZE) == 0) {
-				putchar('!');
+				// putchar('!');
 				/* Found key ! */
 				return index;
 			}
@@ -156,10 +156,10 @@ static inline size_t find_n(const struct hmap *const hm,
 			/* if there is any empty slot*/
 			/* no need to check the next */
 			/* -> key does NOT exist */
-			putchar('o');
+			// putchar('o');
 			break;
 		}
-		putchar('x');
+		// putchar('x');
 		index++;
 	} while (index < hm->capacity);
 
@@ -183,14 +183,14 @@ static inline size_t find_or_empty(const struct hmap *const hm,
                                    size_t index,
                                    const meta_byte meta)
 {
-	putchar('\n');
+	// putchar('\n');
 	do {
 		if (hm->buckets[index].meta == meta) {
-			putchar('.');
+			// putchar('.');
 			if (HCMP(hm->store[(hm->buckets[index].entry)].key,
 			         key,
 			         HMAP_INLINE_KEY_SIZE) == 0) {
-				putchar('!');
+				// putchar('!');
 				/* Found key ! */
 				return index;
 			}
@@ -199,10 +199,10 @@ static inline size_t find_or_empty(const struct hmap *const hm,
 			/* if there is any empty slot*/
 			/* no need to check the next */
 			/* -> key does NOT exist */
-			putchar('o');
+			// putchar('o');
 			return index;
 		}
-		putchar('x');
+		// putchar('x');
 		index++;
 	} while (index < hm->capacity);
 
@@ -290,7 +290,7 @@ size_t hmap_put(struct hmap *const hm,
 			if (hm->buckets[bucket].distance <=
 			    hm->buckets[bucket - 1].distance) {
 
-				printf("slingshot[ %lu -> %lu ]\n", candidate, bucket);
+				// printf("slingshot[ %lu -> %lu ]\n", candidate, bucket);
 				hm->buckets[candidate].distance =
 				    hm->buckets[bucket].distance + candidate - bucket;
 
@@ -417,7 +417,7 @@ size_t hmap_remove(struct hmap *const hm, const char *const key)
 			hm->buckets[bucket] = hm->buckets[bucket + 1];
 			hm->buckets[bucket].distance--;
 
-			printf("backwardshiftdel[ %lu -> %lu ]\n", bucket + 1, bucket);
+			// printf("backwardshiftdel[ %lu -> %lu ]\n", bucket + 1, bucket);
 		}
 		/* mark entry distance in last shifted bucket as @home or empty */
 		hm->buckets[stop_bucket - 1].distance = 0;

@@ -1,12 +1,12 @@
 //------------------------------------------------------------------ SUMMARY ---
 /**
- * 
+ *
  */
-#include <stdio.h>
+#include <limits.h> /* UINT_MAX */
 #include <stddef.h> /* size_t */
 #include <stdint.h> /* uint32_t, uint64_t */
+#include <stdio.h>
 #include <stdlib.h> /* malloc, rand */
-#include <limits.h> /* UINT_MAX */
 #include <string.h> /* memcpy, strlen, strnlen */
 
 #include "ansi_esc.h"
@@ -25,10 +25,13 @@
 	    " hmap version 0.26.3 " RESET FG_BRIGHT_BLUE                           \
 	    " type exit to quit\n" RESET FG_BRIGHT_RED REVERSE                     \
 	    "   todo \n" RESET FG_BRIGHT_RED                                       \
-	    "  - [ ] Reconsider tab_hash\n"                                        \
+	    "  - [ ] Redo Packing\n"                                               \
+	    "    + [ ] Use the 6 bytes of padding in buckets for extra hash\n"     \
+	    "    + [ ] Consider inlining entry in bucket\n"                        \
 	    "  - [ ] Implement Resize\n"                                           \
-	    "  - [ ] Consider that hmap count and top and "                        \
+	    "  - [x] Consider that hmap count and top and "                        \
 	    "redundant\n" FG_BRIGHT_YELLOW                                         \
+	    "  - [x] Reconsider tab_hash\n"                                        \
 	    "  - [ ] Consider reading fixed size keys as n uint64_t\n"             \
 	    "    + [x] Use it for HFUNC\n"                                         \
 	    "    + [x] Use it for HCMP\n"                                          \
@@ -162,16 +165,17 @@ void dump_hashmap(const struct hmap *const hm)
 		                   : max_distance;
 		printf("\x1b[9%dm" REVERSE " hmap->bucket[%lu]>>" RESET, colour, i);
 
-		printf(
-		    FG_BRIGHT_BLACK REVERSE
-		    " home[%lu] d[%d] m[%d] stored @[%lu] " RESET,
-		    (HREDUCE(HFUNC(key, strnlen(key, HMAP_INLINE_KEY_SIZE)),
-		                       hm->hash_shift)) >> 7,
-		    // hash_index(HREDUCE(HFUNC(key, strnlen(key, HMAP_INLINE_KEY_SIZE)),
-		    //                    hm->hash_shift)),
-		    hm->buckets[i].distance,
-		    hm->buckets[i].meta,
-		    hm->buckets[i].entry);
+		printf(FG_BRIGHT_BLACK REVERSE
+		       " home[%lu] d[%d] m[%d] stored @[%lu] " RESET,
+		       (HREDUCE(HFUNC(key, strnlen(key, HMAP_INLINE_KEY_SIZE)),
+		                hm->hash_shift)) >>
+		           7,
+		       // hash_index(HREDUCE(HFUNC(key, strnlen(key,
+		       // HMAP_INLINE_KEY_SIZE)),
+		       //                    hm->hash_shift)),
+		       hm->buckets[i].distance,
+		       hm->buckets[i].meta,
+		       hm->buckets[i].entry);
 
 		printf("\n%*.*s | ", HMAP_INLINE_KEY_SIZE, HMAP_INLINE_KEY_SIZE, key);
 		// printf("    \t: %*.*s | %lu ",
@@ -200,11 +204,10 @@ void dump_store(const struct hmap *const hm)
 	for (size_t i = 0; i < hm->top; i++) {
 		printf(FG_BRIGHT_BLACK REVERSE "\n store @[%lu] " RESET, i);
 		printf("%*.*s | %lu\n",
-			HMAP_INLINE_KEY_SIZE,
-			HMAP_INLINE_KEY_SIZE,
-			hm->store[i].key,
-			hm->store[i].value
-		);
+		       HMAP_INLINE_KEY_SIZE,
+		       HMAP_INLINE_KEY_SIZE,
+		       hm->store[i].key,
+		       hm->store[i].value);
 		print_bits(HMAP_INLINE_KEY_SIZE, hm->store[i].key);
 	}
 }
@@ -300,7 +303,7 @@ uint64_t mcg64()
 }
 //--------------------------------------------------------------------- MAIN ---
 /**
- * 
+ *
  */
 int main(void)
 {
