@@ -338,6 +338,22 @@ size_t hmap_put(struct hmap *const hm,
 
 		hm->store[hm->top].value = value;
 		hm->top++;
+
+		printf(FG_BRIGHT_GREEN REVERSE
+		       " hash         %lu \n" RESET
+		       " hash reduced %lu \n"
+		       " home         %lu \n"
+		       " candidate    %lu \n"
+		       " meta         %lu \n"
+		       " entry        %lu \n"
+		       " entry ^ hash %lu \n" ,
+		       HFUNC(key, key_size),
+		       HREDUCE(HFUNC(key, key_size), hm->hash_shift),
+		       home,
+		       candidate,
+		       (size_t)meta,
+		       hm->buckets[candidate].entry,
+		       HFUNC(key, key_size) ^ hm->buckets[candidate].entry);
 	}
 	//------------------------------------------------------ given key found
 	else {
@@ -517,7 +533,7 @@ struct hmap *hmap_new(const size_t requested_capacity)
 	/**
 	 * shift amount necessary for desired hash depth including the 7 bits
 	 * required for meta_byte with reduce function
-	 * 
+	 *
 	 * todo
 	 *   - [ ] Look for a portable __builtin_clzll alternative
 	 */
@@ -557,10 +573,8 @@ struct hmap *hmap_new(const size_t requested_capacity)
 
 	printf(FG_BRIGHT_CYAN REVERSE " store_size : %lu \n" RESET,
 	       (size_t)(requested_capacity + 1));
-	printf(FG_CYAN REVERSE " capacity : %lu \n" RESET,
-	       (size_t)(map_capacity));
-	printf(FG_BLUE REVERSE " hash_shift : %lu \n" RESET,
-	       (size_t)(hash_shift));
+	printf(FG_CYAN REVERSE " capacity : %lu \n" RESET, (size_t)(map_capacity));
+	printf(FG_BLUE REVERSE " hash_shift : %lu \n" RESET, (size_t)(hash_shift));
 	/**
 	 * Because distances are initialized to 0
 	 * and set to 0 when removing an entry
