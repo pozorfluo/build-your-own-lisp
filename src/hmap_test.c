@@ -358,7 +358,8 @@ int main(void)
 	      stdout);
 	unused_result = scanf("%lu", &requested_capacity);
 
-	struct hmap *const hashmap = hmap_new(requested_capacity);
+	// struct hmap *const hashmap = hmap_new(requested_capacity);
+	struct hmap *hashmap = hmap_new(requested_capacity);
 
 	fputs(FG_BLUE REVERSE "Enter desired load factor ? " RESET, stdout);
 	unused_result = scanf("%f", &load_factor);
@@ -489,6 +490,32 @@ int main(void)
 			dump_store(hashmap);
 			continue;
 		}
+		//-------------------------------------------------- rehash
+		if ((strcmp(key, "rehash")) == 0) {
+			if (hashmap->top > 0) {
+				struct hmap *const hashmap_2x = hmap_new(load_count * 2);
+				printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
+				       hashmap->top);
+				size_t store_index = hashmap->top;
+				while (store_index--) {
+					hmap_put(hashmap_2x,
+					         hashmap->store[store_index].key,
+					         hashmap->store[store_index].value);
+					// result = HREDUCE(HFUNC(k, strnlen(k,
+					// HMAP_INLINE_KEY_SIZE)),
+					//                  hashmap->hash_shift);
+				}
+				dump_stats(hashmap_2x);
+				puts(FG_BRIGHT_MAGENTA REVERSE
+				     "This is worse than reallocing the store and rehashing to"
+				     " a bigger map." RESET);
+
+				hmap_free(hashmap);
+				hashmap = hashmap_2x;
+				load_count *= 2;
+			}
+			continue;
+		}
 
 		//-------------------------------------------------- findall
 		if ((strcmp(key, "findall")) == 0) {
@@ -557,12 +584,12 @@ int main(void)
 					}
 				}
 				if (error_count | not_found_count) {
-					printf(
-					    FG_BRIGHT_RED REVERSE
-					    " [ NOK ] " RESET FG_BRIGHT_RED BG_BLACK
-					    " %lu error(s), %lu existing key(s) but not found.\n",
-					    error_count,
-					    not_found_count);
+					printf(FG_BRIGHT_RED REVERSE
+					       " [ NOK ] " RESET FG_BRIGHT_RED BG_BLACK
+					       " %lu error(s), %lu existing key(s) but not "
+					       "found.\n",
+					       error_count,
+					       not_found_count);
 				}
 				else {
 					printf(FG_BRIGHT_GREEN REVERSE " [ OK ] \n" RESET);

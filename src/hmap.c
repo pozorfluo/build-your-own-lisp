@@ -339,21 +339,21 @@ size_t hmap_put(struct hmap *const hm,
 		hm->store[hm->top].value = value;
 		hm->top++;
 
-		printf(FG_BRIGHT_GREEN REVERSE
-		       " hash         %lu \n" RESET
-		       " hash reduced %lu \n"
-		       " home         %lu \n"
-		       " candidate    %lu \n"
-		       " meta         %lu \n"
-		       " entry        %lu \n"
-		       " entry ^ hash %lu \n" ,
-		       HFUNC(key, key_size),
-		       HREDUCE(HFUNC(key, key_size), hm->hash_shift),
-		       home,
-		       candidate,
-		       (size_t)meta,
-		       hm->buckets[candidate].entry,
-		       HFUNC(key, key_size) ^ hm->buckets[candidate].entry);
+		// printf(FG_BRIGHT_GREEN REVERSE
+		//        " hash         %lu \n" RESET
+		//        " hash reduced %lu \n"
+		//        " home         %lu \n"
+		//        " candidate    %lu \n"
+		//        " meta         %lu \n"
+		//        " entry        %lu \n"
+		//        " entry ^ hash %lu \n" ,
+		//        HFUNC(key, key_size),
+		//        HREDUCE(HFUNC(key, key_size), hm->hash_shift),
+		//        home,
+		//        candidate,
+		//        (size_t)meta,
+		//        hm->buckets[candidate].entry,
+		//        HFUNC(key, key_size) ^ hm->buckets[candidate].entry);
 	}
 	//------------------------------------------------------ given key found
 	else {
