@@ -288,15 +288,13 @@ size_t hmap_get(const struct hmap *const hm, const char *const key)
  * todo
  *   - [ ] Add hmap fitness / resize trigger logic
  */
-size_t hmap_put(struct hmap *const hm,
-                const char *const key,
-                const size_t value)
+size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 {
 	/* Prepare temp entry */
-	const size_t key_size = strnlen(key, HMAP_INLINE_KEY_SIZE);
-	const size_t hash     = HREDUCE(HFUNC(key, key_size), hm->hash_shift);
-	const size_t home     = hash_index(hash);
-	const meta_byte meta  = hash_meta(hash);
+	size_t key_size      = strnlen(key, HMAP_INLINE_KEY_SIZE);
+	const size_t hash    = HREDUCE(HFUNC(key, key_size), hm->hash_shift);
+	const size_t home    = hash_index(hash);
+	const meta_byte meta = hash_meta(hash);
 
 	/* Find given key or first empty slot */
 	size_t candidate = find_or_empty(hm, key, home, meta);
@@ -327,14 +325,25 @@ size_t hmap_put(struct hmap *const hm,
 
 		/* Same as strncpy but not caring about result being null terminated */
 		// size_t key_size = strnlen(key, HMAP_INLINE_KEY_SIZE);
-		char *dest    = hm->store[hm->top].key;
-		size_t length = HMAP_INLINE_KEY_SIZE;
+// 		char *dest    = hm->store[hm->top].key;
+// 		size_t length = HMAP_INLINE_KEY_SIZE;
 
-		while (length--) {
-			// printf("%lu\n", length);
-			*dest++ = '\0';
-		}
+// 		while (length--) {
+// 			// printf("%lu\n", length);
+// 			*dest++ = '\0';
+// 		}
+// 				dest = hm->store[hm->top].key;
+// #pragma GCC ivdep
+// 		while (key_size--) {
+// 			*dest++ = *key++;
+// 		}
+		/**
+		 * Compiler is clever enough, no need to flex.
+		 * see https://godbolt.org/z/cM948a
+		 */
+		memset( hm->store[hm->top].key, '\0', HMAP_INLINE_KEY_SIZE);
 		memcpy(hm->store[hm->top].key, key, key_size);
+
 
 		hm->store[hm->top].value = value;
 		hm->top++;
