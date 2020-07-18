@@ -8,6 +8,7 @@
  */
 
 #include <errno.h>
+#include <stddef.h> /* offsetof */
 #include <stdint.h> /* uint32_t, uint64_t */
 #include <stdio.h>
 #include <stdlib.h> /* malloc */
@@ -109,18 +110,6 @@ static inline int compare_fixed128_keys(const char *const key_a,
 //----------------------------------------------------------------- Function ---
 size_t hmap_find(const struct hmap *const hm, const char *const key)
 {
-	// /* truncate or pad with \0 given key to HMAP_INLINE_KEY_SIZE */
-	// size_t key_size = strnlen(key, HMAP_INLINE_KEY_SIZE);
-	// if (key_size != HMAP_INLINE_KEY_SIZE) {
-	// 	char padded_key[HMAP_INLINE_KEY_SIZE] = {'\0'};
-	// 	char *dest                            = &padded_key;
-	// 	char *src                             = key;
-	// 	while (key_size--) {
-	// 		*dest++ = *src++;
-	// 	}
-	// 	key = &padded_key;
-	// }
-
 	return find_n(hm, key, strnlen(key, HMAP_INLINE_KEY_SIZE));
 }
 
@@ -162,7 +151,6 @@ static inline size_t find_n(const struct hmap *const hm,
 	// putchar('\n');
 	do {
 		if (hm->buckets[index].meta == meta) {
-			// if (hm->store[(hm->buckets[index].entry)].key == key) {
 			// putchar('.');
 			if (HCMP(hm->store[(hm->buckets[index].entry)].key,
 			         key,
@@ -325,25 +313,24 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 
 		/* Same as strncpy but not caring about result being null terminated */
 		// size_t key_size = strnlen(key, HMAP_INLINE_KEY_SIZE);
-// 		char *dest    = hm->store[hm->top].key;
-// 		size_t length = HMAP_INLINE_KEY_SIZE;
+		// 		char *dest    = hm->store[hm->top].key;
+		// 		size_t length = HMAP_INLINE_KEY_SIZE;
 
-// 		while (length--) {
-// 			// printf("%lu\n", length);
-// 			*dest++ = '\0';
-// 		}
-// 				dest = hm->store[hm->top].key;
-// #pragma GCC ivdep
-// 		while (key_size--) {
-// 			*dest++ = *key++;
-// 		}
+		// 		while (length--) {
+		// 			// printf("%lu\n", length);
+		// 			*dest++ = '\0';
+		// 		}
+		// 				dest = hm->store[hm->top].key;
+		// #pragma GCC ivdep
+		// 		while (key_size--) {
+		// 			*dest++ = *key++;
+		// 		}
 		/**
 		 * Compiler is clever enough, no need to flex.
 		 * see https://godbolt.org/z/cM948a
 		 */
-		memset( hm->store[hm->top].key, '\0', HMAP_INLINE_KEY_SIZE);
+		memset(hm->store[hm->top].key, '\0', HMAP_INLINE_KEY_SIZE);
 		memcpy(hm->store[hm->top].key, key, key_size);
-
 
 		hm->store[hm->top].value = value;
 		hm->top++;
@@ -477,7 +464,9 @@ size_t hmap_remove(struct hmap *const hm, const char *const key)
 //----------------------------------------------------------------- Function ---
 /**
  * Clear given Hashmap entries.
- * Does not clear the store.
+ *
+ * Does not clear the store. This should not be used if Hashmap is supposed to
+ * manage pointees with their sole pointer in the store.
  *   -> nothing
  */
 void hmap_clear(struct hmap *const hm)
@@ -584,6 +573,27 @@ struct hmap *hmap_new(const size_t requested_capacity)
 	       (size_t)(requested_capacity + 1));
 	printf(FG_CYAN REVERSE " capacity : %lu \n" RESET, (size_t)(map_capacity));
 	printf(FG_BLUE REVERSE " hash_shift : %lu \n" RESET, (size_t)(hash_shift));
+	printf(FG_BRIGHT_RED REVERSE
+	       " hmap                  -> %p \n"
+	       " buckets               -> %p \n"
+	       " store                 -> %p \n"
+	       " buckets offset         : %zu \n"
+	       " store   offset         : %zu \n"
+	       " pool                   : %lu bytes \n"
+	       " buckets                : %lu bytes \n"
+	       " store                  : %lu bytes \n"
+	       " buckets alignment ctrl : %lu bytes \n"
+	       " store   alignment ctrl : %lu bytes \n",
+	       (void *)new_hm,
+	       (void *)new_hm->buckets,
+	       (void *)new_hm->store,
+	       offsetof(struct hmap, buckets),
+	       offsetof(struct hmap, store),
+	       buckets_size + store_size,
+	       buckets_size,
+	       store_size,
+	       buckets_size % (__WORDSIZE / 8),
+	       store_size % (__WORDSIZE / 8));
 	/**
 	 * Because distances are initialized to 0
 	 * and set to 0 when removing an entry

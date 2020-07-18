@@ -37,11 +37,18 @@
 	    "  - [ ] Redo Packing\n"                                               \
 	    "    + [ ] Use the 6 bytes of padding in buckets for extra hash\n"     \
 	    "    + [ ] Consider inlining entry in bucket\n"                        \
+	    " - [ ] Consider there may be alignment problems with memory pool "    \
+	    "split. \n"                                                            \
+	    "    + [ ] Look for the C idiomatic way to split memory and prevent "  \
+	    "this. \n"                                                             \
+	    "    + [ ] Consider that it may not be a problem as "                  \
+	    "structures are properly aligned/padded here. \n"                      \
 	    "  - [ ] Implement Resize\n"                                           \
 	    "  - [x] Use requested capacity to set store size\n"                   \
 	    "    + [x] Derive n, map capacity from store size / HMAP_MAX_LOAD"     \
 	    "  - [x] Consider that hmap count and top are "                        \
 	    "redundant\n" FG_BRIGHT_YELLOW                                         \
+	    "  - [ ] Explore pointer tagging to keep track of value type/mode\n"   \
 	    "  - [x] Reconsider tab_hash\n"                                        \
 	    "  - [ ] Consider reading fixed size keys as n uint64_t\n"             \
 	    "    + [x] Use it for HFUNC\n"                                         \
