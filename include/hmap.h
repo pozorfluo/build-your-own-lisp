@@ -7,7 +7,7 @@
 #define HMAP_H
 
 #include <stddef.h> /* size_t */
-#include <stdint.h>  /* SIZE_MAX */
+#include <stdint.h> /* SIZE_MAX */
 //------------------------------------------------------------ CONFIGURATION ---
 // #define SIMD_PROBE
 #if SIZE_MAX == 0xffffffffffffffffllu
@@ -38,6 +38,29 @@ enum meta_ctrl {
 	/* aka 0 <= META_OCCUPIED < 128 */
 };
 
+/**
+ * note
+ *   Enums are int, use #define MY_OPTION_1 0x01u for bit flags.
+ */
+// enum value_type {
+// 	//----------------------------------------------- inline
+// 	V_UINT,
+// 	V_2_UINT,
+// 	V_4_UINT,
+// 	V_8_UINT,
+// 	V_INT,
+// 	V_2_INT,
+// 	V_4_INT,
+// 	V_8_INT,
+// 	V_2_FLOAT,
+// 	V_DOUBLE,
+// 	V_ISTR,
+// 	//--------------------------------------------- pointers
+// 	V_FUNC, /* Do not manage pointee */
+// 	V_PTR,  /* Do not manage pointee */
+// 	V_OBJ,  /* Will manage pointee */
+// 	V_STR   /* Will manage pointee */
+// };
 /**
  * todo Rework this for a more generic setup when you are more comfortable using
  *      unions.

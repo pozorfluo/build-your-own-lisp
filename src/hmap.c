@@ -40,7 +40,7 @@ static inline size_t find_or_empty(const struct hmap *const hashmap,
 static inline size_t next_pow2(size_t v) __attribute__((const, always_inline));
 //----------------------------------------------------------------- Function ---
 /**
- * Return next higher power of 2.
+ * Return next higher power of 2 for given unsigned integer.
  *
  * see https://graphics.stanford.edu/~seander/bithacks.html
  */

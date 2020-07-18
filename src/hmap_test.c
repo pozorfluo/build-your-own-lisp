@@ -25,8 +25,9 @@
 	    " hmap version 0.26.3 " RESET FG_BRIGHT_BLUE                           \
 	    " type exit to quit\n" RESET FG_BRIGHT_RED REVERSE                     \
 	    "   todo \n" RESET FG_BRIGHT_RED                                       \
-	    "  - [ ] Consider storing sizeof(size_t) hash xored with entry ptr\n"  \
-	    "    + [ ] Iterate over the store to rebuild map on resize"            \
+	    "  - [ ] Consider storing sizeof(size_t) bits of hash xored with "     \
+	    "entry ptr\n"                                                          \
+	    "    + [ ] Iterate over the store to rebuild map on resize\n"          \
 	    "  - [ ] Implement ILL STORE\n"                                        \
 	    "    + [ ] Track empty store slots with a stack using an internal "    \
 	    "linked list in the empty slots themselves\n"                          \
