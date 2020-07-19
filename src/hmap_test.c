@@ -25,6 +25,8 @@
 	    " hmap version 0.26.3 " RESET FG_BRIGHT_BLUE                           \
 	    " type exit to quit\n" RESET FG_BRIGHT_RED REVERSE                     \
 	    "   todo \n" RESET FG_BRIGHT_RED                                       \
+	    "  - [ ] Deal with chain going over HMAP_PROBE_LENGTH at the end of "  \
+	    "the map by triggering a resize, wrapping around, ...\n"               \
 	    "  - [ ] Consider implementing a reserve function to grow to "         \
 	    "specific size\n"                                                      \
 	    "  - [x] Consider xoring full hash with value\n"                       \
@@ -188,7 +190,7 @@ void dump_hashmap(const struct hmap *const hm)
 		printf("\x1b[9%dm" REVERSE " hmap->bucket[%lu]>>" RESET, colour, i);
 
 		printf(FG_BRIGHT_BLACK REVERSE
-		       " home[%lu] d[%d] m[%d] stored @[%lu] " RESET,
+		       " home[%lu] d[%d] m[%d] stored @[%u] " RESET,
 		       (HREDUCE(HFUNC(key, strnlen(key, HMAP_INLINE_KEY_SIZE)),
 		                hm->hash_shift)) >>
 		           7,

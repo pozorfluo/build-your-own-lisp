@@ -61,7 +61,7 @@ static inline size_t next_pow2(size_t v)
 //----------------------------------------------------------------- Function ---
 static inline size_t hash_index(const size_t hash) { return hash >> 7; }
 //----------------------------------------------------------------- Function ---
-static inline meta_byte hash_meta(const size_t hash) { return hash & 0x7F; }
+static inline meta_byte hash_meta(const size_t hash) { return hash & 0x7FFF; }
 //----------------------------------------------------------------- Function ---
 /**
  * Check if bucket at given index in given hashmap is empty
@@ -776,8 +776,8 @@ struct hmap *hmap_new(const size_t requested_capacity)
 		new_hm->buckets[i].meta = META_EMPTY;
 	}
 
-	printf(FG_BRIGHT_CYAN REVERSE " store_size : %lu \n" RESET,
-	       (size_t)(requested_capacity + 1));
+	printf(FG_BRIGHT_CYAN REVERSE " store_size : %lu + 1\n" RESET,
+	       requested_capacity);
 	printf(FG_CYAN REVERSE " capacity : %lu \n" RESET, (size_t)(map_capacity));
 	printf(FG_BLUE REVERSE " hash_shift : %lu \n" RESET, (size_t)(hash_shift));
 	printf(FG_BRIGHT_RED REVERSE

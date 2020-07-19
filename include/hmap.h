@@ -30,13 +30,18 @@
 //------------------------------------------------------------------- MACROS ---
 
 //------------------------------------------------------------- DECLARATIONS ---
-typedef signed char meta_byte;
+// typedef signed char meta_byte;
+typedef signed short meta_byte;
 
+// enum meta_ctrl {
+// 	META_EMPTY    = -128, /* 0b10000000 */
+// 	META_OCCUPIED = 0,    /* 0b0xxxxxxx */
+// 	/* Think of META_OCCUPIED as anything like 0b0xxxxxxx */
+// 	/* aka 0 <= META_OCCUPIED < 128 */
+// };
 enum meta_ctrl {
-	META_EMPTY    = -128, /* 0b10000000 */
-	META_OCCUPIED = 0,    /* 0b0xxxxxxx */
-	/* Think of META_OCCUPIED as anything like 0b0xxxxxxx */
-	/* aka 0 <= META_OCCUPIED < 128 */
+	META_EMPTY    = -32768,
+	META_OCCUPIED = 0,
 };
 
 /**
@@ -77,8 +82,8 @@ struct hmap_entry {
 struct hmap_bucket {
 	meta_byte meta;
 	meta_byte distance;
-	char explicit_padding_placeholder[6];
-	size_t entry; /* __WORDSIZE hash xored with entry ptr */
+	// char explicit_padding_placeholder[6];
+	uint32_t entry; /* __WORDSIZE hash xored with entry ptr */
 	/* 6 bytes of padding to use for metadata, entry type union info, bigger
 	 * meta_byte... */
 };
