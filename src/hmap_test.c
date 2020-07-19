@@ -509,28 +509,29 @@ int main(void)
 		}
 		//-------------------------------------------------- rehash
 		if ((strcmp(key, "rehash")) == 0) {
-			if (hashmap->top > 0) {
-				struct hmap *const hashmap_2x = hmap_new(load_count * 2);
-				printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
-				       hashmap->top);
-				size_t store_index = hashmap->top;
-				while (store_index--) {
-					hmap_put(hashmap_2x,
-					         hashmap->store[store_index].key,
-					         hashmap->store[store_index].value);
-					// result = HREDUCE(HFUNC(k, strnlen(k,
-					// HMAP_INLINE_KEY_SIZE)),
-					//                  hashmap->hash_shift);
-				}
-				// dump_stats(hashmap_2x);
-				// puts(FG_BRIGHT_MAGENTA REVERSE
-				//      "This is worse than reallocing the store and rehashing to"
-				//      " a bigger map." RESET);
+			debug_rehash(hashmap);
+			// if (hashmap->top > 0) {
+			// 	struct hmap *const hashmap_2x = hmap_new(load_count * 2);
+			// 	printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
+			// 	       hashmap->top);
+			// 	size_t store_index = hashmap->top;
+			// 	while (store_index--) {
+			// 		hmap_put(hashmap_2x,
+			// 		         hashmap->store[store_index].key,
+			// 		         hashmap->store[store_index].value);
+			// 		// result = HREDUCE(HFUNC(k, strnlen(k,
+			// 		// HMAP_INLINE_KEY_SIZE)),
+			// 		//                  hashmap->hash_shift);
+			// 	}
+			// 	// dump_stats(hashmap_2x);
+			// 	// puts(FG_BRIGHT_MAGENTA REVERSE
+			// 	//      "This is worse than reallocing the store and rehashing to"
+			// 	//      " a bigger map." RESET);
 
-				hmap_free(hashmap);
-				hashmap = hashmap_2x;
-				load_count *= 2;
-			}
+			// 	hmap_free(hashmap);
+			// 	hashmap = hashmap_2x;
+			// 	load_count *= 2;
+			// }
 			continue;
 		}
 

@@ -243,7 +243,7 @@ size_t hmap_get(const struct hmap *const hm, const char *const key)
 /**
  * Rehash given Hashmap's store to given map.
  */
-static inline void rehash(struct hmap *const hm, struct hmap_bucket *const map)
+static inline void rehash(struct hmap *const hm)
 {
 	size_t store_index = hm->top;
 
@@ -258,8 +258,16 @@ static inline void rehash(struct hmap *const hm, struct hmap_bucket *const map)
 
 		size_t candidate = home;
 
+		printf(FG_MAGENTA REVERSE
+		       "looking for : %*.*s | hash[%lu] index[%lu] m[%d]\n" RESET,
+		       HMAP_INLINE_KEY_SIZE,
+		       HMAP_INLINE_KEY_SIZE,
+		       key,
+		       hash,
+		       home,
+		       meta);
 		do {
-			if (map[candidate].meta == META_EMPTY) {
+			if (hm->buckets[candidate].meta == META_EMPTY) {
 				printf("candidate[%lu]\n", candidate);
 				break;
 			}
@@ -269,24 +277,25 @@ static inline void rehash(struct hmap *const hm, struct hmap_bucket *const map)
 
 		/* Thierry La Fronde method : Slingshot the rich ! */
 		for (size_t bucket = candidate; bucket != home; bucket--) {
-			map[candidate].distance = candidate - home;
+			hm->buckets[candidate].distance = candidate - home;
 
-			if (map[bucket].distance <= map[bucket - 1].distance) {
+			if (hm->buckets[bucket].distance <=
+			    hm->buckets[bucket - 1].distance) {
 
-				printf("slingshot[ %lu -> %lu ]\n", candidate, bucket);
-				map[candidate].distance =
-				    map[bucket].distance + candidate - bucket;
+				// printf("slingshot[ %lu -> %lu ]\n", candidate, bucket);
+				hm->buckets[candidate].distance =
+				    hm->buckets[bucket].distance + candidate - bucket;
 
-				map[candidate].meta = map[bucket].meta;
+				hm->buckets[candidate].meta = hm->buckets[bucket].meta;
 
-				map[candidate].entry = map[bucket].entry;
-				candidate            = bucket;
+				hm->buckets[candidate].entry = hm->buckets[bucket].entry;
+				candidate                    = bucket;
 			}
 		}
 
-		map[candidate].meta     = meta;
-		map[candidate].distance = candidate - home;
-		map[candidate].entry    = store_index;
+		hm->buckets[candidate].meta     = meta;
+		hm->buckets[candidate].distance = candidate - home;
+		hm->buckets[candidate].entry    = store_index;
 	}
 }
 
@@ -359,19 +368,21 @@ static inline struct hmap *grow(struct hmap *const hm)
 		printf(FG_MAGENTA REVERSE " grown_map     -> %p \n" RESET,
 		       (void *)grown_map);
 
-		struct hmap_bucket *buckets = grown_map;
-		while (new_capacity--) {
-			(buckets++)->meta = META_EMPTY;
+		for (size_t i = 0; i < new_capacity; i++) {
+			grown_map[i].meta = META_EMPTY;
 		}
-
-		// for (size_t i = 0; i < new_capacity; i++) {
-		// 	grown_map[i].meta = META_EMPTY;
-		// }
 		/**
 		 * todo Rewind updating Hashmap stats on failure.
 		 */
-		hm->hash_shift--;
+		// const size_t new_shift =
+		//     HWIDTH - 7 - ((HWIDTH - 1) - __builtin_clzll(new_capacity));
+		hm->hash_shift = HWIDTH - 7 - ((HWIDTH - 1) - __builtin_clzll(new_capacity));
 		hm->capacity = new_capacity;
+		// printf(FG_BLUE REVERSE
+		//        " new_shift : %lu \n"
+		//        "hm->hash_shift : %lu \n",
+		//        new_shift,
+		//        hm->hash_shift);
 
 		const size_t new_store_capacity = (hm->store_capacity * 2);
 		const size_t new_store_size =
@@ -393,9 +404,11 @@ static inline struct hmap *grow(struct hmap *const hm)
 
 		printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
 		       (void *)hm->store);
-		rehash(hm, grown_map);
 		XFREE(hm->buckets, "grow free old map");
 		hm->buckets = grown_map;
+		printf(FG_MAGENTA REVERSE " hm->buckets     -> %p \n" RESET,
+		       (void *)hm->buckets);
+		rehash(hm);
 	}
 
 	return hm;
@@ -408,6 +421,7 @@ err_free_grown_store:
 }
 
 struct hmap *debug_grow(struct hmap *const hm) { return grow(hm); }
+void debug_rehash(struct hmap *const hm) { rehash(hm); }
 
 //----------------------------------------------------------------- Function ---
 /**
@@ -652,7 +666,7 @@ void hmap_clear(struct hmap *const hm)
 		hm->buckets[i].meta = META_EMPTY;
 	}
 
-	hm->top = 0;
+	// hm->top = 0;
 }
 
 //----------------------------------------------------------------- Function ---

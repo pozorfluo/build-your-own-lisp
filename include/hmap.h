@@ -114,5 +114,6 @@ void hmap_clear(struct hmap *const hm);
 void hmap_free(struct hmap *const hashmap);
 
 struct hmap *debug_grow(struct hmap *const hm);
+void debug_rehash(struct hmap *const hm);
 
 #endif /* HMAP_H */
