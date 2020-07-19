@@ -243,14 +243,13 @@ size_t hmap_get(const struct hmap *const hm, const char *const key)
 /**
  * Rehash given Hashmap's store to given map.
  */
-static inline void rehash(struct hmap *const hm,
-                          struct hmap_bucket *const map)
+static inline void rehash(struct hmap *const hm, struct hmap_bucket *const map)
 {
 	size_t store_index = hm->top;
 
 	while (store_index--) {
 		const char *const key = hm->store[store_index].key;
-		printf("rehashing store[%lu] : %s \n", store_index, key);
+		// printf("rehashing store[%lu] : %s \n", store_index, key);
 		/* Prepare temp entry */
 		size_t key_size      = strnlen(key, HMAP_INLINE_KEY_SIZE);
 		const size_t hash    = HREDUCE(HFUNC(key, key_size), hm->hash_shift);
@@ -259,20 +258,20 @@ static inline void rehash(struct hmap *const hm,
 
 		size_t candidate = home;
 
-		printf(FG_MAGENTA REVERSE
-		       "looking for : %*.*s | hash[%lu] index[%lu] m[%d]\n" RESET,
-		       HMAP_INLINE_KEY_SIZE,
-		       HMAP_INLINE_KEY_SIZE,
-		       key,
-		       hash,
-		       home,
-		       meta);
+		// printf(FG_MAGENTA REVERSE
+		//        "looking for : %*.*s | hash[%lu] index[%lu] m[%d]\n" RESET,
+		//        HMAP_INLINE_KEY_SIZE,
+		//        HMAP_INLINE_KEY_SIZE,
+		//        key,
+		//        hash,
+		//        home,
+		//        meta);
 		do {
 			if (map[candidate].meta == META_EMPTY) {
-				printf("candidate[%lu]\n", candidate);
+				// printf("candidate[%lu]\n", candidate);
 				break;
 			}
-			printf(".");
+			// printf(".");
 			candidate++;
 		} while (candidate < hm->capacity);
 
@@ -280,8 +279,7 @@ static inline void rehash(struct hmap *const hm,
 		for (size_t bucket = candidate; bucket != home; bucket--) {
 			map[candidate].distance = candidate - home;
 
-			if (map[bucket].distance <=
-			    map[bucket - 1].distance) {
+			if (map[bucket].distance <= map[bucket - 1].distance) {
 
 				// printf("slingshot[ %lu -> %lu ]\n", candidate, bucket);
 				map[candidate].distance =
@@ -290,7 +288,7 @@ static inline void rehash(struct hmap *const hm,
 				map[candidate].meta = map[bucket].meta;
 
 				map[candidate].entry = map[bucket].entry;
-				candidate                    = bucket;
+				candidate            = bucket;
 			}
 		}
 
@@ -351,9 +349,13 @@ static inline struct hmap *grow(struct hmap *const hm)
 		 * Grow the store,
 		 * Rehash the store to new map,
 		 * Free old map.
+		 * 
+		 * note
+		 *   Old capacity was extended by HMAP_PROBE_LENGTH, we do not need the
+		 *   extension to be doubled.
 		 */
-		size_t new_capacity =
-		    (hm->capacity - HMAP_PROBE_LENGTH) * 2 + HMAP_PROBE_LENGTH;
+
+		size_t new_capacity       = hm->capacity * 2 - HMAP_PROBE_LENGTH;
 		const size_t new_map_size = sizeof(*grown_map) * new_capacity;
 
 		printf(FG_BRIGHT_MAGENTA REVERSE
@@ -375,16 +377,17 @@ static inline struct hmap *grow(struct hmap *const hm)
 		/**
 		 * todo Rewind updating Hashmap stats on failure.
 		 */
-		// const size_t new_shift =
-		//     HWIDTH - 7 - ((HWIDTH - 1) - __builtin_clzll(new_capacity));
-		hm->hash_shift =
+		const size_t new_shift =
 		    HWIDTH - 7 - ((HWIDTH - 1) - __builtin_clzll(new_capacity));
+		// hm->hash_shift =
+		//     HWIDTH - 7 - ((HWIDTH - 1) - __builtin_clzll(new_capacity));
+		hm->hash_shift--;
 		hm->capacity = new_capacity;
-		// printf(FG_BLUE REVERSE
-		//        " new_shift : %lu \n"
-		//        "hm->hash_shift : %lu \n",
-		//        new_shift,
-		//        hm->hash_shift);
+		printf(FG_BLUE REVERSE
+		       " new_shift : %lu \n"
+		       "hm->hash_shift : %lu \n",
+		       new_shift,
+		       hm->hash_shift);
 
 		const size_t new_store_capacity = (hm->store_capacity * 2);
 		const size_t new_store_size =
@@ -714,9 +717,9 @@ struct hmap *hmap_new(const size_t requested_capacity)
 	/* including the 7 bits required for meta_byte */
 	// size_t capacity = (n < 1) ? (1u << 1) : (1u << n);
 
-	/* map actual capacity */
+	/* map capacity without probe extension */
 	size_t map_capacity =
-	    next_pow2(requested_capacity / HMAP_MAX_LOAD) + HMAP_PROBE_LENGTH;
+	    next_pow2(requested_capacity / HMAP_MAX_LOAD); // + HMAP_PROBE_LENGTH;
 
 	/**
 	 * shift amount necessary for desired hash depth including the 7 bits
@@ -727,6 +730,8 @@ struct hmap *hmap_new(const size_t requested_capacity)
 	 */
 	const size_t hash_shift =
 	    HWIDTH - 7 - ((HWIDTH - 1) - __builtin_clzll(map_capacity));
+
+	map_capacity += HMAP_PROBE_LENGTH;
 
 	struct hmap *const new_hm =
 	    XMALLOC(sizeof(struct hmap), "new_hm", "new_hm");

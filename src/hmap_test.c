@@ -25,6 +25,7 @@
 	    " hmap version 0.26.3 " RESET FG_BRIGHT_BLUE                           \
 	    " type exit to quit\n" RESET FG_BRIGHT_RED REVERSE                     \
 	    "   todo \n" RESET FG_BRIGHT_RED                                       \
+	    "  - [ ] Consider xoring full hash with value\n"                       \
 	    "  - [ ] Consider storing sizeof(size_t) bits of hash xored with "     \
 	    "entry ptr\n"                                                          \
 	    "    + [ ] Iterate over the store to rebuild map on resize\n"          \
@@ -269,12 +270,12 @@ void dump_stats(const struct hmap *const hm)
 	       hm->store_capacity);
 	printf(FG_YELLOW REVERSE "hmap->top            : %lu \n" RESET, hm->top);
 
-	printf(BG_BRIGHT_BLACK REVERSE "empty_buckets        : %lu -> %f%% \n" RESET,
+	printf("empty_buckets        : %lu -> %f%% \n",
 	       empty_bucket,
 	       (double)empty_bucket / (double)(hm->capacity - HMAP_PROBE_LENGTH) *
 	           100);
-	printf(BG_BRIGHT_BLACK REVERSE "max_distance         : %d \n" RESET, max_distance);
-	printf(BG_BRIGHT_BLACK REVERSE "max_empty_chain      : %lu \n" RESET, max_empty_chain);
+	printf("max_distance         : %d \n", max_distance);
+	printf("max_empty_chain      : %lu \n", max_empty_chain);
 }
 
 //----------------------------------------------------------------- Function ---
@@ -414,7 +415,7 @@ int main(void)
 	//----------------------------------------------------------- input loop
 	for (;;) {
 		STOP_BENCH(repl);
-		fputs(FG_GREEN BG_BRIGHT_BLACK" > " RESET, stdout);
+		fputs(FG_GREEN BG_BRIGHT_BLACK " > " RESET, stdout);
 		unused_result_s = fgets(key, 255, stdin);
 		size_t length   = strlen(key);
 
@@ -525,7 +526,8 @@ int main(void)
 			// 	}
 			// 	// dump_stats(hashmap_2x);
 			// 	// puts(FG_BRIGHT_MAGENTA REVERSE
-			// 	//      "This is worse than reallocing the store and rehashing to"
+			// 	//      "This is worse than reallocing the store and rehashing
+			// to"
 			// 	//      " a bigger map." RESET);
 
 			// 	hmap_free(hashmap);
