@@ -490,8 +490,8 @@ void hmap_clear(struct hmap *const hm)
  */
 void hmap_free(struct hmap *const hm)
 {
-	/* hashmap->buckets is the head of the single alloc pool */
 	XFREE(hm->buckets, "hmap_delete_hashmap");
+	XFREE(hm->store, "hmap_delete_hashmap");
 	XFREE(hm, "delete_hashmap");
 }
 
@@ -549,14 +549,21 @@ struct hmap *hmap_new(const size_t requested_capacity)
 	const size_t store_size =
 	    sizeof(*(new_hm->store)) * (requested_capacity + 1);
 
-	char *const pool = XMALLOC(buckets_size + store_size, "new_hm", "pool");
-
-	if (pool == NULL) {
-		goto err_free_pool;
+	// char *const pool = XMALLOC(buckets_size + store_size, "new_hm", "pool");
+	// if (pool == NULL) {
+	// 	goto err_free_pool;
+	// }
+	struct hmap_bucket *buckets = XMALLOC(buckets_size, "new_hm", "buckets");
+	if (buckets == NULL) {
+		goto err_free_buckets;
+	}
+	struct hmap_entry *store    = XMALLOC(store_size, "new_hm", "store");
+	if (store == NULL) {
+		goto err_free_store;
 	}
 
-	struct hmap init_hm = {.buckets = (struct hmap_bucket *)pool,
-	                       .store = (struct hmap_entry *)(pool + buckets_size),
+	struct hmap init_hm = {.buckets = buckets,
+	                       .store = store,
 	                       .top   = 0,
 	                       .hash_shift = hash_shift,
 	                       .capacity   = map_capacity};
@@ -606,8 +613,12 @@ struct hmap *hmap_new(const size_t requested_capacity)
 	return new_hm;
 
 /* free(NULL) is ok, correct ? */
-err_free_pool:
-	XFREE(pool, "hmap_new err_free_arrays");
+// err_free_pool:
+	// XFREE(pool, "hmap_new err_free_arrays");
+err_free_store:
+	XFREE(store, "hmap_new err_free_store");
+err_free_buckets:
+	XFREE(buckets, "hmap_new err_free_buckets");
 err_free_hashmap:
 	XFREE(new_hm, "new_hm");
 	return NULL;
