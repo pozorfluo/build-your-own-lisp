@@ -18,6 +18,7 @@
 #endif
 #define HMAP_INLINE_KEY_SIZE 16
 #define HMAP_MAX_LOAD 0.75
+#define HMAP_STORE_GROW 1.25
 #define HFUNC hash_fnv1a
 #define HREDUCE reduce_fibo
 #define HCMP strncmp
@@ -92,6 +93,7 @@ struct hmap {
 	// size_t key_size;
 	size_t hash_shift; /* shift amount necessary for desired hash depth */
 	size_t capacity;   /* actual capacity */
+	size_t store_capacity; /* store capacity */
 };
 
 size_t hmap_find(const struct hmap *const hashmap, const char *const key)
@@ -110,5 +112,7 @@ struct hmap *hmap_new(const size_t n);
 void hmap_clear(struct hmap *const hm);
 
 void hmap_free(struct hmap *const hashmap);
+
+struct hmap *debug_grow(struct hmap *const hm);
 
 #endif /* HMAP_H */
