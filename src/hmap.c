@@ -243,7 +243,8 @@ size_t hmap_get(const struct hmap *const hm, const char *const key)
 /**
  * Rehash given Hashmap's store to given map.
  */
-static inline void rehash(struct hmap *const hm)
+static inline void rehash(struct hmap *const hm,
+                          struct hmap_bucket *const map)
 {
 	size_t store_index = hm->top;
 
@@ -267,7 +268,7 @@ static inline void rehash(struct hmap *const hm)
 		       home,
 		       meta);
 		do {
-			if (hm->buckets[candidate].meta == META_EMPTY) {
+			if (map[candidate].meta == META_EMPTY) {
 				printf("candidate[%lu]\n", candidate);
 				break;
 			}
@@ -277,25 +278,25 @@ static inline void rehash(struct hmap *const hm)
 
 		/* Thierry La Fronde method : Slingshot the rich ! */
 		for (size_t bucket = candidate; bucket != home; bucket--) {
-			hm->buckets[candidate].distance = candidate - home;
+			map[candidate].distance = candidate - home;
 
-			if (hm->buckets[bucket].distance <=
-			    hm->buckets[bucket - 1].distance) {
+			if (map[bucket].distance <=
+			    map[bucket - 1].distance) {
 
 				// printf("slingshot[ %lu -> %lu ]\n", candidate, bucket);
-				hm->buckets[candidate].distance =
-				    hm->buckets[bucket].distance + candidate - bucket;
+				map[candidate].distance =
+				    map[bucket].distance + candidate - bucket;
 
-				hm->buckets[candidate].meta = hm->buckets[bucket].meta;
+				map[candidate].meta = map[bucket].meta;
 
-				hm->buckets[candidate].entry = hm->buckets[bucket].entry;
+				map[candidate].entry = map[bucket].entry;
 				candidate                    = bucket;
 			}
 		}
 
-		hm->buckets[candidate].meta     = meta;
-		hm->buckets[candidate].distance = candidate - home;
-		hm->buckets[candidate].entry    = store_index;
+		map[candidate].meta     = meta;
+		map[candidate].distance = candidate - home;
+		map[candidate].entry    = store_index;
 	}
 }
 
@@ -376,7 +377,8 @@ static inline struct hmap *grow(struct hmap *const hm)
 		 */
 		// const size_t new_shift =
 		//     HWIDTH - 7 - ((HWIDTH - 1) - __builtin_clzll(new_capacity));
-		hm->hash_shift = HWIDTH - 7 - ((HWIDTH - 1) - __builtin_clzll(new_capacity));
+		hm->hash_shift =
+		    HWIDTH - 7 - ((HWIDTH - 1) - __builtin_clzll(new_capacity));
 		hm->capacity = new_capacity;
 		// printf(FG_BLUE REVERSE
 		//        " new_shift : %lu \n"
@@ -404,11 +406,12 @@ static inline struct hmap *grow(struct hmap *const hm)
 
 		printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
 		       (void *)hm->store);
-		XFREE(hm->buckets, "grow free old map");
-		hm->buckets = grown_map;
 		printf(FG_MAGENTA REVERSE " hm->buckets     -> %p \n" RESET,
 		       (void *)hm->buckets);
-		rehash(hm);
+
+		rehash(hm, grown_map);
+		XFREE(hm->buckets, "grow free old map");
+		hm->buckets = grown_map;
 	}
 
 	return hm;
@@ -421,7 +424,7 @@ err_free_grown_store:
 }
 
 struct hmap *debug_grow(struct hmap *const hm) { return grow(hm); }
-void debug_rehash(struct hmap *const hm) { rehash(hm); }
+void debug_rehash(struct hmap *const hm) { rehash(hm, hm->buckets); }
 
 //----------------------------------------------------------------- Function ---
 /**
