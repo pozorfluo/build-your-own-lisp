@@ -321,7 +321,8 @@ static inline struct hmap *grow(struct hmap *const hm)
 	 * size
 	 *   bumps.
 	 */
-	const size_t max_store_size = hm->capacity * HMAP_MAX_LOAD;
+	const size_t max_store_size =
+	    (hm->capacity - HMAP_PROBE_LENGTH) * HMAP_MAX_LOAD;
 
 	if (hm->store_capacity * HMAP_STORE_GROW <= max_store_size) {
 		printf(FG_BRIGHT_MAGENTA REVERSE
@@ -349,7 +350,7 @@ static inline struct hmap *grow(struct hmap *const hm)
 		 * Grow the store,
 		 * Rehash the store to new map,
 		 * Free old map.
-		 * 
+		 *
 		 * note
 		 *   Old capacity was extended by HMAP_PROBE_LENGTH, we do not need the
 		 *   extension to be doubled.
@@ -405,11 +406,11 @@ static inline struct hmap *grow(struct hmap *const hm)
 		if (grown_store == NULL) {
 			goto err_free_grown_store;
 		}
-		hm->store = grown_store;
-
+		hm->store          = grown_store;
+		hm->store_capacity = new_store_capacity;
 		printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
 		       (void *)hm->store);
-		printf(FG_MAGENTA REVERSE " hm->buckets     -> %p \n" RESET,
+		printf(FG_MAGENTA REVERSE " hm->buckets   -> %p \n" RESET,
 		       (void *)hm->buckets);
 
 		rehash(hm, grown_map);
@@ -524,7 +525,9 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 
 		hm->store[hm->top].value = value;
 		hm->top++;
-
+		if (hm->top >= hm->store_capacity) {
+			grow(hm);
+		}
 		// printf(FG_BRIGHT_GREEN REVERSE
 		//        " hash         %lu \n" RESET
 		//        " hash reduced %lu \n"
@@ -672,7 +675,7 @@ void hmap_clear(struct hmap *const hm)
 		hm->buckets[i].meta = META_EMPTY;
 	}
 
-	// hm->top = 0;
+	hm->top = 0;
 }
 
 //----------------------------------------------------------------- Function ---

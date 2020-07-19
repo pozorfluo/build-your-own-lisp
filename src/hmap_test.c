@@ -25,7 +25,9 @@
 	    " hmap version 0.26.3 " RESET FG_BRIGHT_BLUE                           \
 	    " type exit to quit\n" RESET FG_BRIGHT_RED REVERSE                     \
 	    "   todo \n" RESET FG_BRIGHT_RED                                       \
-	    "  - [ ] Consider xoring full hash with value\n"                       \
+	    "  - [ ] Consider implementing a reserve function to grow to "         \
+	    "specific size\n"                                                      \
+	    "  - [x] Consider xoring full hash with value\n"                       \
 	    "  - [ ] Consider storing sizeof(size_t) bits of hash xored with "     \
 	    "entry ptr\n"                                                          \
 	    "    + [ ] Iterate over the store to rebuild map on resize\n"          \
@@ -459,7 +461,8 @@ int main(void)
 		}
 		//-------------------------------------------------- fill
 		if ((strcmp(key, "fill")) == 0) {
-			while (hashmap->top < load_count) {
+			const size_t fill_up_to = hashmap->store_capacity;
+			while (hashmap->top < fill_up_to) {
 				*(uint64_t *)(random_key) = rand();
 				// *(uint64_t *)(random_key + HMAP_INLINE_KEY_SIZE / 2) =
 				//     hashmap->top;
