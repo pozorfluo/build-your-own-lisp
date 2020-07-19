@@ -472,6 +472,28 @@ int main(void)
 			       hashmap->top);
 			continue;
 		}
+		//-------------------------------------------------- fill1M
+		if ((strcmp(key, "fill1M")) == 0) {
+			size_t count = 1000000;
+			while (count--) {
+				*(uint64_t *)(random_key) = rand();
+				hmap_put(hashmap, random_key, hashmap->top);
+			}
+			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
+			       hashmap->top);
+			continue;
+		}
+		//-------------------------------------------------- fill3M
+		if ((strcmp(key, "fill3M")) == 0) {
+			size_t count = 3000000;
+			while (count--) {
+				*(uint64_t *)(random_key) = rand();
+				hmap_put(hashmap, random_key, hashmap->top);
+			}
+			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
+			       hashmap->top);
+			continue;
+		}
 
 		//-------------------------------------------------- dump
 		if ((strcmp(key, "dump")) == 0) {

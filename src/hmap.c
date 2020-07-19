@@ -325,12 +325,12 @@ static inline struct hmap *grow(struct hmap *const hm)
 	    (hm->capacity - HMAP_PROBE_LENGTH) * HMAP_MAX_LOAD;
 
 	if (hm->store_capacity * HMAP_STORE_GROW <= max_store_size) {
-		printf(FG_BRIGHT_MAGENTA REVERSE
-		       " Growing the store from [%lu] to [%lu] \n" RESET,
-		       hm->store_capacity,
-		       max_store_size);
-		printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
-		       (void *)hm->store);
+		// printf(FG_BRIGHT_MAGENTA REVERSE
+		//        " Growing the store from [%lu] to [%lu] \n" RESET,
+		//        hm->store_capacity,
+		//        max_store_size);
+		// printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
+		//        (void *)hm->store);
 
 		grown_store =
 		    realloc(hm->store, sizeof(*(hm->store)) * (max_store_size + 1));
@@ -339,8 +339,8 @@ static inline struct hmap *grow(struct hmap *const hm)
 		}
 		hm->store = grown_store;
 
-		printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
-		       (void *)hm->store);
+		// printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
+		//        (void *)hm->store);
 
 		hm->store_capacity = max_store_size;
 	}
@@ -359,18 +359,18 @@ static inline struct hmap *grow(struct hmap *const hm)
 		size_t new_capacity       = hm->capacity * 2 - HMAP_PROBE_LENGTH;
 		const size_t new_map_size = sizeof(*grown_map) * new_capacity;
 
-		printf(FG_BRIGHT_MAGENTA REVERSE
-		       " Growing the map from [%lu] to [%lu] : %lu bytes \n" RESET,
-		       hm->capacity,
-		       new_capacity,
-		       new_map_size);
+		// printf(FG_BRIGHT_MAGENTA REVERSE
+		//        " Growing the map from [%lu] to [%lu] : %lu bytes \n" RESET,
+		//        hm->capacity,
+		//        new_capacity,
+		//        new_map_size);
 
 		grown_map = XMALLOC(new_map_size, "grow", "buckets");
 		if (grown_map == NULL) {
 			goto err_free_grown_map;
 		}
-		printf(FG_MAGENTA REVERSE " grown_map     -> %p \n" RESET,
-		       (void *)grown_map);
+		// printf(FG_MAGENTA REVERSE " grown_map     -> %p \n" RESET,
+		//        (void *)grown_map);
 
 		for (size_t i = 0; i < new_capacity; i++) {
 			grown_map[i].meta = META_EMPTY;
@@ -378,29 +378,29 @@ static inline struct hmap *grow(struct hmap *const hm)
 		/**
 		 * todo Rewind updating Hashmap stats on failure.
 		 */
-		const size_t new_shift =
-		    HWIDTH - 7 - ((HWIDTH - 1) - __builtin_clzll(new_capacity));
+		// const size_t new_shift =
+		//     HWIDTH - 7 - ((HWIDTH - 1) - __builtin_clzll(new_capacity));
 		// hm->hash_shift =
 		//     HWIDTH - 7 - ((HWIDTH - 1) - __builtin_clzll(new_capacity));
 		hm->hash_shift--;
 		hm->capacity = new_capacity;
-		printf(FG_BLUE REVERSE
-		       " new_shift : %lu \n"
-		       "hm->hash_shift : %lu \n",
-		       new_shift,
-		       hm->hash_shift);
+		// printf(FG_BLUE REVERSE
+		//        " new_shift : %lu \n"
+		//        "hm->hash_shift : %lu \n",
+		//        new_shift,
+		//        hm->hash_shift);
 
 		const size_t new_store_capacity = (hm->store_capacity * 2);
 		const size_t new_store_size =
 		    sizeof(*grown_store) * (new_store_capacity + 1);
 
-		printf(FG_BRIGHT_MAGENTA REVERSE
-		       " Growing the store from [%lu] to [%lu] : %lu bytes \n" RESET,
-		       hm->store_capacity,
-		       (hm->store_capacity * 2) + 1,
-		       new_store_size);
-		printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
-		       (void *)hm->store);
+		// printf(FG_BRIGHT_MAGENTA REVERSE
+		//        " Growing the store from [%lu] to [%lu] : %lu bytes \n" RESET,
+		//        hm->store_capacity,
+		//        (hm->store_capacity * 2) + 1,
+		//        new_store_size);
+		// printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
+		//        (void *)hm->store);
 
 		grown_store = realloc(hm->store, new_store_size);
 		if (grown_store == NULL) {
@@ -408,10 +408,10 @@ static inline struct hmap *grow(struct hmap *const hm)
 		}
 		hm->store          = grown_store;
 		hm->store_capacity = new_store_capacity;
-		printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
-		       (void *)hm->store);
-		printf(FG_MAGENTA REVERSE " hm->buckets   -> %p \n" RESET,
-		       (void *)hm->buckets);
+		// printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
+		//        (void *)hm->store);
+		// printf(FG_MAGENTA REVERSE " hm->buckets   -> %p \n" RESET,
+		//        (void *)hm->buckets);
 
 		rehash(hm, grown_map);
 		XFREE(hm->buckets, "grow free old map");
