@@ -20,7 +20,8 @@
 #define HMAP_MAX_LOAD 0.75
 #define HMAP_STORE_GROW 1.25
 #define HFUNC hash_fnv1a
-#define HREDUCE reduce_fibo
+// #define HREDUCE reduce_fibo
+#define HREDUCE(_h, _mask) (_h) & (_mask)
 #define HCMP strncmp
 // #define HCOPY strcpy
 
@@ -71,6 +72,7 @@ struct hmap_entry {
 	// char *key; /* string key stored elsewhere */
 	char key[HMAP_INLINE_KEY_SIZE]; /* string key stored inline are not null
 	                                   terminated */
+	size_t hash;
 	size_t value;
 };
 
@@ -91,8 +93,8 @@ struct hmap {
 	struct hmap_entry *store;
 	size_t top; /* occupied entries count, cursor to next free store slot */
 	// size_t key_size;
-	size_t hash_shift; /* shift amount necessary for desired hash depth */
-	size_t capacity;   /* actual capacity */
+	size_t hash_shift;     /* shift amount necessary for desired hash depth */
+	size_t capacity;       /* actual capacity */
 	size_t store_capacity; /* store capacity */
 };
 

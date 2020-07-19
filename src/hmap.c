@@ -248,11 +248,13 @@ static inline void rehash(struct hmap *const hm, struct hmap_bucket *const map)
 	size_t store_index = hm->top;
 
 	while (store_index--) {
-		const char *const key = hm->store[store_index].key;
+		// const char *const key = hm->store[store_index].key;
 		// printf("rehashing store[%lu] : %s \n", store_index, key);
 		/* Prepare temp entry */
-		size_t key_size      = strnlen(key, HMAP_INLINE_KEY_SIZE);
-		const size_t hash    = HREDUCE(HFUNC(key, key_size), hm->hash_shift);
+		// size_t key_size      = strnlen(key, HMAP_INLINE_KEY_SIZE);
+		// const size_t hash    = HREDUCE(HFUNC(key, key_size), hm->hash_shift);
+		const size_t hash =
+		    HREDUCE(hm->store[store_index].hash, hm->hash_shift);
 		const size_t home    = hash_index(hash);
 		const meta_byte meta = hash_meta(hash);
 
@@ -349,7 +351,7 @@ static inline struct hmap *grow(struct hmap *const hm)
 		 * Grow the store,
 		 * Rehash the store to new map,
 		 * Free old map.
-		 * 
+		 *
 		 * note
 		 *   Old capacity was extended by HMAP_PROBE_LENGTH, we do not need the
 		 *   extension to be doubled.
@@ -468,8 +470,10 @@ void debug_rehash(struct hmap *const hm) { rehash(hm, hm->buckets); }
 size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 {
 	/* Prepare temp entry */
-	size_t key_size      = strnlen(key, HMAP_INLINE_KEY_SIZE);
-	const size_t hash    = HREDUCE(HFUNC(key, key_size), hm->hash_shift);
+	size_t key_size        = strnlen(key, HMAP_INLINE_KEY_SIZE);
+	const size_t full_hash = HFUNC(key, key_size);
+	const size_t hash      = HREDUCE(full_hash, hm->hash_shift);
+	// const size_t hash    = HREDUCE(HFUNC(key, key_size), hm->hash_shift);
 	const size_t home    = hash_index(hash);
 	const meta_byte meta = hash_meta(hash);
 
@@ -523,6 +527,7 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 		memcpy(hm->store[hm->top].key, key, key_size);
 
 		hm->store[hm->top].value = value;
+		hm->store[hm->top].hash  = full_hash;
 		hm->top++;
 
 		// printf(FG_BRIGHT_GREEN REVERSE
@@ -728,8 +733,8 @@ struct hmap *hmap_new(const size_t requested_capacity)
 	 * todo
 	 *   - [ ] Look for a portable __builtin_clzll alternative
 	 */
-	const size_t hash_shift =
-	    HWIDTH - 7 - ((HWIDTH - 1) - __builtin_clzll(map_capacity));
+	const size_t hash_shift = (map_capacity << 7)  - 1;
+	    // HWIDTH - 7 - ((HWIDTH - 1) - __builtin_clzll(map_capacity));
 
 	map_capacity += HMAP_PROBE_LENGTH;
 
