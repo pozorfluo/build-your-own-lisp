@@ -6,7 +6,7 @@
 #include <stddef.h> /* size_t */
 #include <stdint.h> /* uint32_t, uint64_t */
 #include <stdio.h>
-#include <stdlib.h> /* malloc, rand */
+#include <stdlib.h> /* rand */
 #include <string.h> /* memcpy, strlen, strnlen */
 
 #include "ansi_esc.h"
@@ -25,6 +25,8 @@
 	    " hmap version 0.26.3 " RESET FG_BRIGHT_BLUE                           \
 	    " type exit to quit\n" RESET FG_BRIGHT_RED REVERSE                     \
 	    "   todo \n" RESET FG_BRIGHT_RED                                       \
+	    "  - [ ] Investigate invalid read when growing a hmap initialized "    \
+	    "with a size 2\n"                                                      \
 	    "  - [ ] Deal with chain going over HMAP_PROBE_LENGTH at the end of "  \
 	    "the map by triggering a resize, wrapping around, ...\n"               \
 	    "  - [ ] Consider implementing a reserve function to grow to "         \

@@ -80,12 +80,22 @@ struct hmap_entry {
 };
 
 struct hmap_bucket {
-	meta_byte meta;
-	meta_byte distance;
-	// char explicit_padding_placeholder[6];
-	uint32_t entry; /* __WORDSIZE hash xored with entry ptr */
-	/* 6 bytes of padding to use for metadata, entry type union info, bigger
-	 * meta_byte... */
+	meta_byte meta; /* 2 bytes */
+	meta_byte distance; /* 2 bytes */
+	uint32_t entry; /* can address 2^32 entries */
+	/**
+	 * uint32_t
+     *   (* (expt 2 32) (+ 8 16 8))
+     *       4,294,967,296 entries
+     *   > 137,438,953,472 bytes for an hypothetical fully filled
+	 *     table with this config.
+	 * 
+     * uint64_t
+     *   (* (expt 2 64) (+ 16 16 8))
+     *      18,446,744,073,709,551,616 entries
+     *   > 737,869,762,948,382,064,640 bytes for an hypothetical fully filled
+	 *     table with this config.
+	 */
 };
 
 /**
