@@ -8,6 +8,7 @@
 
 #include <stddef.h> /* size_t */
 #include <stdint.h> /* SIZE_MAX */
+#include "clhash.h"
 //------------------------------------------------------------ CONFIGURATION ---
 // #define SIMD_PROBE
 #if SIZE_MAX == 0xffffffffffffffffllu
@@ -19,7 +20,7 @@
 #define HMAP_INLINE_KEY_SIZE 16
 #define HMAP_MAX_LOAD 0.75
 #define HMAP_STORE_GROW 1.25
-#define HFUNC hash_fnv1a
+#define HFUNC clhash //hash_fnv1a
 #define HREDUCE reduce_fibo
 #define HCMP strncmp
 // #define HCOPY strcpy
@@ -86,8 +87,8 @@ struct hmap_bucket {
 	/**
 	 * uint32_t
      *   (* (expt 2 32) (+ 8 16 8))
-     *       4,294,967,296 entries
-     *   > 137,438,953,472 bytes for an hypothetical fully filled
+     *                   4,294,967,296 entries
+     *   >             137,438,953,472 bytes for an hypothetical fully filled
 	 *     table with this config.
 	 * 
      * uint64_t
@@ -109,6 +110,7 @@ struct hmap {
 	size_t hash_shift; /* shift amount necessary for desired hash depth */
 	size_t capacity;   /* actual capacity */
 	size_t store_capacity; /* store capacity */
+	void* random;
 };
 
 size_t hmap_find(const struct hmap *const hashmap, const char *const key)

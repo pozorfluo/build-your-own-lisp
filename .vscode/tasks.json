@@ -12,6 +12,7 @@
                 "-Werror",
                 "-pedantic",
                 "-g",
+                // "-fPIC",
                 // "-DDEBUG_MALLOC",
 				// "-DDEBUG_MPC",
 				// "-DDEBUG_HMAP",
@@ -24,11 +25,20 @@
                 // "-Og",
                 "-O3",
                 "-ftree-vectorize",
+                "-funroll-loops",
                 "-fopt-info-vec-optimized",
+                // "-fprofile-arcs",
+                // "-p",
+                // "--coverage",
+                // "-fprofile-abs-path",
+                // "-ftest-coverage",
+                // "-fprofile-dir=/home/spagbol/_source/C/build-your-own-lisp/src/",
+                // "-fprofile-generate=/home/spagbol/_source/C/build-your-own-lisp/src/",
                 // "-fwhole-program",
                 // "-fopt-info-vec-all",
                 "${file}",
                 "${workspaceRoot}/src/hmap.c",
+                "${workspaceRoot}/src/clhash.c",
                 // "${workspaceRoot}/src/mpc.c",
                 // "${workspaceRoot}/src/linenoise.c",
                 // "${workspaceRoot}/src/hash_murmur3_nose.c",
@@ -40,7 +50,7 @@
                 "${workspaceRoot}/bin/${fileBasenameNoExtension}"
             ],
             "options": {
-                "cwd": "/usr/bin"
+                // "cwd": "/usr/bin"
             },
             "problemMatcher": [
                 "$gcc"
