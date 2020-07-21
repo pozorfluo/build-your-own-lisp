@@ -15,7 +15,6 @@
 #include <string.h> /* memcpy, strlen, strnlen */
 
 #include "ansi_esc.h"
-#include "clhash.h"
 #include "debug_xmalloc.h"
 #include "hfunc.h"
 #include "hmap.h"
@@ -136,7 +135,7 @@ static inline size_t find_n(const struct hmap *const hm,
                             const char *const key,
                             const size_t length)
 {
-	size_t hash    = HREDUCE(HFUNC(hm->random, key, length), hm->hash_shift);
+	size_t hash    = HREDUCE(HFUNC(key, length), hm->hash_shift);
 	size_t index   = hash_index(hash);
 	meta_byte meta = hash_meta(hash);
 
@@ -252,9 +251,8 @@ static inline void rehash(struct hmap *const hm, struct hmap_bucket *const map)
 		const char *const key = hm->store[store_index].key;
 		// printf("rehashing store[%lu] : %s \n", store_index, key);
 		/* Prepare temp entry */
-		size_t key_size = strnlen(key, HMAP_INLINE_KEY_SIZE);
-		const size_t hash =
-		    HREDUCE(HFUNC(hm->random, key, key_size), hm->hash_shift);
+		size_t key_size      = strnlen(key, HMAP_INLINE_KEY_SIZE);
+		const size_t hash    = HREDUCE(HFUNC(key, key_size), hm->hash_shift);
 		const size_t home    = hash_index(hash);
 		const meta_byte meta = hash_meta(hash);
 
@@ -471,9 +469,8 @@ void debug_rehash(struct hmap *const hm) { rehash(hm, hm->buckets); }
 size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 {
 	/* Prepare temp entry */
-	size_t key_size = strnlen(key, HMAP_INLINE_KEY_SIZE);
-	const size_t hash =
-	    HREDUCE(HFUNC(hm->random, key, key_size), hm->hash_shift);
+	size_t key_size      = strnlen(key, HMAP_INLINE_KEY_SIZE);
+	const size_t hash    = HREDUCE(HFUNC(key, key_size), hm->hash_shift);
 	const size_t home    = hash_index(hash);
 	const meta_byte meta = hash_meta(hash);
 
@@ -539,14 +536,13 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 		//        " meta         %lu \n"
 		//        " entry        %lu \n"
 		//        " entry ^ hash %lu \n" ,
-		//        HFUNC(hm->random, key, key_size),
-		//        HREDUCE(HFUNC(hm->random, key, key_size), hm->hash_shift),
+		//        HFUNC(key, key_size),
+		//        HREDUCE(HFUNC(key, key_size), hm->hash_shift),
 		//        home,
 		//        candidate,
 		//        (size_t)meta,
 		//        hm->buckets[candidate].entry,
-		//        HFUNC(hm->random, key, key_size) ^
-		//        hm->buckets[candidate].entry);
+		//        HFUNC(key, key_size) ^ hm->buckets[candidate].entry);
 	}
 	//------------------------------------------------------ given key found
 	else {
@@ -689,7 +685,6 @@ void hmap_clear(struct hmap *const hm)
  */
 void hmap_free(struct hmap *const hm)
 {
-	XFREE(hm->random, "hmap_delete_hashmap");
 	XFREE(hm->buckets, "hmap_delete_hashmap");
 	XFREE(hm->store, "hmap_delete_hashmap");
 	XFREE(hm, "delete_hashmap");
@@ -721,8 +716,6 @@ void hmap_free(struct hmap *const hm)
  */
 struct hmap *hmap_new(const size_t requested_capacity)
 {
-	void *random = get_random_key_for_clhash(UINT64_C(0x23a23cf5033c3c81),
-	                                         UINT64_C(0xb3816f6a2c68e530));
 	/* tab_hash requires a mininum of 8 bits of hash space */
 	/* including the 7 bits required for meta_byte */
 	// size_t capacity = (n < 1) ? (1u << 1) : (1u << n);
@@ -773,8 +766,7 @@ struct hmap *hmap_new(const size_t requested_capacity)
 	                       .top            = 0,
 	                       .hash_shift     = hash_shift,
 	                       .capacity       = map_capacity,
-	                       .store_capacity = requested_capacity,
-	                       .random         = random};
+	                       .store_capacity = requested_capacity};
 	*new_hm = init_hm;
 
 	/* XMALLOC is calling calloc / takes cares of setting mem to 0 */

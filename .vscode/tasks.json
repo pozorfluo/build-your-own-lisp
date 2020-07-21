@@ -38,7 +38,7 @@
                 // "-fopt-info-vec-all",
                 "${file}",
                 "${workspaceRoot}/src/hmap.c",
-                "${workspaceRoot}/src/clhash.c",
+                // "${workspaceRoot}/src/clhash.c",
                 // "${workspaceRoot}/src/mpc.c",
                 // "${workspaceRoot}/src/linenoise.c",
                 // "${workspaceRoot}/src/hash_murmur3_nose.c",

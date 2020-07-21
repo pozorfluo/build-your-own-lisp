@@ -193,10 +193,10 @@ void dump_hashmap(const struct hmap *const hm)
 
 		printf(FG_BRIGHT_BLACK REVERSE
 		       " home[%lu] d[%d] m[%d] stored @[%u] " RESET,
-		       (HREDUCE(HFUNC(hm->random, key, strnlen(key, HMAP_INLINE_KEY_SIZE)),
+		       (HREDUCE(HFUNC(key, strnlen(key, HMAP_INLINE_KEY_SIZE)),
 		                hm->hash_shift)) >>
 		           7,
-		       // hash_index(HREDUCE(HFUNC(hm->random, key, strnlen(key,
+		       // hash_index(HREDUCE(HFUNC(key, strnlen(key,
 		       // HMAP_INLINE_KEY_SIZE)),
 		       //                    hm->hash_shift)),
 		       hm->buckets[i].distance,
@@ -549,7 +549,7 @@ int main(void)
 			// 		hmap_put(hashmap_2x,
 			// 		         hashmap->store[store_index].key,
 			// 		         hashmap->store[store_index].value);
-			// 		// result = HREDUCE(HFUNC(hm->random, k, strnlen(k,
+			// 		// result = HREDUCE(HFUNC(k, strnlen(k,
 			// 		// HMAP_INLINE_KEY_SIZE)),
 			// 		//                  hashmap->hash_shift);
 			// 	}
