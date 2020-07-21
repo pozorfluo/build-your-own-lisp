@@ -19,7 +19,7 @@
 #define HMAP_INLINE_KEY_SIZE 16
 #define HMAP_MAX_LOAD 0.75
 #define HMAP_STORE_GROW 1.25
-#define HFUNC hash_fnv1a
+#define HFUNC o1hash // hash_fnv1a
 #define HREDUCE reduce_fibo
 #define HCMP strncmp
 // #define HCOPY strcpy
