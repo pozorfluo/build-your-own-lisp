@@ -11,8 +11,8 @@
 #ifndef HFUNC_H
 #define HFUNC_H
 
-#include <stddef.h> /* size_t */
-
+#include <immintrin.h> /* _mm_set1_pi8 */
+#include <stddef.h>    /* size_t */
 //------------------------------------------------------------ CONFIGURATION ---
 
 #ifdef TEST_REGISTER
@@ -40,6 +40,12 @@ static inline size_t hash_kh_str(const char *const key, size_t length)
     __attribute__((pure, always_inline));
 
 static inline size_t hash_fnv1a(const char *const key, size_t length)
+    __attribute__((pure, always_inline));
+
+static inline size_t hash_tab(const char *const key, size_t length)
+    __attribute__((pure, always_inline));
+
+static inline uint64_t o1hash(const void *key, size_t len)
     __attribute__((pure, always_inline));
 
 static inline size_t reduce_fibo(const size_t hash, const size_t shift)
@@ -165,7 +171,26 @@ static inline size_t hash_djb2_alt(const char *const key, size_t length)
 
 	return hash;
 }
+//----------------------------------------------------------------- Function ---
+/**
+ * Return a 64 bits fnv-1a style hash for given key.
+ */
+static inline size_t hash_tab(const char *const key, size_t length)
+{
 
+	HFUNC_REGISTER size_t hash = 0;
+	// HFUNC_REGISTER size_t i               = length;
+	HFUNC_REGISTER const unsigned char *c = (const unsigned char *)key;
+
+	while (length--) {
+		// printf("%lu \n", (size_t)_mm_set1_pi8(*c++));
+		hash ^= (size_t)_mm_set1_pi8(*c++);
+		hash += (hash << 1) + (hash << 4) + (hash << 5) + (hash << 7) +
+		        (hash << 8) + (hash << 40);
+	}
+
+	return hash;
+}
 //----------------------------------------------------------------- Function ---
 /**
  * Return a kh_hash_str style hash for given key.
