@@ -316,21 +316,22 @@ static inline struct hmap *grow(struct hmap *const hm)
 	 *
 	 * note
 	 *   Tune this carefully, realloc may have to make a copy of the whole
-	 * store
-	 *   and it is probably not worth triggering this too often for small
-	 * size
-	 *   bumps.
+	 *   store and it is probably not worth triggering this too often for small
+	 *   size bumps.
+	 * 
+	 *   This only possibly affects the first 'grow' event, after that, size
+	 *   of store and map are 'synched'.
 	 */
 	const size_t max_store_size =
 	    (hm->capacity - HMAP_PROBE_LENGTH) * HMAP_MAX_LOAD;
 
 	if (hm->store_capacity * HMAP_STORE_GROW <= max_store_size) {
-		// printf(FG_BRIGHT_MAGENTA REVERSE
-		//        " Growing the store from [%lu] to [%lu] \n" RESET,
-		//        hm->store_capacity,
-		//        max_store_size);
-		// printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
-		//        (void *)hm->store);
+		printf(FG_BRIGHT_MAGENTA REVERSE
+		       " Growing the store from [%lu] to [%lu] \n" RESET,
+		       hm->store_capacity,
+		       max_store_size);
+		printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
+		       (void *)hm->store);
 
 		grown_store =
 		    realloc(hm->store, sizeof(*(hm->store)) * (max_store_size + 1));
@@ -359,11 +360,11 @@ static inline struct hmap *grow(struct hmap *const hm)
 		size_t new_capacity       = hm->capacity * 2 - HMAP_PROBE_LENGTH;
 		const size_t new_map_size = sizeof(*grown_map) * new_capacity;
 
-		// printf(FG_BRIGHT_MAGENTA REVERSE
-		//        " Growing the map from [%lu] to [%lu] : %lu bytes \n" RESET,
-		//        hm->capacity,
-		//        new_capacity,
-		//        new_map_size);
+		printf(FG_BRIGHT_MAGENTA REVERSE
+		       " Growing the map from [%lu] to [%lu] : %lu bytes \n" RESET,
+		       hm->capacity,
+		       new_capacity,
+		       new_map_size);
 
 		grown_map = XMALLOC(new_map_size, "grow", "buckets");
 		if (grown_map == NULL) {
@@ -394,13 +395,13 @@ static inline struct hmap *grow(struct hmap *const hm)
 		const size_t new_store_size =
 		    sizeof(*grown_store) * (new_store_capacity + 1);
 
-		// printf(FG_BRIGHT_MAGENTA REVERSE
-		//        " Growing the store from [%lu] to [%lu] : %lu bytes \n" RESET,
-		//        hm->store_capacity,
-		//        (hm->store_capacity * 2) + 1,
-		//        new_store_size);
-		// printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
-		//        (void *)hm->store);
+		printf(FG_BRIGHT_MAGENTA REVERSE
+		       " Growing the store from [%lu] to [%lu] : %lu bytes \n" RESET,
+		       hm->store_capacity,
+		       (hm->store_capacity * 2) + 1,
+		       new_store_size);
+		printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
+		       (void *)hm->store);
 
 		grown_store = realloc(hm->store, new_store_size);
 		if (grown_store == NULL) {
