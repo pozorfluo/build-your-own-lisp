@@ -491,7 +491,9 @@ int main(void)
 		if ((strcmp(key, "fill3M")) == 0) {
 			size_t count = 3000000;
 			while (count--) {
-				*(uint64_t *)(random_key) = rand();
+				// *(uint64_t *)(random_key) = rand();
+				uint64_t rand_num = rand();
+				memcpy(random_key, &rand_num, sizeof rand_num);
 				hmap_put(hashmap, random_key, hashmap->top);
 			}
 			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,

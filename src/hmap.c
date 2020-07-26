@@ -318,7 +318,7 @@ static inline struct hmap *grow(struct hmap *const hm)
 	 *   Tune this carefully, realloc may have to make a copy of the whole
 	 *   store and it is probably not worth triggering this too often for small
 	 *   size bumps.
-	 * 
+	 *
 	 *   This only possibly affects the first 'grow' event, after that, size
 	 *   of store and map are 'synched'.
 	 */
@@ -406,6 +406,13 @@ static inline struct hmap *grow(struct hmap *const hm)
 		grown_store = realloc(hm->store, new_store_size);
 		if (grown_store == NULL) {
 			goto err_free_grown_store;
+		}
+
+		if (grown_store != hm->store) {
+			printf(FG_MAGENTA REVERSE " moving to     -> %p \n" RESET,
+			       (void *)grown_store);
+			printf(FG_MAGENTA REVERSE "               -> %ld \n" RESET,
+			       ( long)grown_store - (long)hm->store);
 		}
 		hm->store          = grown_store;
 		hm->store_capacity = new_store_capacity;
