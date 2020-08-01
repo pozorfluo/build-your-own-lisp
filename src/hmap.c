@@ -182,6 +182,11 @@ static inline size_t find_n(const struct hmap *const hm,
  *   -> entry index
  * Else
  *   -> first empty slot
+ * 
+ * note
+ *   Because distances are initialized to 0 and set to 0 when removing an entry,
+ *   probing distances for 0 yields "stop buckets" aka @home entry or empty 
+ *   bucket.
  *
  * todo
  *   - [ ] Investigate ways to probe for Match or META_EMPTY at once
@@ -249,7 +254,7 @@ static inline void rehash(struct hmap *const hm, struct hmap_bucket *const map)
 
 	while (store_index--) {
 		const char *const key = hm->store[store_index].key;
-		// printf("rehashing store[%lu] : %s \n", store_index, key);
+		printf("rehashing store[%lu] : %s \n", store_index, key);
 		/* Prepare temp entry */
 		size_t key_size      = strnlen(key, HMAP_INLINE_KEY_SIZE);
 		const size_t hash    = HREDUCE(HFUNC(key, key_size), hm->hash_shift);
@@ -445,8 +450,7 @@ void debug_rehash(struct hmap *const hm) { rehash(hm, hm->buckets); }
 //----------------------------------------------------------------- Function ---
 /**
  * Insert a new entry in given Hashmap for given key, value pair or update
- * an
- * existing value
+ * an existing value
  *
  * Find given key or first empty slot
  * If given key found
@@ -474,9 +478,10 @@ void debug_rehash(struct hmap *const hm) { rehash(hm, hm->buckets); }
  *   Do not allow a full table, resize before it happens
  *     -> hmap_put does not handle inserting on a full table
  *   Is limited to chain <= 256 due to distances meta_byte type
- *
- * todo
- *   - [ ] Add hmap fitness / resize trigger logic
+ * 
+ *   Because distances are initialized to 0 and set to 0 when removing an entry,
+ *   probing distances for 0 yields "stop buckets" aka @home entry or empty 
+ *   bucket.
  */
 size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 {
@@ -674,8 +679,7 @@ size_t hmap_remove(struct hmap *const hm, const char *const key)
  * Clear given Hashmap entries.
  *
  * Does not clear the store. This should not be used if Hashmap is supposed
- * to
- * manage pointees with their sole pointer in the store.
+ * to manage pointees with their sole pointer in the store.
  *   -> nothing
  */
 void hmap_clear(struct hmap *const hm)
@@ -706,45 +710,54 @@ void hmap_free(struct hmap *const hm)
 
 //----------------------------------------------------------------- Function ---
 /**
- * Create a new hmap of capacity equal to 2^(given n) + HMAP_PROBE_LENGTH
+ * Create a new hmap of given requested capacity.
  *
- *   Enforce n >= 1
- *   Allocate a Hashmap
- *     If allocation fails,  clean up and abort
- *     -> NULL
- *   Allocate and split a memory pool for metadata, the map, the store
- *     If any allocation fails, clean up and abort
- *     -> NULL
- *   Init Hashmap buckets
- *     -> pointer to new hmap
+ * i.e., for a requested capacity of n
+ *
+ *   advertised map capacity :
+ *     next power of 2 of ( n / max load factor)
+ *
+ *   actual map capacity :
+ *     next power of 2 of ( n / max load factor) + probe length
+ *
+ *   advertised store capacity :
+ *     n
+ *
+ *   actual store capacity :
+ *     n + 1
  *
  * note
- *   hashmap->n is the shift amount necessary to achieve the desired hash
- * depth
- *   and is used with reduce function
+ *   Advertised map capacity is extended to actual map capacity by the probe
+ *   length to obviate some bounds checking.
  *
- * todo
- *   - [x] Replace parameter n with requested_capacity
- *     + [x] Compute next 2^(n) - 1 from requested_capacity
- *   - [ ] Clear confusion around n / shift amount and rename n
+ *   Hash shift is the shift amount necessary to reduce a full hash to a hash
+ *   depth able to address map capacity + 7 bits of secondary hash
+ *   stored as metadata.
+ *
+ *   The 7 bits of secondary hash are used in a 'bloom filter fashion' during
+ *   probing to obviate costly keys comparisons.
+ *
+ *   Derive advertised map capacity from requested capacity
+ *   Derive hash shift from advertised map capacity
+ *   Derive actual map capacity from advertised map capacity
+ *   Allocate a hmap
+ *     If allocation fails, clean up and abort
+ *       -> NULL
+ *   Allocate map buckets
+ *     If allocation fails, clean up and abort
+ *       -> NULL
+ *   Allocate key, value store
+ *     If allocation fails, clean up and abort
+ *       -> NULL
+ *   Init hmap
+ *   Init map buckets as being empty
+ *     -> pointer to new hmap
  */
 struct hmap *hmap_new(const size_t requested_capacity)
 {
-	/* tab_hash requires a mininum of 8 bits of hash space */
-	/* including the 7 bits required for meta_byte */
-	// size_t capacity = (n < 1) ? (1u << 1) : (1u << n);
-
-	/* map capacity without probe extension */
 	size_t map_capacity =
 	    next_pow2(requested_capacity / HMAP_MAX_LOAD); // + HMAP_PROBE_LENGTH;
 
-	/**
-	 * shift amount necessary for desired hash depth including the 7 bits
-	 * required for meta_byte with reduce function
-	 *
-	 * todo
-	 *   - [ ] Look for a portable __builtin_clzll alternative
-	 */
 	const size_t hash_shift =
 	    HWIDTH - 7 - ((HWIDTH - 1) - __builtin_clzll(map_capacity));
 
@@ -761,11 +774,6 @@ struct hmap *hmap_new(const size_t requested_capacity)
 	const size_t store_size =
 	    sizeof(*(new_hm->store)) * (requested_capacity + 1);
 
-	// char *const pool = XMALLOC(buckets_size + store_size, "new_hm",
-	// "pool");
-	// if (pool == NULL) {
-	// 	goto err_free_pool;
-	// }
 	struct hmap_bucket *buckets = XMALLOC(buckets_size, "new_hm", "buckets");
 	if (buckets == NULL) {
 		goto err_free_buckets;
@@ -815,15 +823,7 @@ struct hmap *hmap_new(const size_t requested_capacity)
 	       store_size,
 	       buckets_size % (__WORDSIZE / 8),
 	       store_size % (__WORDSIZE / 8));
-	/**
-	 * Because distances are initialized to 0
-	 * and set to 0 when removing an entry
-	 * Probing distances for 0 yields "stop buckets"
-	 * aka @home entry or empty bucket
-	 */
-	/* Is this enough to be able to check if ptr == NULL ? */
 
-	//------------------------------------------------------- store init
 	return new_hm;
 
 /* free(NULL) is ok, correct ? */

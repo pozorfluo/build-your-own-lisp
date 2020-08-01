@@ -56,6 +56,8 @@
 	    "    + [x] Derive n, map capacity from store size / HMAP_MAX_LOAD"     \
 	    "  - [x] Consider that hmap count and top are "                        \
 	    "redundant\n" FG_BRIGHT_YELLOW                                         \
+	    "  - [ ] Look for a portable __builtin_clzll alternative in "          \
+	    "hmap_new\n"                                                           \
 	    "  - [ ] Explore pointer tagging to keep track of value type/mode\n"   \
 	    "  - [x] Reconsider tab_hash\n"                                        \
 	    "  - [ ] Consider reading fixed size keys as n uint64_t\n"             \
@@ -442,25 +444,25 @@ int main(void)
 		// if ((strcmp(key, "rm")) == 0) {
 		// 	// for (size_t k = 0; k < load_count; k++) {
 		// 	size_t is_stuck = hashmap->top;
-			// while (hashmap->top) {
-			// 	printf(
-			// 	    FG_BRIGHT_YELLOW REVERSE
-			// 	    "hmap->top : %lu"
-			// 	    // " : %.*s"
-			// 	    " : %.lu"
-			// 	    " : %.lu\n" RESET,
-			// 	    hashmap->top - 1,
-			// 	    // HMAP_INLINE_KEY_SIZE,
-			// 	    // hashmap->store[hashmap->top - 1].key,
-			// 	    hashmap->store[hashmap->top - 1].value,
-			// 	    hmap_find(hashmap, hashmap->store[hashmap->top -
-			// 	    1].key));
-			// 	hmap_remove(hashmap, hashmap->store[hashmap->top - 1].key);
-			// 	if (hashmap->top == is_stuck) {
-			// 		break;
-			// 	}
-			// 	is_stuck = hashmap->top;
-			// }
+		// while (hashmap->top) {
+		// 	printf(
+		// 	    FG_BRIGHT_YELLOW REVERSE
+		// 	    "hmap->top : %lu"
+		// 	    // " : %.*s"
+		// 	    " : %.lu"
+		// 	    " : %.lu\n" RESET,
+		// 	    hashmap->top - 1,
+		// 	    // HMAP_INLINE_KEY_SIZE,
+		// 	    // hashmap->store[hashmap->top - 1].key,
+		// 	    hashmap->store[hashmap->top - 1].value,
+		// 	    hmap_find(hashmap, hashmap->store[hashmap->top -
+		// 	    1].key));
+		// 	hmap_remove(hashmap, hashmap->store[hashmap->top - 1].key);
+		// 	if (hashmap->top == is_stuck) {
+		// 		break;
+		// 	}
+		// 	is_stuck = hashmap->top;
+		// }
 		// 	printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
 		// 	       hashmap->top);
 		// 	continue;
