@@ -338,6 +338,9 @@ static inline struct hmap *grow(struct hmap *const hm)
 		if (grown_store == NULL) {
 			goto err_free_grown_store;
 		}
+
+		// memset(grown_store, 0, sizeof(*(hm->store)) * (max_store_size + 1));
+
 		hm->store = grown_store;
 
 		// printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
@@ -411,8 +414,9 @@ static inline struct hmap *grow(struct hmap *const hm)
 		if (grown_store != hm->store) {
 			printf(FG_MAGENTA REVERSE " moving to     -> %p \n" RESET,
 			       (void *)grown_store);
+			/* UB */
 			printf(FG_MAGENTA REVERSE "               -> %ld \n" RESET,
-			       ( long)grown_store - (long)hm->store);
+			       (long)grown_store - (long)hm->store);
 		}
 		hm->store          = grown_store;
 		hm->store_capacity = new_store_capacity;
@@ -532,8 +536,10 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 		memcpy(hm->store[hm->top].key, key, key_size);
 
 		hm->store[hm->top].value = value;
+		printf(FG_BRIGHT_WHITE REVERSE "writing to store[%lu] \n" RESET,
+		       hm->top);
 		hm->top++;
-		if (hm->top >= hm->store_capacity) {
+		if (hm->top > hm->store_capacity) {
 			grow(hm);
 		}
 		// printf(FG_BRIGHT_GREEN REVERSE

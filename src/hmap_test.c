@@ -25,8 +25,9 @@
 	    " hmap version 0.26.3 " RESET FG_BRIGHT_BLUE                           \
 	    " type exit to quit\n" RESET FG_BRIGHT_RED REVERSE                     \
 	    "   todo \n" RESET FG_BRIGHT_RED                                       \
+	    "  - [ ] Investigate rm command getting stuck"                         \
 	    "  - [ ] Investigate invalid read when growing a hmap initialized "    \
-	    "with a size 2\n"                                                      \
+	    "with a size <= 16\n"                                                  \
 	    "  - [ ] Deal with chain going over HMAP_PROBE_LENGTH at the end of "  \
 	    "the map by triggering a resize, wrapping around, ...\n"               \
 	    "  - [ ] Consider implementing a reserve function to grow to "         \
@@ -226,8 +227,8 @@ void dump_hashmap(const struct hmap *const hm)
  */
 void dump_store(const struct hmap *const hm)
 {
-
-	for (size_t i = 0; i < hm->top; i++) {
+	// for (size_t i = 0; i < hm->top; i++) {
+	for (size_t i = 0; i < hm->store_capacity; i++) {
 		printf(FG_BRIGHT_BLACK REVERSE "\n store @[%lu] " RESET, i);
 		printf("%*.*s | %lu\n",
 		       HMAP_INLINE_KEY_SIZE,
@@ -366,7 +367,7 @@ int main(void)
 
 	// uint32_t seed = 31;
 	size_t requested_capacity = 100;
-	float load_factor;
+	// float load_factor;
 	int unused_result __attribute__((unused));
 	char *unused_result_s __attribute__((unused));
 
@@ -379,21 +380,22 @@ int main(void)
 	// struct hmap *const hashmap = hmap_new(requested_capacity);
 	struct hmap *hashmap = hmap_new(requested_capacity);
 
-	fputs(FG_BLUE REVERSE "Enter desired load factor ? " RESET, stdout);
-	unused_result = scanf("%f", &load_factor);
+	// fputs(FG_BLUE REVERSE "Enter desired load factor ? " RESET, stdout);
+	// unused_result = scanf("%f", &load_factor);
 
 	//---------------------------------------------------------------- setup
 	SETUP_BENCH(repl);
-	size_t load_count = requested_capacity * load_factor;
-	printf("load_factor = %f\n", load_factor);
-	printf("load_count  = %lu\n", load_count);
+	// size_t load_count = requested_capacity * load_factor;
+	// printf("load_factor = %f\n", load_factor);
+	// printf("load_count  = %lu\n", load_count);
 	// size_t capacity  = hashmap->capacity;
 	size_t sum_value = 0;
 	char key[256];
 	char random_key[HMAP_INLINE_KEY_SIZE + 1] = {'\0'};
 
-	printf(FG_BRIGHT_YELLOW REVERSE "Filling hashmap with %lu entries\n" RESET,
-	       load_count);
+	// printf(FG_BRIGHT_YELLOW REVERSE "Filling hashmap with %lu entries\n"
+	// RESET,
+	//        load_count);
 
 	printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET, hashmap->top);
 
@@ -405,15 +407,15 @@ int main(void)
 	// 	hmap_put(hashmap, random_key, hashmap->top);
 	// }
 
-	size_t rand_length;
-	while (hashmap->top < load_count) {
-		rand_length = rand() % 15 + 1;
-		for (size_t i = 0; i < rand_length; i++) {
-			random_key[i] = (char)(rand() % 26 + 0x61);
-		}
-		random_key[rand_length + 1] = '\0';
-		hmap_put(hashmap, random_key, rand_length);
-	}
+	// size_t rand_length;
+	// while (hashmap->top < load_count) {
+	// 	rand_length = rand() % 15 + 1;
+	// 	for (size_t i = 0; i < rand_length; i++) {
+	// 		random_key[i] = (char)(rand() % 26 + 0x61);
+	// 	}
+	// 	random_key[rand_length + 1] = '\0';
+	// 	hmap_put(hashmap, random_key, rand_length);
+	// }
 
 	printf(FG_BRIGHT_YELLOW REVERSE "Done !\n" RESET);
 	printf(FG_YELLOW REVERSE "hmap->top : %lu\n" RESET, hashmap->top);
@@ -437,32 +439,32 @@ int main(void)
 		}
 
 		//-------------------------------------------------- rm
-		if ((strcmp(key, "rm")) == 0) {
-			// for (size_t k = 0; k < load_count; k++) {
-			size_t is_stuck = hashmap->top;
-			while (hashmap->top) {
-				// printf(
-				//     FG_BRIGHT_YELLOW REVERSE
-				//     "hmap->top : %lu"
-				//     " : %.*s"
-				//     " : %.lu"
-				//     " : %.lu\n" RESET,
-				//     hashmap->top,
-				//     HMAP_INLINE_KEY_SIZE,
-				//     hashmap->store[hashmap->top - 1].key,
-				//     hashmap->store[hashmap->top - 1].value,
-				//     hmap_find(hashmap, hashmap->store[hashmap->top -
-				//     1].key));
-				hmap_remove(hashmap, hashmap->store[hashmap->top - 1].key);
-				if (hashmap->top == is_stuck) {
-					break;
-				}
-				is_stuck = hashmap->top;
-			}
-			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
-			       hashmap->top);
-			continue;
-		}
+		// if ((strcmp(key, "rm")) == 0) {
+		// 	// for (size_t k = 0; k < load_count; k++) {
+		// 	size_t is_stuck = hashmap->top;
+			// while (hashmap->top) {
+			// 	printf(
+			// 	    FG_BRIGHT_YELLOW REVERSE
+			// 	    "hmap->top : %lu"
+			// 	    // " : %.*s"
+			// 	    " : %.lu"
+			// 	    " : %.lu\n" RESET,
+			// 	    hashmap->top - 1,
+			// 	    // HMAP_INLINE_KEY_SIZE,
+			// 	    // hashmap->store[hashmap->top - 1].key,
+			// 	    hashmap->store[hashmap->top - 1].value,
+			// 	    hmap_find(hashmap, hashmap->store[hashmap->top -
+			// 	    1].key));
+			// 	hmap_remove(hashmap, hashmap->store[hashmap->top - 1].key);
+			// 	if (hashmap->top == is_stuck) {
+			// 		break;
+			// 	}
+			// 	is_stuck = hashmap->top;
+			// }
+		// 	printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
+		// 	       hashmap->top);
+		// 	continue;
+		// }
 		//-------------------------------------------------- fill
 		if ((strcmp(key, "fill")) == 0) {
 			const size_t fill_up_to = hashmap->store_capacity;
@@ -470,6 +472,28 @@ int main(void)
 				*(uint64_t *)(random_key) = rand();
 				// *(uint64_t *)(random_key + HMAP_INLINE_KEY_SIZE / 2) =
 				//     hashmap->top;
+				hmap_put(hashmap, random_key, hashmap->top);
+			}
+			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
+			       hashmap->top);
+			continue;
+		}
+		//-------------------------------------------------- fill100
+		if ((strcmp(key, "fill100")) == 0) {
+			size_t count = 100;
+			while (count--) {
+				*(uint64_t *)(random_key) = rand();
+				hmap_put(hashmap, random_key, hashmap->top);
+			}
+			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
+			       hashmap->top);
+			continue;
+		}
+		//-------------------------------------------------- fill1K
+		if ((strcmp(key, "fill1K")) == 0) {
+			size_t count = 1000;
+			while (count--) {
+				*(uint64_t *)(random_key) = rand();
 				hmap_put(hashmap, random_key, hashmap->top);
 			}
 			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
@@ -536,7 +560,7 @@ int main(void)
 		//-------------------------------------------------- store
 		if ((strcmp(key, "grow")) == 0) {
 			debug_grow(hashmap);
-			load_count = hashmap->store_capacity;
+			// load_count = hashmap->store_capacity;
 			continue;
 		}
 		//-------------------------------------------------- rehash
