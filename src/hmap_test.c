@@ -25,7 +25,7 @@
 	    " hmap version 0.26.3 " RESET FG_BRIGHT_BLUE                           \
 	    " type exit to quit\n" RESET FG_BRIGHT_RED REVERSE                     \
 	    "   todo \n" RESET FG_BRIGHT_RED                                       \
-	    "  - [ ] Investigate rm command getting stuck"                         \
+	    "  - [x] Investigate rm command getting stuck"                         \
 	    "  - [ ] Investigate invalid read when growing a hmap initialized "    \
 	    "with a size <= 16\n"                                                  \
 	    "  - [ ] Deal with chain going over HMAP_PROBE_LENGTH at the end of "  \
@@ -42,16 +42,18 @@
 	    "    + [ ] Point top to empty slot where next entry is pushed\n"       \
 	    "    + [ ] Use union on entry value, either its a value or the index " \
 	    "of the next empty slot\n"                                             \
+	    "    + [ ] Consider that it's a tradeoff between pointer stability "   \
+	    "and being able to iterate through an always dense store "             \
 	    "  - [ ] Redo Packing\n"                                               \
 	    "    + [ ] Use the 6 bytes of padding in buckets for extra hash\n"     \
 	    "    + [ ] Consider inlining entry in bucket\n"                        \
-	    " - [ ] Consider there may be alignment problems with memory pool "    \
+	    " - [x] Consider there may be alignment problems with memory pool "    \
 	    "split. \n"                                                            \
-	    "    + [ ] Look for the C idiomatic way to split memory and prevent "  \
+	    "    + [x] Look for the C idiomatic way to split memory and prevent "  \
 	    "this. \n"                                                             \
-	    "    + [ ] Consider that it may not be a problem as "                  \
+	    "    + [x] Consider that it may not be a problem as "                  \
 	    "structures are properly aligned/padded here. \n"                      \
-	    "  - [ ] Implement Resize\n"                                           \
+	    "  - [x] Implement Resize\n"                                           \
 	    "  - [x] Use requested capacity to set store size\n"                   \
 	    "    + [x] Derive n, map capacity from store size / HMAP_MAX_LOAD"     \
 	    "  - [x] Consider that hmap count and top are "                        \
@@ -60,23 +62,23 @@
 	    "hmap_new\n"                                                           \
 	    "  - [ ] Explore pointer tagging to keep track of value type/mode\n"   \
 	    "  - [x] Reconsider tab_hash\n"                                        \
-	    "  - [ ] Consider reading fixed size keys as n uint64_t\n"             \
+	    "  - [x] Consider reading fixed size keys as n uint64_t\n"             \
 	    "    + [x] Use it for HFUNC\n"                                         \
 	    "    + [x] Use it for HCMP\n"                                          \
 	    "    + [x] Investigate unpadded strings not found\n"                   \
 	    "    + [x] Consider padding strings to HMAP_INLINE_KEY_SIZE\n"         \
-	    "    + [ ] Measure if padding overhead is worth the extra cmp speed\n" \
-	    "  - [ ] Decide on return value for key not found on hmap_get\n"       \
-	    "  - [ ] Handle any key size lower or equal to HMAP_INLINE_KEY_SIZE\n" \
-	    "    + [ ] Replace memcpy on put\n"                                    \
-	    "    + [ ] Replace memcmp on find\n"                                   \
+	    "    + [x] Measure if padding overhead is worth the extra cmp speed\n" \
+	    "  - [x] Decide on return value for key not found on hmap_get\n"       \
+	    "  - [x] Handle any key size lower or equal to HMAP_INLINE_KEY_SIZE\n" \
+	    "    + [x] Replace memcpy on put\n"                                    \
+	    "    + [x] Replace memcmp on find\n"                                   \
 	    "      * [ ] Research efficient alt shortcircuit to compare\n"         \
 	    "    + [ ] Think about a useful thing to do or not do on delete\n"     \
 	    "  - [ ] Wrap up a version satisfying build-your-own-lisp use case\n"  \
 	    "    + [ ] Set up a interface with tentative implementation asap\n"    \
-	    "    + [ ] Implement <string => int>\n"                                \
-	    "      * [ ] Research ways to accomodate strings in the store\n"       \
-	    "      * [ ] Consider making fixed size of inlined key a parameter "   \
+	    "    + [x] Implement <string => int>\n"                                \
+	    "      * [x] Research ways to accomodate strings in the store\n"       \
+	    "      * [x] Consider making fixed size of inlined key a parameter "   \
 	    "of hmap_new \n"                                                       \
 	    "      * [ ] Test\n"                                                   \
 	    "      * [ ] Bench different hash function\n"                          \
@@ -88,9 +90,9 @@
 	    "      * [ ] Bench different hash function\n"                          \
 	    "    + [ ] Investigate errors with very long collision chains on "     \
 	    "full table\n"                                                         \
-	    "    + [ ] Research hashtable resizing strategy\n"                     \
-	    "      * [ ] Implement one, move on\n"                                 \
-	    "      * [ ] Consider separately allocing the store and buckets to  "  \
+	    "    + [x Research hashtable resizing strategy\n"                      \
+	    "      * [x] Implement one, move on\n"                                 \
+	    "      * [x] Consider separately allocing the store and buckets to  "  \
 	    "allow resizing in place\n"                                            \
 	    "  - [ ] Move on to next build your own lisp step\n" RESET             \
 	    "  - [ ] Bench against array\n"                                        \
@@ -129,7 +131,7 @@
  */
 void print_bits(const size_t n, void const *const data)
 {
-	unsigned char *bit = (unsigned char *)data;
+	unsigned char const *bit = (unsigned char *)data;
 	unsigned char byte;
 
 	// for (int i = n - 1; i >= 0; i--) {
@@ -231,7 +233,12 @@ void dump_store(const struct hmap *const hm)
 {
 	// for (size_t i = 0; i < hm->top; i++) {
 	for (size_t i = 0; i < hm->store_capacity; i++) {
-		printf(FG_BRIGHT_BLACK REVERSE "\n store @[%lu] " RESET, i);
+		if (i < hm->top) {
+			printf(FG_BRIGHT_CYAN REVERSE "\n store @[%lu] " RESET, i);
+		}
+		else {
+			printf(FG_BRIGHT_BLACK REVERSE "\n store @[%lu] " RESET, i);
+		}
 		printf("%*.*s | %lu\n",
 		       HMAP_INLINE_KEY_SIZE,
 		       HMAP_INLINE_KEY_SIZE,
@@ -409,7 +416,7 @@ int main(void)
 	// 	hmap_put(hashmap, random_key, hashmap->top);
 	// }
 
-	// size_t rand_length;
+	size_t rand_length;
 	// while (hashmap->top < load_count) {
 	// 	rand_length = rand() % 15 + 1;
 	// 	for (size_t i = 0; i < rand_length; i++) {
@@ -441,39 +448,63 @@ int main(void)
 		}
 
 		//-------------------------------------------------- rm
-		// if ((strcmp(key, "rm")) == 0) {
-		// 	// for (size_t k = 0; k < load_count; k++) {
-		// 	size_t is_stuck = hashmap->top;
-		// while (hashmap->top) {
-		// 	printf(
-		// 	    FG_BRIGHT_YELLOW REVERSE
-		// 	    "hmap->top : %lu"
-		// 	    // " : %.*s"
-		// 	    " : %.lu"
-		// 	    " : %.lu\n" RESET,
-		// 	    hashmap->top - 1,
-		// 	    // HMAP_INLINE_KEY_SIZE,
-		// 	    // hashmap->store[hashmap->top - 1].key,
-		// 	    hashmap->store[hashmap->top - 1].value,
-		// 	    hmap_find(hashmap, hashmap->store[hashmap->top -
-		// 	    1].key));
-		// 	hmap_remove(hashmap, hashmap->store[hashmap->top - 1].key);
-		// 	if (hashmap->top == is_stuck) {
-		// 		break;
-		// 	}
-		// 	is_stuck = hashmap->top;
-		// }
-		// 	printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
-		// 	       hashmap->top);
-		// 	continue;
-		// }
+		if ((strcmp(key, "rm")) == 0) {
+			// for (size_t k = 0; k < load_count; k++) {
+			size_t is_stuck = hashmap->top;
+			while (hashmap->top) {
+				printf(
+				    FG_BRIGHT_YELLOW REVERSE
+				    "hmap->top : %lu"
+				    " : store[%lu]"
+				    " : k %.*s"
+				    " : v %lu"
+				    " : bucket[%lu]\n" RESET,
+				    hashmap->top,
+				    hashmap->top - 1,
+				    HMAP_INLINE_KEY_SIZE,
+				    hashmap->store[hashmap->top - 1].key,
+				    hashmap->store[hashmap->top - 1].value,
+				    hmap_find(hashmap, hashmap->store[hashmap->top - 1].key));
+				hmap_remove(hashmap, hashmap->store[hashmap->top - 1].key);
+				if (hashmap->top == is_stuck) {
+					break;
+				}
+				is_stuck = hashmap->top;
+			}
+			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
+			       hashmap->top);
+			continue;
+		}
 		//-------------------------------------------------- fill
 		if ((strcmp(key, "fill")) == 0) {
 			const size_t fill_up_to = hashmap->store_capacity;
 			while (hashmap->top < fill_up_to) {
-				*(uint64_t *)(random_key) = rand();
+				// *(uint64_t *)(random_key) = rand();
 				// *(uint64_t *)(random_key + HMAP_INLINE_KEY_SIZE / 2) =
 				//     hashmap->top;
+				rand_length = rand() % 15 + 1;
+				for (size_t i = 0; i < rand_length; i++) {
+					random_key[i] = (char)(rand() % 26 + 0x61);
+				}
+				random_key[rand_length + 1] = '\0';
+				hmap_put(hashmap, random_key, hashmap->top);
+			}
+			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
+			       hashmap->top);
+			continue;
+		}
+		//-------------------------------------------------- fill10
+		if ((strcmp(key, "fill10")) == 0) {
+			size_t count = 10;
+			while (count--) {
+				// *(uint64_t *)(random_key) = rand();
+				// *(uint64_t *)(random_key + HMAP_INLINE_KEY_SIZE / 2) =
+				//     hashmap->top;
+				rand_length = rand() % 15 + 1;
+				for (size_t i = 0; i < rand_length; i++) {
+					random_key[i] = (char)(rand() % 26 + 0x61);
+				}
+				random_key[rand_length + 1] = '\0';
 				hmap_put(hashmap, random_key, hashmap->top);
 			}
 			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
@@ -484,7 +515,14 @@ int main(void)
 		if ((strcmp(key, "fill100")) == 0) {
 			size_t count = 100;
 			while (count--) {
-				*(uint64_t *)(random_key) = rand();
+				// *(uint64_t *)(random_key) = rand();
+				// *(uint64_t *)(random_key + HMAP_INLINE_KEY_SIZE / 2) =
+				//     hashmap->top;
+				rand_length = rand() % 15 + 1;
+				for (size_t i = 0; i < rand_length; i++) {
+					random_key[i] = (char)(rand() % 26 + 0x61);
+				}
+				random_key[rand_length + 1] = '\0';
 				hmap_put(hashmap, random_key, hashmap->top);
 			}
 			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
@@ -495,7 +533,14 @@ int main(void)
 		if ((strcmp(key, "fill1K")) == 0) {
 			size_t count = 1000;
 			while (count--) {
-				*(uint64_t *)(random_key) = rand();
+				// *(uint64_t *)(random_key) = rand();
+				// *(uint64_t *)(random_key + HMAP_INLINE_KEY_SIZE / 2) =
+				//     hashmap->top;
+				rand_length = rand() % 15 + 1;
+				for (size_t i = 0; i < rand_length; i++) {
+					random_key[i] = (char)(rand() % 26 + 0x61);
+				}
+				random_key[rand_length + 1] = '\0';
 				hmap_put(hashmap, random_key, hashmap->top);
 			}
 			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
@@ -506,7 +551,14 @@ int main(void)
 		if ((strcmp(key, "fill1M")) == 0) {
 			size_t count = 1000000;
 			while (count--) {
-				*(uint64_t *)(random_key) = rand();
+				// *(uint64_t *)(random_key) = rand();
+				// *(uint64_t *)(random_key + HMAP_INLINE_KEY_SIZE / 2) =
+				//     hashmap->top;
+				rand_length = rand() % 15 + 1;
+				for (size_t i = 0; i < rand_length; i++) {
+					random_key[i] = (char)(rand() % 26 + 0x61);
+				}
+				random_key[rand_length + 1] = '\0';
 				hmap_put(hashmap, random_key, hashmap->top);
 			}
 			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
@@ -518,8 +570,13 @@ int main(void)
 			size_t count = 3000000;
 			while (count--) {
 				// *(uint64_t *)(random_key) = rand();
-				uint64_t rand_num = rand();
-				memcpy(random_key, &rand_num, sizeof rand_num);
+				// *(uint64_t *)(random_key + HMAP_INLINE_KEY_SIZE / 2) =
+				//     hashmap->top;
+				rand_length = rand() % 15 + 1;
+				for (size_t i = 0; i < rand_length; i++) {
+					random_key[i] = (char)(rand() % 26 + 0x61);
+				}
+				random_key[rand_length + 1] = '\0';
 				hmap_put(hashmap, random_key, hashmap->top);
 			}
 			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,

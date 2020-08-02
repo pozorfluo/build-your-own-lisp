@@ -182,10 +182,10 @@ static inline size_t find_n(const struct hmap *const hm,
  *   -> entry index
  * Else
  *   -> first empty slot
- * 
+ *
  * note
  *   Because distances are initialized to 0 and set to 0 when removing an entry,
- *   probing distances for 0 yields "stop buckets" aka @home entry or empty 
+ *   probing distances for 0 yields "stop buckets" aka @home entry or empty
  *   bucket.
  *
  * todo
@@ -254,7 +254,7 @@ static inline void rehash(struct hmap *const hm, struct hmap_bucket *const map)
 
 	while (store_index--) {
 		const char *const key = hm->store[store_index].key;
-		printf("rehashing store[%lu] : %s \n", store_index, key);
+		// printf("rehashing store[%lu] : %s \n", store_index, key);
 		/* Prepare temp entry */
 		size_t key_size      = strnlen(key, HMAP_INLINE_KEY_SIZE);
 		const size_t hash    = HREDUCE(HFUNC(key, key_size), hm->hash_shift);
@@ -327,31 +327,33 @@ static inline struct hmap *grow(struct hmap *const hm)
 	 *   This only possibly affects the first 'grow' event, after that, size
 	 *   of store and map are 'synched'.
 	 */
-	const size_t max_store_size =
+	const size_t max_store_capacity =
 	    (hm->capacity - HMAP_PROBE_LENGTH) * HMAP_MAX_LOAD;
 
-	if (hm->store_capacity * HMAP_STORE_GROW <= max_store_size) {
+	if (hm->store_capacity * HMAP_STORE_GROW <= max_store_capacity) {
 		printf(FG_BRIGHT_MAGENTA REVERSE
 		       " Growing the store from [%lu] to [%lu] \n" RESET,
 		       hm->store_capacity,
-		       max_store_size);
+		       max_store_capacity);
 		printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
 		       (void *)hm->store);
 
 		grown_store =
-		    realloc(hm->store, sizeof(*(hm->store)) * (max_store_size + 1));
+		    realloc(hm->store, sizeof(*(hm->store)) * (max_store_capacity + 1));
 		if (grown_store == NULL) {
 			goto err_free_grown_store;
 		}
 
-		// memset(grown_store, 0, sizeof(*(hm->store)) * (max_store_size + 1));
+		memset(grown_store + hm->top,
+		       0,
+		       sizeof(*(hm->store)) * (max_store_capacity + 1 - hm->top));
 
 		hm->store = grown_store;
 
 		// printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
 		//        (void *)hm->store);
 
-		hm->store_capacity = max_store_size;
+		hm->store_capacity = max_store_capacity;
 	}
 	else {
 		/**
@@ -416,6 +418,10 @@ static inline struct hmap *grow(struct hmap *const hm)
 			goto err_free_grown_store;
 		}
 
+		memset(grown_store + hm->top,
+		       0,
+		       sizeof(*(hm->store)) * (new_store_capacity + 1 - hm->top));
+
 		if (grown_store != hm->store) {
 			printf(FG_MAGENTA REVERSE " moving to     -> %p \n" RESET,
 			       (void *)grown_store);
@@ -478,9 +484,9 @@ void debug_rehash(struct hmap *const hm) { rehash(hm, hm->buckets); }
  *   Do not allow a full table, resize before it happens
  *     -> hmap_put does not handle inserting on a full table
  *   Is limited to chain <= 256 due to distances meta_byte type
- * 
+ *
  *   Because distances are initialized to 0 and set to 0 when removing an entry,
- *   probing distances for 0 yields "stop buckets" aka @home entry or empty 
+ *   probing distances for 0 yields "stop buckets" aka @home entry or empty
  *   bucket.
  */
 size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
@@ -541,8 +547,8 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 		memcpy(hm->store[hm->top].key, key, key_size);
 
 		hm->store[hm->top].value = value;
-		printf(FG_BRIGHT_WHITE REVERSE "writing to store[%lu] \n" RESET,
-		       hm->top);
+		// printf(FG_BRIGHT_WHITE REVERSE "writing to store[%lu] \n" RESET,
+		//        hm->top);
 		hm->top++;
 		if (hm->top > hm->store_capacity) {
 			grow(hm);
@@ -584,12 +590,13 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 // }
 //----------------------------------------------------------------- Function ---
 /**
- * Free given hmap_entry
+ * Free given hmap entry
  *
  * Rewind top
- * Find top store entry corresponding bucket entry
- * Move top store entry to destroyed store entry slot
- * Wipe top
+ * If given entry is not at store top
+ *   Find top store entry corresponding bucket entry
+ *   Move top store entry to destroyed store entry slot
+ * (Wipe top)
  *   -> nothing
  *
  * note
@@ -601,25 +608,31 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 static inline void destroy_entry(struct hmap *const hm, const size_t entry)
 {
 	const size_t store_slot = hm->buckets[entry].entry;
-	hm->top--;
+	const size_t top = --hm->top;
 
-	if ((hm->top > 0) && (hm->top != store_slot)) {
-		const char *const top_key = hm->store[hm->top].key;
+	if ((top > 0) && (top != store_slot)) {
+		const char *const top_key = hm->store[top].key;
+
+		/** @todo - [ ] Consider storing top - 1 bucket index in top somehow
+		 *              to obviate that find_n
+		 */ 
 		const size_t top_bucket =
 		    find_n(hm, top_key, strnlen(top_key, HMAP_INLINE_KEY_SIZE));
 
-		printf(FG_BRIGHT_CYAN REVERSE
-		       "top key    : %s \n"
-		       "top bucket : %lu \n" RESET,
-		       top_key,
-		       top_bucket);
-
-		hm->buckets[top_bucket].entry = hm->buckets[entry].entry;
+		hm->buckets[top_bucket].entry = store_slot;
 		// hm->buckets[top_bucket]               = hm->buckets[entry];
-		hm->store[(hm->buckets[entry].entry)] = hm->store[hm->top];
+		hm->store[store_slot] = hm->store[top];
 	}
+		memset(hm->store + top, 0, sizeof(*(hm->store)));
 	return;
 }
+
+// printf(FG_BRIGHT_CYAN REVERSE
+//        "top key    : %s \n"
+//        "top bucket : %lu \n" RESET,
+//        top_key,
+//        top_bucket);
+
 
 //----------------------------------------------------------------- Function ---
 /**
