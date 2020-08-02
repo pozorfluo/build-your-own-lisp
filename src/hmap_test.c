@@ -531,16 +531,22 @@ int main(void)
 		}
 		//-------------------------------------------------- fill1K
 		if ((strcmp(key, "fill1K")) == 0) {
-			size_t count = 1000;
+			size_t count        = 1000;
+			size_t previous_key = 33;
+			size_t key;
 			while (count--) {
-				// *(uint64_t *)(random_key) = rand();
+				key = ((HFIBO * rand()) & 0x7F7F7F7F7F7F7F7Fllu) |
+				      0x2020202020202020llu;
+				*(uint64_t *)(random_key)     = key;
+				*(uint64_t *)(random_key + 8) = previous_key;
+				previous_key                  = key;
 				// *(uint64_t *)(random_key + HMAP_INLINE_KEY_SIZE / 2) =
 				//     hashmap->top;
-				rand_length = rand() % 15 + 1;
-				for (size_t i = 0; i < rand_length; i++) {
-					random_key[i] = (char)(rand() % 26 + 0x61);
-				}
-				random_key[rand_length + 1] = '\0';
+				// rand_length = rand() % 15 + 1;
+				// for (size_t i = 0; i < rand_length; i++) {
+				// 	random_key[i] = (char)(rand() % 26 + 0x61);
+				// }
+				// random_key[rand_length + 1] = '\0';
 				hmap_put(hashmap, random_key, hashmap->top);
 			}
 			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
@@ -549,11 +555,51 @@ int main(void)
 		}
 		//-------------------------------------------------- fill1M
 		if ((strcmp(key, "fill1M")) == 0) {
-			size_t count = 1000000;
+			size_t count        = 1000000;
+			size_t previous_key = 33;
+			size_t key;
 			while (count--) {
-				// *(uint64_t *)(random_key) = rand();
+				key = ((HFIBO * rand()) & 0x7F7F7F7F7F7F7F7Fllu) |
+				      0x2020202020202020llu;
+				*(uint64_t *)(random_key)     = key;
+				*(uint64_t *)(random_key + 8) = previous_key;
+				previous_key                  = key;
 				// *(uint64_t *)(random_key + HMAP_INLINE_KEY_SIZE / 2) =
 				//     hashmap->top;
+				// rand_length = rand() % 15 + 1;
+				// for (size_t i = 0; i < rand_length; i++) {
+				// 	random_key[i] = (char)(rand() % 26 + 0x61);
+				// }
+				// random_key[rand_length + 1] = '\0';
+				hmap_put(hashmap, random_key, hashmap->top);
+			}
+			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
+			       hashmap->top);
+			continue;
+		}
+		//-------------------------------------------------- fill3M
+		if ((strcmp(key, "fill3M")) == 0) {
+			size_t count        = 3000000;
+			size_t previous_key = 33;
+			size_t key;
+			while (count--) {
+				key = ((HFIBO * rand()) & 0x7F7F7F7F7F7F7F7Fllu) |
+				      0x2020202020202020llu;
+				*(uint64_t *)(random_key)     = key;
+				*(uint64_t *)(random_key + 8) = previous_key;
+				previous_key                  = key;
+				;
+				hmap_put(hashmap, random_key, hashmap->top);
+			}
+			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
+			       hashmap->top);
+			continue;
+		}
+		//-------------------------------------------------- fill3M
+		if ((strcmp(key, "fill3Ms")) == 0) {
+			size_t count = 3000000;
+			while (count--) {
+
 				rand_length = rand() % 15 + 1;
 				for (size_t i = 0; i < rand_length; i++) {
 					random_key[i] = (char)(rand() % 26 + 0x61);
@@ -566,24 +612,16 @@ int main(void)
 			continue;
 		}
 		//-------------------------------------------------- fill3M
-		if ((strcmp(key, "fill3M")) == 0) {
+		if ((strcmp(key, "fill3Mf")) == 0) {
 			size_t count = 3000000;
 			while (count--) {
-				// *(uint64_t *)(random_key) = rand();
-				// *(uint64_t *)(random_key + HMAP_INLINE_KEY_SIZE / 2) =
-				//     hashmap->top;
-				rand_length = rand() % 15 + 1;
-				for (size_t i = 0; i < rand_length; i++) {
-					random_key[i] = (char)(rand() % 26 + 0x61);
-				}
-				random_key[rand_length + 1] = '\0';
+				*(uint64_t *)(random_key) = rand();
 				hmap_put(hashmap, random_key, hashmap->top);
 			}
 			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
 			       hashmap->top);
 			continue;
 		}
-
 		//-------------------------------------------------- dump
 		if ((strcmp(key, "dump")) == 0) {
 			dump_hashmap(hashmap);
