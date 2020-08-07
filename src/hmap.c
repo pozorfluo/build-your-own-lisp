@@ -330,7 +330,7 @@ static inline struct hmap *grow(struct hmap *const hm)
 	const size_t max_store_capacity =
 	    (hm->capacity - HMAP_PROBE_LENGTH) * HMAP_MAX_LOAD;
 
-	if (hm->store_capacity * HMAP_STORE_GROW <= max_store_capacity) {
+	if (hm->store_capacity * HMAP_STORE_MUST_GROW  < max_store_capacity) { // <= 0) { //
 		printf(FG_BRIGHT_MAGENTA REVERSE
 		       " Growing the store from [%lu] to [%lu] \n" RESET,
 		       hm->store_capacity,
@@ -353,6 +353,9 @@ static inline struct hmap *grow(struct hmap *const hm)
 		// printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
 		//        (void *)hm->store);
 
+		printf(FG_CYAN REVERSE " Grown the store from [%lu] to [%lu] \n" RESET,
+		       hm->store_capacity,
+		       max_store_capacity);
 		hm->store_capacity = max_store_capacity;
 	}
 	else {
@@ -403,12 +406,12 @@ static inline struct hmap *grow(struct hmap *const hm)
 
 		const size_t new_store_capacity = (hm->store_capacity * 2);
 		const size_t new_store_size =
-		    sizeof(*grown_store) * (new_store_capacity + 1);
+		    sizeof(*(hm->store)) * (new_store_capacity + 1);
 
 		printf(FG_BRIGHT_MAGENTA REVERSE
 		       " Growing the store from [%lu] to [%lu] : %lu bytes \n" RESET,
 		       hm->store_capacity,
-		       (hm->store_capacity * 2) + 1,
+		       (hm->store_capacity * 2),
 		       new_store_size);
 		printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
 		       (void *)hm->store);
@@ -422,13 +425,13 @@ static inline struct hmap *grow(struct hmap *const hm)
 		       0,
 		       sizeof(*(hm->store)) * (new_store_capacity + 1 - hm->top));
 
-		if (grown_store != hm->store) {
-			printf(FG_MAGENTA REVERSE " moving to     -> %p \n" RESET,
-			       (void *)grown_store);
-			/* UB */
-			printf(FG_MAGENTA REVERSE "               -> %ld \n" RESET,
-			       (long)grown_store - (long)hm->store);
-		}
+		// if (grown_store != hm->store) {
+		// 	printf(FG_MAGENTA REVERSE " moving to     -> %p \n" RESET,
+		// 	       (void *)grown_store);
+		// 	/* UB */
+		// 	printf(FG_MAGENTA REVERSE "               -> %ld \n" RESET,
+		// 	       (long)grown_store - (long)hm->store);
+		// }
 		hm->store          = grown_store;
 		hm->store_capacity = new_store_capacity;
 		// printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
@@ -608,14 +611,14 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 static inline void destroy_entry(struct hmap *const hm, const size_t entry)
 {
 	const size_t store_slot = hm->buckets[entry].entry;
-	const size_t top = --hm->top;
+	const size_t top        = --hm->top;
 
 	if ((top > 0) && (top != store_slot)) {
 		const char *const top_key = hm->store[top].key;
 
 		/** @todo - [ ] Consider storing top - 1 bucket index in top somehow
 		 *              to obviate that find_n
-		 */ 
+		 */
 		const size_t top_bucket =
 		    find_n(hm, top_key, strnlen(top_key, HMAP_INLINE_KEY_SIZE));
 
@@ -623,7 +626,7 @@ static inline void destroy_entry(struct hmap *const hm, const size_t entry)
 		// hm->buckets[top_bucket]               = hm->buckets[entry];
 		hm->store[store_slot] = hm->store[top];
 	}
-		memset(hm->store + top, 0, sizeof(*(hm->store)));
+	memset(hm->store + top, 0, sizeof(*(hm->store)));
 	return;
 }
 
@@ -632,12 +635,9 @@ static inline void destroy_entry(struct hmap *const hm, const size_t entry)
 //        "top bucket : %lu \n" RESET,
 //        top_key,
 //        top_bucket);
-
-
 //----------------------------------------------------------------- Function ---
 /**
  * Look for given key in given hmap
- *
  * If given key exists
  *   update the store
  * 	 probe for stop bucket
@@ -670,12 +670,16 @@ size_t hmap_remove(struct hmap *const hm, const char *const key)
 			stop_bucket++;
 		}
 
-		for (size_t bucket = entry; bucket < stop_bucket; bucket++) {
-			hm->buckets[bucket] = hm->buckets[bucket + 1];
-			hm->buckets[bucket].distance--;
-
-			// printf("backwardshiftdel[ %lu -> %lu ]\n", bucket + 1,
-			// bucket);
+		if (stop_bucket != entry + 1) {
+			for (size_t bucket = entry; bucket < stop_bucket; bucket++) {
+				printf("backwardshiftdel[ %lu -> %lu ] d %hu -> %hu \n",
+				       bucket + 1,
+				       bucket,
+				       hm->buckets[bucket + 1].distance,
+				       hm->buckets[bucket + 1].distance - 1);
+				hm->buckets[bucket] = hm->buckets[bucket + 1];
+				hm->buckets[bucket].distance--;
+			}
 		}
 		/* mark entry distance in last shifted bucket as @home or empty */
 		hm->buckets[stop_bucket - 1].distance = 0;

@@ -2,9 +2,11 @@
 /**
  *
  */
-#include <limits.h> /* UINT_MAX */
-#include <stddef.h> /* size_t */
-#include <stdint.h> /* uint32_t, uint64_t */
+#include <errno.h>    /* strtoumax */
+#include <inttypes.h> /* strtoumax */
+#include <limits.h>   /* UINT_MAX */
+#include <stddef.h>   /* size_t */
+#include <stdint.h>   /* uint32_t, uint64_t */
 #include <stdio.h>
 #include <stdlib.h> /* rand */
 #include <string.h> /* memcpy, strlen, strnlen */
@@ -80,13 +82,10 @@
 	    "      * [x] Research ways to accomodate strings in the store\n"       \
 	    "      * [x] Consider making fixed size of inlined key a parameter "   \
 	    "of hmap_new \n"                                                       \
-	    "      * [ ] Test\n"                                                   \
 	    "      * [ ] Bench different hash function\n"                          \
 	    "    + [ ] Implement <string => pointer>\n"                            \
-	    "      * [ ] Test\n"                                                   \
 	    "      * [ ] Bench different hash function\n"                          \
 	    "    + [ ] Implement <string => function pointer>\n"                   \
-	    "      * [ ] Test\n"                                                   \
 	    "      * [ ] Bench different hash function\n"                          \
 	    "    + [ ] Investigate errors with very long collision chains on "     \
 	    "full table\n"                                                         \
@@ -112,7 +111,10 @@
 	    "distance + 1 bit of ctrl for empty slots\n"                           \
 	    "  - [ ] Consider for wraparound that some version of abseil hashmap " \
 	    "replicates a probe sized chunk of data from the beginning at the "    \
-	    "end\n"
+	    "end\n"                                                                \
+	    "\n" FG_BRIGHT_MAGENTA REVERSE                                         \
+	    " !!! USE THE BLOODY DEBUGGER INSTEAD OF NOODLING WITH PRINTF "        \
+	    "!!!\n" RESET
 
 //------------------------------------------------------------ MAGIC NUMBERS ---
 
@@ -194,7 +196,7 @@ void dump_hashmap(const struct hmap *const hm)
 		max_distance = (hm->buckets[i].distance > max_distance)
 		                   ? hm->buckets[i].distance
 		                   : max_distance;
-		printf("\x1b[9%dm" REVERSE " hmap->bucket[%lu]>>" RESET, colour, i);
+		printf("\x1b[9%dm" REVERSE " hm->bucket[%lu]>>" RESET, colour, i);
 
 		printf(FG_BRIGHT_BLACK REVERSE
 		       " home[%lu] d[%d] m[%d] stored @[%u] " RESET,
@@ -208,14 +210,15 @@ void dump_hashmap(const struct hmap *const hm)
 		       hm->buckets[i].meta,
 		       hm->buckets[i].entry);
 
-		printf("\n%*.*s | ", HMAP_INLINE_KEY_SIZE, HMAP_INLINE_KEY_SIZE, key);
-		// printf("    \t: %*.*s | %lu ",
-		//        HMAP_INLINE_KEY_SIZE,
-		//        HMAP_INLINE_KEY_SIZE,
-		//        key,
-		//        hm->store[(hm->buckets[i].entry)].value);
+		// printf("\n%*.*s | ", HMAP_INLINE_KEY_SIZE, HMAP_INLINE_KEY_SIZE,
+		// key);
+		printf("     \t%*.*s | %lu \n",
+		       HMAP_INLINE_KEY_SIZE,
+		       HMAP_INLINE_KEY_SIZE,
+		       key,
+		       hm->store[(hm->buckets[i].entry)].value);
 
-		print_bits(HMAP_INLINE_KEY_SIZE, key);
+		// print_bits(HMAP_INLINE_KEY_SIZE, key);
 	}
 
 	printf("empty_buckets       : %lu \t-> %f%%\n",
@@ -452,19 +455,22 @@ int main(void)
 			// for (size_t k = 0; k < load_count; k++) {
 			size_t is_stuck = hashmap->top;
 			while (hashmap->top) {
-				printf(
-				    FG_BRIGHT_YELLOW REVERSE
-				    "hmap->top : %lu"
-				    " : store[%lu]"
-				    " : k %.*s"
-				    " : v %lu"
-				    " : bucket[%lu]\n" RESET,
-				    hashmap->top,
-				    hashmap->top - 1,
-				    HMAP_INLINE_KEY_SIZE,
-				    hashmap->store[hashmap->top - 1].key,
-				    hashmap->store[hashmap->top - 1].value,
-				    hmap_find(hashmap, hashmap->store[hashmap->top - 1].key));
+				printf(FG_BRIGHT_YELLOW REVERSE
+				       "hmap->top : %lu"
+				       " : store[%lu]"
+				       " : k %.*s"
+				       " : v %lu"
+				       " : bucket[%lu]"
+				       " : strlen %lu\n" RESET,
+				       hashmap->top,
+				       hashmap->top - 1,
+				       HMAP_INLINE_KEY_SIZE,
+				       hashmap->store[hashmap->top - 1].key,
+				       hashmap->store[hashmap->top - 1].value,
+				       hmap_find(hashmap, hashmap->store[hashmap->top - 1].key),
+				       strnlen(hashmap->store[hashmap->top - 1].key,
+				               HMAP_INLINE_KEY_SIZE));
+
 				hmap_remove(hashmap, hashmap->store[hashmap->top - 1].key);
 				if (hashmap->top == is_stuck) {
 					break;
@@ -536,7 +542,31 @@ int main(void)
 			size_t key;
 			while (count--) {
 				key = ((HFIBO * rand()) & 0x7F7F7F7F7F7F7F7Fllu) |
-				      0x2020202020202020llu;
+				      0x2121212121212121llu;
+				*(uint64_t *)(random_key)     = key;
+				*(uint64_t *)(random_key + 8) = previous_key;
+				previous_key                  = key;
+				// *(uint64_t *)(random_key + HMAP_INLINE_KEY_SIZE / 2) =
+				//     hashmap->top;
+				// rand_length = rand() % 15 + 1;
+				// for (size_t i = 0; i < rand_length; i++) {
+				// 	random_key[i] = (char)(rand() % 26 + 0x61);
+				// }
+				// random_key[rand_length + 1] = '\0';
+				hmap_put(hashmap, random_key, hashmap->top);
+			}
+			printf(FG_BRIGHT_YELLOW REVERSE "hmap->top : %lu\n" RESET,
+			       hashmap->top);
+			continue;
+		}
+		//-------------------------------------------------- fill1K
+		if ((strcmp(key, "fill10K")) == 0) {
+			size_t count        = 10000;
+			size_t previous_key = 33;
+			size_t key;
+			while (count--) {
+				key = ((HFIBO * rand()) & 0x7F7F7F7F7F7F7F7Fllu) |
+				      0x2121212121212121llu;
 				*(uint64_t *)(random_key)     = key;
 				*(uint64_t *)(random_key + 8) = previous_key;
 				previous_key                  = key;
@@ -560,7 +590,7 @@ int main(void)
 			size_t key;
 			while (count--) {
 				key = ((HFIBO * rand()) & 0x7F7F7F7F7F7F7F7Fllu) |
-				      0x2020202020202020llu;
+				      0x2121212121212121llu;
 				*(uint64_t *)(random_key)     = key;
 				*(uint64_t *)(random_key + 8) = previous_key;
 				previous_key                  = key;
@@ -584,7 +614,7 @@ int main(void)
 			size_t key;
 			while (count--) {
 				key = ((HFIBO * rand()) & 0x7F7F7F7F7F7F7F7Fllu) |
-				      0x2020202020202020llu;
+				      0x2121212121212121llu;
 				*(uint64_t *)(random_key)     = key;
 				*(uint64_t *)(random_key + 8) = previous_key;
 				previous_key                  = key;
@@ -821,9 +851,63 @@ int main(void)
 			continue;
 		}
 
+		//------------------------------------------------------- find bucket
+		// 7;gc#u5a/a!){3;u
+		if (key[0] == '@') {
+			printf("%s\n", key + 1);
+
+			char *key_end;
+			size_t bucket;
+			errno = 0;
+			// Allow seed written in bases other than 10
+			// Prefix with 0x for base 16
+			// Prefix 0 for base 8
+			bucket = strtoumax(key + 1, &key_end, 0);
+
+			// Abort on errors
+			if ((errno != 0) && (bucket == 0)) {
+				perror("Error : strtoumax () could NOT process given seed ");
+				continue;
+			}
+			// Abort if seed is only junk or prefixed with junk
+			// Ignore junk after valid seed though
+			// Note : a leading 0 means base 8, thus 09 will yield 0 as 9
+			//        is considered junk in base 8
+			if (key_end == key) {
+				printf("Error : could NOT process given seed : junk !\n");
+				continue;
+			}
+
+			size_t entry     = hashmap->buckets[bucket].entry;
+			char *bucket_key = hashmap->store[entry].key;
+
+			size_t result = hmap_find(hashmap, bucket_key);
+			printf("hashes to : %lu\n",
+			       (HREDUCE(HFUNC(bucket_key,
+			                      strnlen(bucket_key, HMAP_INLINE_KEY_SIZE)),
+			                hashmap->hash_shift)) >>
+			           7);
+
+			if (result == HMAP_NOT_FOUND) {
+				puts("Key not found ! \n");
+			}
+			else {
+				printf(
+				    "Looking for %.16s -> found @ %lu\n", bucket_key, result);
+				printf("\t\t-> value : %lu\n", hmap_get(hashmap, bucket_key));
+				printf("Removing entry !\n");
+				hmap_remove(hashmap, bucket_key);
+				printf(FG_YELLOW REVERSE "hmap->top : %lu\n" RESET,
+				       hashmap->top);
+			}
+		}
 		//------------------------------------------------------- find / put
 		if (key[0] != '\0') {
 			size_t result = hmap_find(hashmap, key);
+			printf("hashes to : %lu\n",
+			       (HREDUCE(HFUNC(key, strnlen(key, HMAP_INLINE_KEY_SIZE)),
+			                hashmap->hash_shift)) >>
+			           7);
 
 			if (result == HMAP_NOT_FOUND) {
 				puts("Key not found ! \n");
