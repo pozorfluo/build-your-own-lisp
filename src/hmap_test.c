@@ -152,13 +152,23 @@ void print_bits(const size_t n, void const *const data)
  * Dump given Hashmap content
  *   -> nothing
  */
-void dump_hashmap(const struct hmap *const hm)
+void dump_hashmap(const struct hmap *const hm, size_t offset, size_t limit)
 {
+	if (offset > hm->capacity) {
+		offset = hm->capacity - HMAP_PROBE_LENGTH;
+		limit  = HMAP_PROBE_LENGTH;
+	};
+
+	// if ((offset + limit) > hm->capacity) {
+	// 	limit = hm->capacity - offset;
+	// }
+
 	size_t empty_bucket = 0;
 	int max_distance    = 0;
 	const char *key;
 
-	for (size_t i = 0; i < hm->capacity; i++) {
+	for (size_t i = offset, j = 0; (i < hm->capacity) && (j < limit);
+	     i++, j++) {
 		if (hm->buckets[i].meta == META_EMPTY) {
 			empty_bucket++;
 			printf("\x1b[100m hmap->\x1b[30mbucket[%lu]>> EMPTY <<\x1b[0m\n",
@@ -654,7 +664,7 @@ int main(void)
 		}
 		//-------------------------------------------------- dump
 		if ((strcmp(key, "dump")) == 0) {
-			dump_hashmap(hashmap);
+			dump_hashmap(hashmap, 0 , SIZE_MAX);
 			continue;
 		}
 		//-------------------------------------------------- stats
@@ -852,7 +862,6 @@ int main(void)
 		}
 
 		//------------------------------------------------------- find bucket
-		// 7;gc#u5a/a!){3;u
 		if (key[0] == '@') {
 			printf("%s\n", key + 1);
 
@@ -878,6 +887,8 @@ int main(void)
 				continue;
 			}
 
+			dump_hashmap(hashmap, bucket - 10, 20);
+
 			size_t entry     = hashmap->buckets[bucket].entry;
 			char *bucket_key = hashmap->store[entry].key;
 
@@ -891,15 +902,17 @@ int main(void)
 			if (result == HMAP_NOT_FOUND) {
 				puts("Key not found ! \n");
 			}
-			else {
-				printf(
-				    "Looking for %.16s -> found @ %lu\n", bucket_key, result);
-				printf("\t\t-> value : %lu\n", hmap_get(hashmap, bucket_key));
-				printf("Removing entry !\n");
-				hmap_remove(hashmap, bucket_key);
-				printf(FG_YELLOW REVERSE "hmap->top : %lu\n" RESET,
-				       hashmap->top);
-			}
+			// else {
+			// 	printf(
+			// 	    "Looking for %.16s -> found @ %lu\n", bucket_key, result);
+			// 	printf("\t\t-> value : %lu\n", hmap_get(hashmap, bucket_key));
+			// 	printf("Removing entry !\n");
+			// 	hmap_remove(hashmap, bucket_key);
+			// 	printf(FG_YELLOW REVERSE "hmap->top : %lu\n" RESET,
+			// 	       hashmap->top);
+			// }
+			// dump_hashmap(hashmap, bucket - 10, 20);
+			continue;
 		}
 		//------------------------------------------------------- find / put
 		if (key[0] != '\0') {
@@ -920,6 +933,7 @@ int main(void)
 				printf(FG_YELLOW REVERSE "hmap->top : %lu\n" RESET,
 				       hashmap->top);
 			}
+			continue;
 		}
 	}
 
