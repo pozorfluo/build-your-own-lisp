@@ -166,6 +166,7 @@ void dump_hashmap(const struct hmap *const hm, size_t offset, size_t limit)
 	size_t empty_bucket = 0;
 	int max_distance    = 0;
 	int last_at_home    = 0;
+	size_t home_cursor  = 0;
 	const char *key;
 
 	for (size_t i = offset, j = 0; (i < hm->capacity) && (j < limit);
@@ -214,19 +215,22 @@ void dump_hashmap(const struct hmap *const hm, size_t offset, size_t limit)
 		max_distance = (hm->buckets[i].distance > max_distance)
 		                   ? hm->buckets[i].distance
 		                   : max_distance;
+		size_t home = (HREDUCE(HFUNC(key, strnlen(key, HMAP_INLINE_KEY_SIZE)),
+		                       hm->hash_shift)) >>
+		              7;
+
 		printf("\x1b[9%dm" REVERSE " hm->bucket[%lu]>>" RESET, colour, i);
 
-		if ((hm->buckets[i].distance > last_at_home) ||
+		if ((home < home_cursor) || (hm->buckets[i].distance > last_at_home) ||
 		    (hm->buckets[i].distance > (hm->buckets[i - 1].distance + 1))) {
 			printf(FG_BRIGHT_RED);
 		}
 		else {
 			printf(FG_BRIGHT_BLACK);
+			home_cursor = home;
 		}
 		printf(REVERSE " home[%lu] d[%d] m[%d] stored @[%u] " RESET,
-		       (HREDUCE(HFUNC(key, strnlen(key, HMAP_INLINE_KEY_SIZE)),
-		                hm->hash_shift)) >>
-		           7,
+		       home,
 		       // hash_index(HREDUCE(HFUNC(key, strnlen(key,
 		       // HMAP_INLINE_KEY_SIZE)),
 		       //                    hm->hash_shift)),

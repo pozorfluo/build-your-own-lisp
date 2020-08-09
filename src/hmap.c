@@ -126,10 +126,11 @@ size_t hmap_find(const struct hmap *const hm, const char *const key)
  *   be reserved for it. Implicitely it says that the maximum allowed
  *   capacity is SIZE_MAX - 1
  *
- * todo
+ * @todo
  *   - [ ] Investigate ways to probe for Match or META_EMPTY at once
  *   - [X] Consider using SIZE_MAX directly as an error
  *     + [ ] Add exists() inlinable function
+ * @todo Consider short circuiting probe on META_EMPTY or @home
  */
 static inline size_t find_n(const struct hmap *const hm,
                             const char *const key,
@@ -330,7 +331,8 @@ static inline struct hmap *grow(struct hmap *const hm)
 	const size_t max_store_capacity =
 	    (hm->capacity - HMAP_PROBE_LENGTH) * HMAP_MAX_LOAD;
 
-	if (hm->store_capacity * HMAP_STORE_MUST_GROW  < max_store_capacity) { // <= 0) { //
+	if (hm->store_capacity * HMAP_STORE_MUST_GROW <
+	    max_store_capacity) { // <= 0) { //
 		printf(FG_BRIGHT_MAGENTA REVERSE
 		       " Growing the store from [%lu] to [%lu] \n" RESET,
 		       hm->store_capacity,
@@ -488,6 +490,9 @@ void debug_rehash(struct hmap *const hm) { rehash(hm, hm->buckets); }
  *     -> hmap_put does not handle inserting on a full table
  *   Is limited to chain <= 256 due to distances meta_byte type
  *
+ * 	 Home (bucket - distance to home ) can only increase when traversing
+ *   buckets.
+ *
  *   Because distances are initialized to 0 and set to 0 when removing an entry,
  *   probing distances for 0 yields "stop buckets" aka @home entry or empty
  *   bucket.
@@ -502,30 +507,68 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 
 	/* Find given key or first empty slot */
 	size_t candidate = find_or_empty(hm, key, home, meta);
-
+	// printf(FG_BRIGHT_GREEN REVERSE " home %16lu " RESET FG_BRIGHT_GREEN
+	//                                " %-16lu candidate\n" RESET,
+	//        home,
+	//        candidate);
+	// printf(FG_BRIGHT_GREEN REVERSE " hash         %lu \n" RESET
+	//                                " hash reduced %lu \n"
+	//                                " home         %lu \n"
+	//                                " candidate    %lu \n"
+	//                                " meta         %lu \n"
+	//                                " entry        %lu \n",
+	//        HFUNC(key, key_size),
+	//        HREDUCE(HFUNC(key, key_size), hm->hash_shift),
+	//        home,
+	//        candidate,
+	//        (size_t)meta,
+	//        (size_t)hm->buckets[candidate].entry);
 	//----------------------------------------------------- empty slot found
 	if (is_empty(hm->buckets[candidate].meta)) {
-		/* Thierry La Fronde method : Slingshot the rich ! */
-		for (size_t bucket = candidate; bucket != home; bucket--) {
-			hm->buckets[candidate].distance = candidate - home;
+		struct hmap_bucket tmp;
+		struct hmap_bucket swap_bucket = {
+		    .meta = meta, .distance = 0, .entry = hm->top};
 
-			if (hm->buckets[bucket].distance <=
-			    hm->buckets[bucket - 1].distance) {
-
-				// printf("slingshot[ %lu -> %lu ]\n", candidate, bucket);
-				hm->buckets[candidate].distance =
-				    hm->buckets[bucket].distance + candidate - bucket;
-
-				hm->buckets[candidate].meta = hm->buckets[bucket].meta;
-
-				hm->buckets[candidate].entry = hm->buckets[bucket].entry;
-				candidate                    = bucket;
+		candidate = home;
+		/**
+		 * While candidate bucket is NOT EMPTY
+		 *   if candidate bucket distance < swap bucket distance
+		 *     swap buckets
+		 *   swap bucket distance ++
+		 *   candidate bucket ++
+		 *
+		 */
+		while (hm->buckets[candidate].meta != META_EMPTY) {
+			if (hm->buckets[candidate].distance < swap_bucket.distance) {
+				tmp                    = hm->buckets[candidate];
+				hm->buckets[candidate] = swap_bucket;
+				swap_bucket            = tmp;
 			}
+			swap_bucket.distance++;
+			candidate++;
 		}
+		hm->buckets[candidate] = swap_bucket;
 
-		hm->buckets[candidate].meta     = meta;
-		hm->buckets[candidate].distance = candidate - home;
-		hm->buckets[candidate].entry    = hm->top;
+		// /* Thierry La Fronde method : Slingshot the rich ! */
+		// for (size_t bucket = candidate; bucket != home; bucket--) {
+		// 	hm->buckets[candidate].distance = candidate - home;
+
+		// 	if (hm->buckets[bucket].distance <=
+		// 	    hm->buckets[bucket - 1].distance) {
+
+		// 		printf("slingshot[ %lu -> %lu ]\n", candidate, bucket);
+		// 		hm->buckets[candidate].distance =
+		// 		    hm->buckets[bucket].distance + candidate - bucket;
+
+		// 		hm->buckets[candidate].meta = hm->buckets[bucket].meta;
+		// 		hm->buckets[candidate].entry = hm->buckets[bucket].entry;
+		// 		candidate                    = bucket;
+		// 	}
+		// }
+
+		// hm->buckets[candidate].meta     = meta;
+		// hm->buckets[candidate].distance = candidate - home;
+		// hm->buckets[candidate].entry    = hm->top;
 
 		/* Same as strncpy but not caring about result being null terminated
 		 */
@@ -556,21 +599,6 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 		if (hm->top > hm->store_capacity) {
 			grow(hm);
 		}
-		// printf(FG_BRIGHT_GREEN REVERSE
-		//        " hash         %lu \n" RESET
-		//        " hash reduced %lu \n"
-		//        " home         %lu \n"
-		//        " candidate    %lu \n"
-		//        " meta         %lu \n"
-		//        " entry        %lu \n"
-		//        " entry ^ hash %lu \n" ,
-		//        HFUNC(key, key_size),
-		//        HREDUCE(HFUNC(key, key_size), hm->hash_shift),
-		//        home,
-		//        candidate,
-		//        (size_t)meta,
-		//        hm->buckets[candidate].entry,
-		//        HFUNC(key, key_size) ^ hm->buckets[candidate].entry);
 	}
 	//------------------------------------------------------ given key found
 	else {
