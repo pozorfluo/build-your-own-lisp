@@ -525,50 +525,50 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 	//        (size_t)hm->buckets[candidate].entry);
 	//----------------------------------------------------- empty slot found
 	if (is_empty(hm->buckets[candidate].meta)) {
-		struct hmap_bucket tmp;
-		struct hmap_bucket swap_bucket = {
-		    .meta = meta, .distance = 0, .entry = hm->top};
+		// struct hmap_bucket tmp;
+		// struct hmap_bucket swap_bucket = {
+		//     .meta = meta, .distance = 0, .entry = hm->top};
 
-		candidate = home;
-		/**
-		 * While candidate bucket is NOT EMPTY
-		 *   if candidate bucket distance < swap bucket distance
-		 *     swap buckets
-		 *   swap bucket distance ++
-		 *   candidate bucket ++
-		 *
-		 */
-		while (hm->buckets[candidate].meta != META_EMPTY) {
-			if (hm->buckets[candidate].distance < swap_bucket.distance) {
-				tmp                    = hm->buckets[candidate];
-				hm->buckets[candidate] = swap_bucket;
-				swap_bucket            = tmp;
-			}
-			swap_bucket.distance++;
-			candidate++;
-		}
-		hm->buckets[candidate] = swap_bucket;
-
-		// /* Thierry La Fronde method : Slingshot the rich ! */
-		// for (size_t bucket = candidate; bucket != home; bucket--) {
-		// 	hm->buckets[candidate].distance = candidate - home;
-
-		// 	if (hm->buckets[bucket].distance <=
-		// 	    hm->buckets[bucket - 1].distance) {
-
-		// 		printf("slingshot[ %lu -> %lu ]\n", candidate, bucket);
-		// 		hm->buckets[candidate].distance =
-		// 		    hm->buckets[bucket].distance + candidate - bucket;
-
-		// 		hm->buckets[candidate].meta = hm->buckets[bucket].meta;
-		// 		hm->buckets[candidate].entry = hm->buckets[bucket].entry;
-		// 		candidate                    = bucket;
+		// candidate = home;
+		// /**
+		//  * While candidate bucket is NOT EMPTY
+		//  *   if candidate bucket distance < swap bucket distance
+		//  *     swap buckets
+		//  *   swap bucket distance ++
+		//  *   candidate bucket ++
+		//  *
+		//  */
+		// while (hm->buckets[candidate].meta != META_EMPTY) {
+		// 	if (hm->buckets[candidate].distance < swap_bucket.distance) {
+		// 		tmp                    = hm->buckets[candidate];
+		// 		hm->buckets[candidate] = swap_bucket;
+		// 		swap_bucket            = tmp;
 		// 	}
+		// 	swap_bucket.distance++;
+		// 	candidate++;
 		// }
+		// hm->buckets[candidate] = swap_bucket;
 
-		// hm->buckets[candidate].meta     = meta;
-		// hm->buckets[candidate].distance = candidate - home;
-		// hm->buckets[candidate].entry    = hm->top;
+		/* Thierry La Fronde method : Slingshot the rich ! */
+		for (size_t bucket = candidate; bucket != home; bucket--) {
+			hm->buckets[candidate].distance = candidate - home;
+
+			if (hm->buckets[bucket].distance <=
+			    hm->buckets[bucket - 1].distance) {
+
+				// printf("slingshot[ %lu -> %lu ]\n", candidate, bucket);
+				hm->buckets[candidate].distance =
+				    hm->buckets[bucket].distance + candidate - bucket;
+
+				hm->buckets[candidate].meta = hm->buckets[bucket].meta;
+				hm->buckets[candidate].entry = hm->buckets[bucket].entry;
+				candidate                    = bucket;
+			}
+		}
+
+		hm->buckets[candidate].meta     = meta;
+		hm->buckets[candidate].distance = candidate - home;
+		hm->buckets[candidate].entry    = hm->top;
 
 		/* Same as strncpy but not caring about result being null terminated
 		 */
@@ -589,16 +589,18 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 		 * Compiler is clever enough, no need to flex.
 		 * see https://godbolt.org/z/cM948a
 		 */
-		memset(hm->store[hm->top].key, '\0', HMAP_INLINE_KEY_SIZE);
+		memset(hm->store[hm->top].key + key_size,
+		       '\0',
+		       HMAP_INLINE_KEY_SIZE - key_size);
 		memcpy(hm->store[hm->top].key, key, key_size);
 
 		hm->store[hm->top].value = value;
 		// printf(FG_BRIGHT_WHITE REVERSE "writing to store[%lu] \n" RESET,
 		//        hm->top);
 		hm->top++;
-		if (hm->top > hm->store_capacity) {
-			grow(hm);
-		}
+		// if (hm->top > hm->store_capacity) {
+		// 	grow(hm);
+		// }
 	}
 	//------------------------------------------------------ given key found
 	else {
