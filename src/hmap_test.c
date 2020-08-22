@@ -248,12 +248,12 @@ void dump_hashmap(const struct hmap *const hm, size_t offset, size_t limit)
 
 		// print_bits(HMAP_INLINE_KEY_SIZE, key);
 	}
-
-	printf("empty_buckets       : %lu \t-> %f%%\n",
-	       empty_bucket,
-	       (double)empty_bucket / (double)(hm->capacity - HMAP_PROBE_LENGTH) *
-	           100);
-	printf("max_distance        : %d\n", max_distance);
+	// printf("empty_buckets       : %lu \t-> %f%%\n",
+	//        empty_bucket,
+	//        (double)empty_bucket / (double)(hm->capacity - HMAP_PROBE_LENGTH)
+	//        *
+	//            100);
+	// printf("max_distance        : %d\n", max_distance);
 }
 //----------------------------------------------------------------- Function ---
 /**

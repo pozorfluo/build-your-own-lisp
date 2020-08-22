@@ -8,7 +8,7 @@
  */
 
 #include <errno.h>
-#include <stddef.h> /* offsetof */
+#include <stddef.h> /* offsetof, size_t */
 #include <stdint.h> /* uint32_t, uint64_t */
 #include <stdio.h>
 #include <stdlib.h> /* malloc */
@@ -18,6 +18,7 @@
 #include "debug_xmalloc.h"
 #include "hfunc.h"
 #include "hmap.h"
+#include "hmap_test.h"
 
 //----------------------------------------------------- FORWARD DECLARATIONS ---
 static inline size_t hash_index(const size_t hash)
@@ -525,6 +526,8 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 	//        (size_t)hm->buckets[candidate].entry);
 	//----------------------------------------------------- empty slot found
 	if (is_empty(hm->buckets[candidate].meta)) {
+		/* ------------------------------------------------------------------ */
+
 		// struct hmap_bucket tmp;
 		// struct hmap_bucket swap_bucket = {
 		//     .meta = meta, .distance = 0, .entry = hm->top};
@@ -539,7 +542,21 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 		//  *
 		//  */
 		// while (hm->buckets[candidate].meta != META_EMPTY) {
+
+		// 	printf(FG_BRIGHT_GREEN REVERSE
+		// 	       "---- candidate :" RESET FG_BRIGHT_GREEN " %.2lu " REVERSE
+		// 	       "---- "
+		// 	       "hm->buckets[candidate].distance :" RESET FG_BRIGHT_GREEN
+		// 	       " %.2d " REVERSE
+		// 	       "----"
+		// 	       "swap_bucket.distance :" RESET FG_BRIGHT_GREEN
+		// 	       " %.2d " REVERSE "----\n" RESET,
+		// 	       candidate,
+		// 	       hm->buckets[candidate].distance,
+		// 	       swap_bucket.distance);
+
 		// 	if (hm->buckets[candidate].distance < swap_bucket.distance) {
+		// 		dump_hashmap(hm, 0, 21);
 		// 		tmp                    = hm->buckets[candidate];
 		// 		hm->buckets[candidate] = swap_bucket;
 		// 		swap_bucket            = tmp;
@@ -548,19 +565,31 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 		// 	candidate++;
 		// }
 		// hm->buckets[candidate] = swap_bucket;
-
+		/* ------------------------------------------------------------------ */
 		/* Thierry La Fronde method : Slingshot the rich ! */
 		for (size_t bucket = candidate; bucket != home; bucket--) {
 			hm->buckets[candidate].distance = candidate - home;
 
+			printf(FG_BRIGHT_GREEN REVERSE
+			       "---- bucket :" RESET FG_BRIGHT_GREEN " %.2lu " REVERSE
+			       "---- "
+			       "hm->buckets[bucket].distance :" RESET FG_BRIGHT_GREEN
+			       " %.2d " REVERSE
+			       "----"
+			       "hm->buckets[bucket - 1].distance :" RESET FG_BRIGHT_GREEN
+			       " %.2d " REVERSE "----\n" RESET,
+			       bucket,
+			       hm->buckets[candidate].distance,
+			       hm->buckets[bucket - 1].distance);
+
 			if (hm->buckets[bucket].distance <=
 			    hm->buckets[bucket - 1].distance) {
-
-				// printf("slingshot[ %lu -> %lu ]\n", candidate, bucket);
+				dump_hashmap(hm, 0, 21);
+				printf("slingshot[ %lu -> %lu ]\n", candidate, bucket);
 				hm->buckets[candidate].distance =
 				    hm->buckets[bucket].distance + candidate - bucket;
 
-				hm->buckets[candidate].meta = hm->buckets[bucket].meta;
+				hm->buckets[candidate].meta  = hm->buckets[bucket].meta;
 				hm->buckets[candidate].entry = hm->buckets[bucket].entry;
 				candidate                    = bucket;
 			}
@@ -569,6 +598,7 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 		hm->buckets[candidate].meta     = meta;
 		hm->buckets[candidate].distance = candidate - home;
 		hm->buckets[candidate].entry    = hm->top;
+		/* ------------------------------------------------------------------ */
 
 		/* Same as strncpy but not caring about result being null terminated
 		 */
@@ -836,7 +866,7 @@ struct hmap *hmap_new(const size_t requested_capacity)
 	                       .hash_shift     = hash_shift,
 	                       .capacity       = map_capacity,
 	                       .store_capacity = requested_capacity};
-	*new_hm = init_hm;
+	*new_hm             = init_hm;
 
 	/* XMALLOC is calling calloc / takes cares of setting mem to 0 */
 	// memset(new_hm->buckets, 0, buckets_size);
