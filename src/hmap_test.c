@@ -149,6 +149,54 @@ void print_bits(const size_t n, void const *const data)
 }
 //----------------------------------------------------------------- Function ---
 /**
+ * Dump given Hashmap content using a
+ *   -> nothing
+ */
+void dump_hashmap_horizontal(const struct hmap *const hm,
+                             size_t offset,
+                             size_t limit)
+{
+	if (offset > hm->capacity) {
+		offset = hm->capacity - HMAP_PROBE_LENGTH;
+		limit  = HMAP_PROBE_LENGTH;
+	};
+
+	/* bucket numbers */
+	for (size_t i = offset, j = 0; (i < hm->capacity) && (j < limit);
+	     i++, j++) {
+		printf(" %.2lu ", i);
+	}
+	putchar('\n');
+
+	/* values */
+	for (size_t i = offset, j = 0; (i < hm->capacity) && (j < limit);
+	     i++, j++) {
+		if (hm->buckets[i].meta == META_EMPTY) {
+			fputs("[  ]", stdout);
+		}
+		else {
+			printf("[" FG_YELLOW "%.2lu" RESET "]",
+			       hm->store[(hm->buckets[i].entry)].value);
+		}
+	}
+	putchar('\n');
+
+	/* distances */
+	for (size_t i = offset, j = 0; (i < hm->capacity) && (j < limit);
+	     i++, j++) {
+		if (hm->buckets[i].meta == META_EMPTY) {
+			fputs("[  ]", stdout);
+		}
+		else {
+
+			printf("[" FG_RED "%.2d" RESET "]", hm->buckets[i].distance);
+		}
+	}
+	putchar('\n');
+}
+//----------------------------------------------------------------- Function
+//---
+/**
  * Dump given Hashmap content
  *   -> nothing
  */
@@ -250,12 +298,14 @@ void dump_hashmap(const struct hmap *const hm, size_t offset, size_t limit)
 	}
 	// printf("empty_buckets       : %lu \t-> %f%%\n",
 	//        empty_bucket,
-	//        (double)empty_bucket / (double)(hm->capacity - HMAP_PROBE_LENGTH)
+	//        (double)empty_bucket / (double)(hm->capacity -
+	//        HMAP_PROBE_LENGTH)
 	//        *
 	//            100);
 	// printf("max_distance        : %d\n", max_distance);
 }
-//----------------------------------------------------------------- Function ---
+//----------------------------------------------------------------- Function
+//---
 /**
  * Dump given Hashmap store
  *   -> nothing
@@ -279,7 +329,8 @@ void dump_store(const struct hmap *const hm)
 	}
 }
 
-//----------------------------------------------------------------- Function ---
+//----------------------------------------------------------------- Function
+//---
 /**
  * Dump given Hashmap stats
  *   -> nothing
@@ -325,7 +376,8 @@ void dump_stats(const struct hmap *const hm)
 	printf("max_empty_chain      : %lu \n", max_empty_chain);
 }
 
-//----------------------------------------------------------------- Function ---
+//----------------------------------------------------------------- Function
+//---
 /**
  * Go through all buckets
  * Access the store
@@ -347,7 +399,8 @@ void sum_bucket(const struct hmap *const hm)
 	       sum_key,
 	       sum_value);
 }
-//----------------------------------------------------------------- Function ---
+//----------------------------------------------------------------- Function
+//---
 size_t sum_store(const struct hmap *const hashmap)
 {
 	// size_t sum_key   = 0;
@@ -362,7 +415,8 @@ size_t sum_store(const struct hmap *const hashmap)
 	}
 	return sum_value;
 }
-//----------------------------------------------------------------- Function ---
+//----------------------------------------------------------------- Function
+//---
 /**
  * Return a pseudo-random uint64_t number.
  */
@@ -371,7 +425,8 @@ uint64_t mcg64()
 	static uint64_t seed = 1;
 	return (seed = (164603309694725029ull * seed) % 14738995463583502973ull);
 }
-//--------------------------------------------------------------------- MAIN ---
+//--------------------------------------------------------------------- MAIN
+//---
 /**
  *
  */
@@ -752,7 +807,8 @@ int main(void)
 			// 	}
 			// 	// dump_stats(hashmap_2x);
 			// 	// puts(FG_BRIGHT_MAGENTA REVERSE
-			// 	//      "This is worse than reallocing the store and rehashing
+			// 	//      "This is worse than reallocing the store and
+			// rehashing
 			// to"
 			// 	//      " a bigger map." RESET);
 
@@ -895,7 +951,8 @@ int main(void)
 			continue;
 		}
 
-		//------------------------------------------------------- find bucket
+		//------------------------------------------------------- find
+		// bucket
 		if (key[0] == '@') {
 			printf("%s\n", key + 1);
 

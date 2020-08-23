@@ -584,7 +584,7 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 
 			if (hm->buckets[bucket].distance <=
 			    hm->buckets[bucket - 1].distance) {
-				dump_hashmap(hm, 0, 21);
+				dump_hashmap_horizontal(hm, 0, 21);
 				printf("slingshot[ %lu -> %lu ]\n", candidate, bucket);
 				hm->buckets[candidate].distance =
 				    hm->buckets[bucket].distance + candidate - bucket;
