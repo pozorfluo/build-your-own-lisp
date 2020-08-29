@@ -1,3 +1,9 @@
+bin/hmap_test
+10
+fill10
+
+
+
 | r hashes to 6
 c is first empty slot at 10
 b starts at c

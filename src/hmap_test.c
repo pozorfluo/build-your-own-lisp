@@ -468,8 +468,9 @@ int main(void)
 
 	fputs(FG_BRIGHT_BLUE REVERSE
 	      //   "Table size is 2^n. Enter n ( default n = 8 ) ? " RESET,
-	      "Enter requested capacity ? " RESET,
+	      "Enter requested capacity ? \n" RESET,
 	      stdout);
+	fputs(FG_GREEN BG_BRIGHT_BLACK " > " RESET, stdout);
 	unused_result = scanf("%lu", &requested_capacity);
 
 	// struct hmap *const hashmap = hmap_new(requested_capacity);

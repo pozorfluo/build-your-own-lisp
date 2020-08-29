@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """\x1B[32;7m
-┌──────────────────────────────────────────────────────────────────────────────┐
-│   tests.py                                                                   │
-└──────────────────────────────────────────────────────────────────────────────┘
+ ┌────────────────────────────────────────────────────────────────────────────┐ 
+ │   tests.py                                                                 │ 
+ └────────────────────────────────────────────────────────────────────────────┘ 
 \x1B[0;32;49m
 ███ Usage:
 	tests.py  <binary> [--test=<file>] [--log=<file>]
@@ -21,17 +21,17 @@
 	-v, --verbose  Pretty prints test results in terminal.
 	-o, --output   Show spawned process output in terminal.
 \x1B[0m 
-Run handwritten tests defined in a given file
+Run handwritten tests defined in a given file.
 
-  Define a test input with a line that is a not lisp style comment
+  Define a test input with a line that is a not lisp style comment.
     ( i.e., NOT starting with ";;" )
       
-  Define test expected results with the following lines as lisp style comments
+  Define test expected results with the following lines as lisp style comments.
       ( i.e., starting with ";;" )
 
   Empty lines are not skipped !
   Multilines definition are not supported :
-    Each 'lisp style comment' line will generate an expect_exact() statement
+    Each 'lisp style comment' line will generate an expect_exact() statement.
 \x1B[90m 
 > example : test.lisp -> define 4 tests 
 
@@ -44,7 +44,7 @@ list 1 2 3 4
 tail (len {+ 5 5})
 ;; Error :  Function 'tail' passed incorrect type for element 0 !
 ;;          expected Q-Expression, got Number.
-────────────────────────────────────────────────────────────────────────
+────────────────────────────────────────────────────────────────────────────────
 
 \x1B[0m
 """
@@ -330,7 +330,7 @@ def main() -> None:
 	 
 	See : http://docopt.org/
 	"""
-    arguments = docopt(__doc__, version="0.1")
+    arguments = docopt(__doc__, version="0.2")
 
     if arguments["--stress"] is None:
         arguments["--stress"] = 10
