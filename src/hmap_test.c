@@ -17,9 +17,9 @@
 
 #define BENCHMARK
 #include "benchmark.h"
+
 //------------------------------------------------------------ CONFIGURATION ---
 #define TEST_COUNT 1000000
-#define BENCHMARK
 // #define TEST_REGISTER
 
 #define WELCOME_MESSAGE                                                        \

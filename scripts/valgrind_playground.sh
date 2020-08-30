@@ -7,6 +7,7 @@ valgrind bin/baseline
 valgrind --track-origins=yes bin/lispy
 valgrind --track-origins=yes --leak-check=full --show-leak-kinds=all bin/lispy
 valgrind --track-origins=yes --leak-check=full --show-reachable=yes bin/lispy
+valgrind --track-origins=yes --leak-check=full --show-reachable=yes bin/hmap_test
 
 # run cachegrind
 # see : https://valgrind.org/docs/manual/cg-manual.html

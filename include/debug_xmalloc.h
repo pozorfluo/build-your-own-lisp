@@ -9,6 +9,7 @@
 
 #ifdef DEBUG_MALLOC
 
+#include <assert.h>
 #include <malloc.h>
 
 void *xmalloc(size_t size, const char *origin, const char *destination)
@@ -40,7 +41,7 @@ void *xmalloc(size_t size, const char *origin, const char *destination)
 void xfree(void *pointer, const char *pointer_name, const char *origin)
 {
 	size_t bytes_in_malloced_block = malloc_usable_size(pointer);
-	printf(FG_BLUE "\tfreeing %s %lu bytes inside %s()\n" RESET,
+	printf(FG_BLUE "\tfreeing %s %lu bytes in %s\n" RESET,
 	       pointer_name,
 	       bytes_in_malloced_block,
 	       origin);
@@ -50,7 +51,13 @@ void xfree(void *pointer, const char *pointer_name, const char *origin)
 #define XMALLOC(_size, _origin, _destination)                                  \
 	xmalloc(_size, _origin, _destination)
 
-#define XFREE(_pointer, _origin) xfree(_pointer, #_pointer, _origin)
+#define XFREE(_pointer, _origin)                                               \
+	do {                                                                       \
+		assert(_pointer != NULL &&                                             \
+		       "WARNING : freeing NULL pointer in " #_origin);                 \
+		xfree(_pointer, #_pointer, _origin);                                   \
+		_pointer = NULL;                                                       \
+	} while (0)
 
 #else
 // #define XMALLOC(_size, _origin, _destination) malloc(_size)
@@ -58,4 +65,4 @@ void xfree(void *pointer, const char *pointer_name, const char *origin)
 #define XFREE(_pointer, _origin) free(_pointer)
 #endif
 
-#endif // DEBUG_XMALLOC_H	
+#endif // DEBUG_XMALLOC_H

@@ -13,7 +13,7 @@
                 "-pedantic",
                 "-g",
                 // "-fPIC",
-                // "-DDEBUG_MALLOC",
+                "-DDEBUG_MALLOC",
 				// "-DDEBUG_MPC",
 				// "-DDEBUG_HMAP",
                 "-DVALGRIND",

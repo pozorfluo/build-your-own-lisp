@@ -628,9 +628,9 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 		// printf(FG_BRIGHT_WHITE REVERSE "writing to store[%lu] \n" RESET,
 		//        hm->top);
 		hm->top++;
-		// if (hm->top > hm->store_capacity) {
-		// 	grow(hm);
-		// }
+		if (hm->top > hm->store_capacity) {
+			grow(hm);
+		}
 	}
 	//------------------------------------------------------ given key found
 	else {
@@ -777,12 +777,16 @@ void hmap_clear(struct hmap *const hm)
 /**
  * Free given Hashmap
  *   -> nothing
+ *
+ * @todo Consider a defensive wrapper version,
+ *       see https://stackoverflow.com/a/1879597
+ *
  */
-void hmap_free(struct hmap *const hm)
+void hmap_free(struct hmap *hm)
 {
-	XFREE(hm->buckets, "hmap_delete_hashmap");
-	XFREE(hm->store, "hmap_delete_hashmap");
-	XFREE(hm, "delete_hashmap");
+	XFREE(hm->buckets, "hmap_free");
+	XFREE(hm->store, "hmap_free");
+	XFREE(hm, "hmap_free");
 }
 
 //----------------------------------------------------------------- Function ---
@@ -840,8 +844,8 @@ struct hmap *hmap_new(const size_t requested_capacity)
 
 	map_capacity += HMAP_PROBE_LENGTH;
 
-	struct hmap *const new_hm =
-	    XMALLOC(sizeof(struct hmap), "new_hm", "new_hm");
+	// struct hmap *const new_hm =
+	struct hmap *new_hm = XMALLOC(sizeof(struct hmap), "new_hm", "new_hm");
 
 	if (new_hm == NULL) {
 		goto err_free_hashmap;
@@ -866,7 +870,7 @@ struct hmap *hmap_new(const size_t requested_capacity)
 	                       .hash_shift     = hash_shift,
 	                       .capacity       = map_capacity,
 	                       .store_capacity = requested_capacity};
-	*new_hm             = init_hm;
+	*new_hm = init_hm;
 
 	/* XMALLOC is calling calloc / takes cares of setting mem to 0 */
 	// memset(new_hm->buckets, 0, buckets_size);
@@ -903,9 +907,6 @@ struct hmap *hmap_new(const size_t requested_capacity)
 
 	return new_hm;
 
-/* free(NULL) is ok, correct ? */
-// err_free_pool:
-// XFREE(pool, "hmap_new err_free_arrays");
 err_free_store:
 	XFREE(store, "hmap_new err_free_store");
 err_free_buckets:
