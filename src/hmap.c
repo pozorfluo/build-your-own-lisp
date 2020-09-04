@@ -60,7 +60,7 @@ static inline size_t next_pow2(size_t v)
 	return ++v;
 }
 //----------------------------------------------------------------- Function ---
-static inline size_t hash_index(const size_t hash) { return hash >> 7; }
+static inline size_t hash_index(const size_t hash) { return hash >> 15; }
 //----------------------------------------------------------------- Function ---
 static inline meta_byte hash_meta(const size_t hash) { return hash & 0x7FFF; }
 //----------------------------------------------------------------- Function ---
@@ -138,7 +138,10 @@ static inline size_t find_n(const struct hmap *const hm,
                             const size_t length)
 {
 	size_t hash    = HREDUCE(HFUNC(key, length), hm->hash_shift);
+	// size_t hash = HFUNC(key, length);
 	size_t index   = hash_index(hash);
+	// size_t index = hash_index(HREDUCE(hash, hm->hash_shift));
+	// size_t index   = HREDUCE(hash, hm->hash_shift);
 	meta_byte meta = hash_meta(hash);
 
 	// printf(FG_MAGENTA REVERSE
@@ -258,10 +261,13 @@ static inline void rehash(struct hmap *const hm, struct hmap_bucket *const map)
 		const char *const key = hm->store[store_index].key;
 		// printf("rehashing store[%lu] : %s \n", store_index, key);
 		/* Prepare temp entry */
-		size_t key_size      = strnlen(key, HMAP_INLINE_KEY_SIZE);
+		size_t key_size = strnlen(key, HMAP_INLINE_KEY_SIZE);
 		const size_t hash    = HREDUCE(HFUNC(key, key_size), hm->hash_shift);
 		const size_t home    = hash_index(hash);
 		const meta_byte meta = hash_meta(hash);
+		// const size_t hash    = HFUNC(key, key_size);
+		// const size_t home    = HREDUCE(hash, hm->hash_shift);
+		// const meta_byte meta = hash_meta(hash);
 
 		size_t candidate = home;
 
@@ -334,12 +340,12 @@ static inline struct hmap *grow(struct hmap *const hm)
 
 	if (hm->store_capacity * HMAP_STORE_MUST_GROW <
 	    max_store_capacity) { // <= 0) { //
-		printf(FG_BRIGHT_MAGENTA REVERSE
-		       " Growing the store from [%lu] to [%lu] \n" RESET,
-		       hm->store_capacity,
-		       max_store_capacity);
-		printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
-		       (void *)hm->store);
+		// printf(FG_BRIGHT_MAGENTA REVERSE
+		//        " Growing the store from [%lu] to [%lu] \n" RESET,
+		//        hm->store_capacity,
+		//        max_store_capacity);
+		// printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
+		//        (void *)hm->store);
 
 		grown_store =
 		    realloc(hm->store, sizeof(*(hm->store)) * (max_store_capacity + 1));
@@ -356,9 +362,9 @@ static inline struct hmap *grow(struct hmap *const hm)
 		// printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
 		//        (void *)hm->store);
 
-		printf(FG_CYAN REVERSE " Grown the store from [%lu] to [%lu] \n" RESET,
-		       hm->store_capacity,
-		       max_store_capacity);
+		// printf(FG_CYAN REVERSE " Grown the store from [%lu] to [%lu] \n" RESET,
+		//        hm->store_capacity,
+		//        max_store_capacity);
 		hm->store_capacity = max_store_capacity;
 	}
 	else {
@@ -376,11 +382,11 @@ static inline struct hmap *grow(struct hmap *const hm)
 		size_t new_capacity       = hm->capacity * 2 - HMAP_PROBE_LENGTH;
 		const size_t new_map_size = sizeof(*grown_map) * new_capacity;
 
-		printf(FG_BRIGHT_MAGENTA REVERSE
-		       " Growing the map from [%lu] to [%lu] : %lu bytes \n" RESET,
-		       hm->capacity,
-		       new_capacity,
-		       new_map_size);
+		// printf(FG_BRIGHT_MAGENTA REVERSE
+		//        " Growing the map from [%lu] to [%lu] : %lu bytes \n" RESET,
+		//        hm->capacity,
+		//        new_capacity,
+		//        new_map_size);
 
 		grown_map = XMALLOC(new_map_size, "grow", "buckets");
 		if (grown_map == NULL) {
@@ -401,23 +407,18 @@ static inline struct hmap *grow(struct hmap *const hm)
 		//     HWIDTH - 7 - ((HWIDTH - 1) - __builtin_clzll(new_capacity));
 		hm->hash_shift--;
 		hm->capacity = new_capacity;
-		// printf(FG_BLUE REVERSE
-		//        " new_shift : %lu \n"
-		//        "hm->hash_shift : %lu \n",
-		//        new_shift,
-		//        hm->hash_shift);
 
 		const size_t new_store_capacity = (hm->store_capacity * 2);
 		const size_t new_store_size =
 		    sizeof(*(hm->store)) * (new_store_capacity + 1);
 
-		printf(FG_BRIGHT_MAGENTA REVERSE
-		       " Growing the store from [%lu] to [%lu] : %lu bytes \n" RESET,
-		       hm->store_capacity,
-		       (hm->store_capacity * 2),
-		       new_store_size);
-		printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
-		       (void *)hm->store);
+		// printf(FG_BRIGHT_MAGENTA REVERSE
+		//        " Growing the store from [%lu] to [%lu] : %lu bytes \n" RESET,
+		//        hm->store_capacity,
+		//        (hm->store_capacity * 2),
+		//        new_store_size);
+		// printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
+		//        (void *)hm->store);
 
 		grown_store = realloc(hm->store, new_store_size);
 		if (grown_store == NULL) {
@@ -501,9 +502,12 @@ void debug_rehash(struct hmap *const hm) { rehash(hm, hm->buckets); }
 size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 {
 	/* Prepare temp entry */
-	size_t key_size      = strnlen(key, HMAP_INLINE_KEY_SIZE);
+	size_t key_size = strnlen(key, HMAP_INLINE_KEY_SIZE);
 	const size_t hash    = HREDUCE(HFUNC(key, key_size), hm->hash_shift);
+	// const size_t hash = HFUNC(key, key_size);
 	const size_t home    = hash_index(hash);
+	// const size_t home = hash_index(HREDUCE(hash, hm->hash_shift));
+	// const size_t home    = HREDUCE(hash, hm->hash_shift);
 	const meta_byte meta = hash_meta(hash);
 
 	/* Find given key or first empty slot */
@@ -518,7 +522,7 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 	//                                " candidate    %lu \n"
 	//                                " meta         %lu \n"
 	//                                " entry        %lu \n",
-	//        HFUNC(key, key_size),
+	//        hash,
 	//        HREDUCE(HFUNC(key, key_size), hm->hash_shift),
 	//        home,
 	//        candidate,
@@ -527,7 +531,39 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 	//----------------------------------------------------- empty slot found
 	if (is_empty(hm->buckets[candidate].meta)) {
 		/* ------------------------------------------------------------------ */
+		/* Thierry La Fronde method : Slingshot the rich ! */
+		for (size_t bucket = candidate; bucket != home; bucket--) {
+			hm->buckets[candidate].distance = candidate - home;
 
+			// printf(FG_BRIGHT_GREEN REVERSE
+			//        "---- bucket :" RESET FG_BRIGHT_GREEN " %.2lu " REVERSE
+			//        "---- "
+			//        "hm->buckets[bucket].distance :" RESET FG_BRIGHT_GREEN
+			//        " %.2d " REVERSE
+			//        "----"
+			//        "hm->buckets[bucket - 1].distance :" RESET FG_BRIGHT_GREEN
+			//        " %.2d " REVERSE "----\n" RESET,
+			//        bucket,
+			//        hm->buckets[candidate].distance,
+			//        hm->buckets[bucket - 1].distance);
+
+			if (hm->buckets[bucket].distance <=
+			    hm->buckets[bucket - 1].distance) {
+				// dump_hashmap_horizontal(hm, 0, 21);
+				// printf("slingshot[ %lu -> %lu ]\n", candidate, bucket);
+				hm->buckets[candidate].distance =
+				    hm->buckets[bucket].distance + candidate - bucket;
+
+				hm->buckets[candidate].meta  = hm->buckets[bucket].meta;
+				hm->buckets[candidate].entry = hm->buckets[bucket].entry;
+				candidate                    = bucket;
+			}
+		}
+		hm->buckets[candidate].meta     = meta;
+		hm->buckets[candidate].distance = candidate - home;
+		hm->buckets[candidate].entry    = hm->top;
+		/* ------------------------------------------------------------------ */
+		/* Robin hood method. */
 		// struct hmap_bucket tmp;
 		// struct hmap_bucket swap_bucket = {
 		//     .meta = meta, .distance = 0, .entry = hm->top};
@@ -566,39 +602,6 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 		// }
 		// hm->buckets[candidate] = swap_bucket;
 		/* ------------------------------------------------------------------ */
-		/* Thierry La Fronde method : Slingshot the rich ! */
-		for (size_t bucket = candidate; bucket != home; bucket--) {
-			hm->buckets[candidate].distance = candidate - home;
-
-			printf(FG_BRIGHT_GREEN REVERSE
-			       "---- bucket :" RESET FG_BRIGHT_GREEN " %.2lu " REVERSE
-			       "---- "
-			       "hm->buckets[bucket].distance :" RESET FG_BRIGHT_GREEN
-			       " %.2d " REVERSE
-			       "----"
-			       "hm->buckets[bucket - 1].distance :" RESET FG_BRIGHT_GREEN
-			       " %.2d " REVERSE "----\n" RESET,
-			       bucket,
-			       hm->buckets[candidate].distance,
-			       hm->buckets[bucket - 1].distance);
-
-			if (hm->buckets[bucket].distance <=
-			    hm->buckets[bucket - 1].distance) {
-				dump_hashmap_horizontal(hm, 0, 21);
-				printf("slingshot[ %lu -> %lu ]\n", candidate, bucket);
-				hm->buckets[candidate].distance =
-				    hm->buckets[bucket].distance + candidate - bucket;
-
-				hm->buckets[candidate].meta  = hm->buckets[bucket].meta;
-				hm->buckets[candidate].entry = hm->buckets[bucket].entry;
-				candidate                    = bucket;
-			}
-		}
-
-		hm->buckets[candidate].meta     = meta;
-		hm->buckets[candidate].distance = candidate - home;
-		hm->buckets[candidate].entry    = hm->top;
-		/* ------------------------------------------------------------------ */
 
 		/* Same as strncpy but not caring about result being null terminated
 		 */
@@ -631,6 +634,8 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 		if (hm->top > hm->store_capacity) {
 			grow(hm);
 		}
+		// dump_hashmap_horizontal(hm, 0, 21);
+		// puts(FG_MAGENTA "done\n" RESET);
 	}
 	//------------------------------------------------------ given key found
 	else {
@@ -812,10 +817,10 @@ void hmap_free(struct hmap *hm)
  *   length to obviate some bounds checking.
  *
  *   Hash shift is the shift amount necessary to reduce a full hash to a hash
- *   depth able to address map capacity + 7 bits of secondary hash
+ *   depth able to address map capacity + 15 bits of secondary hash
  *   stored as metadata.
  *
- *   The 7 bits of secondary hash are used in a 'bloom filter fashion' during
+ *   The 15 bits of secondary hash are used in a 'bloom filter fashion' during
  *   probing to obviate costly keys comparisons.
  *
  *   Derive advertised map capacity from requested capacity
@@ -833,6 +838,10 @@ void hmap_free(struct hmap *hm)
  *   Init hmap
  *   Init map buckets as being empty
  *     -> pointer to new hmap
+ *
+ * @todo Consider what happens when size_t is 4 bytes large and a new hmap
+ *       is requested with a capacity > (1 >> (32 - 15)). Is having a full hash
+ *       size > (32 + 15) enough ?
  */
 struct hmap *hmap_new(const size_t requested_capacity)
 {
@@ -840,7 +849,8 @@ struct hmap *hmap_new(const size_t requested_capacity)
 	    next_pow2(requested_capacity / HMAP_MAX_LOAD); // + HMAP_PROBE_LENGTH;
 
 	const size_t hash_shift =
-	    HWIDTH - 7 - ((HWIDTH - 1) - __builtin_clzll(map_capacity));
+	    HWIDTH - 15 - ((HWIDTH - 1) - __builtin_clzll(map_capacity));
+	    // HWIDTH - ((HWIDTH - 1) - __builtin_clzll(map_capacity));
 
 	map_capacity += HMAP_PROBE_LENGTH;
 

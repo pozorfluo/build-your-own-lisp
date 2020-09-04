@@ -89,7 +89,7 @@
 	    "      * [ ] Bench different hash function\n"                          \
 	    "    + [ ] Investigate errors with very long collision chains on "     \
 	    "full table\n"                                                         \
-	    "    + [x Research hashtable resizing strategy\n"                      \
+	    "    + [x] Research hashtable resizing strategy\n"                     \
 	    "      * [x] Implement one, move on\n"                                 \
 	    "      * [x] Consider separately allocing the store and buckets to  "  \
 	    "allow resizing in place\n"                                            \
@@ -263,9 +263,12 @@ void dump_hashmap(const struct hmap *const hm, size_t offset, size_t limit)
 		max_distance = (hm->buckets[i].distance > max_distance)
 		                   ? hm->buckets[i].distance
 		                   : max_distance;
+		// size_t home = (HREDUCE(HFUNC(key, strnlen(key,
+		// HMAP_INLINE_KEY_SIZE)),
+		//    hm->hash_shift));
 		size_t home = (HREDUCE(HFUNC(key, strnlen(key, HMAP_INLINE_KEY_SIZE)),
 		                       hm->hash_shift)) >>
-		              7;
+		              15;
 
 		printf("\x1b[9%dm" REVERSE " hm->bucket[%lu]>>" RESET, colour, i);
 
@@ -996,8 +999,12 @@ int main(void)
 			printf("hashes to : %lu\n",
 			       (HREDUCE(HFUNC(bucket_key,
 			                      strnlen(bucket_key, HMAP_INLINE_KEY_SIZE)),
-			                hashmap->hash_shift)) >>
-			           7);
+			                hashmap->hash_shift)));
+			// printf("hashes to : %lu\n",
+			//        (HREDUCE(HFUNC(bucket_key,
+			//                       strnlen(bucket_key, HMAP_INLINE_KEY_SIZE)),
+			//                 hashmap->hash_shift)) >>
+			//            15);
 
 			if (result == HMAP_NOT_FOUND) {
 				puts("Key not found ! \n");
@@ -1013,10 +1020,13 @@ int main(void)
 		//------------------------------------------------------- find / put
 		if (key[0] != '\0') {
 			size_t result = hmap_find(hashmap, key);
+			// printf("hashes to : %lu\n",
+			//        (HREDUCE(HFUNC(key, strnlen(key, HMAP_INLINE_KEY_SIZE)),
+			//                 hashmap->hash_shift)));
 			printf("hashes to : %lu\n",
 			       (HREDUCE(HFUNC(key, strnlen(key, HMAP_INLINE_KEY_SIZE)),
 			                hashmap->hash_shift)) >>
-			           7);
+			           15);
 
 			if (result == HMAP_NOT_FOUND) {
 				puts("Key not found ! \n");
