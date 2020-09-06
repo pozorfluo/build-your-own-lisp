@@ -137,9 +137,9 @@ static inline size_t find_n(const struct hmap *const hm,
                             const char *const key,
                             const size_t length)
 {
-	size_t hash    = HREDUCE(HFUNC(key, length), hm->hash_shift);
+	size_t hash = HREDUCE(HFUNC(key, length), hm->hash_shift);
 	// size_t hash = HFUNC(key, length);
-	size_t index   = hash_index(hash);
+	size_t index = hash_index(hash);
 	// size_t index = hash_index(HREDUCE(hash, hm->hash_shift));
 	// size_t index   = HREDUCE(hash, hm->hash_shift);
 	meta_byte meta = hash_meta(hash);
@@ -261,7 +261,7 @@ static inline void rehash(struct hmap *const hm, struct hmap_bucket *const map)
 		const char *const key = hm->store[store_index].key;
 		// printf("rehashing store[%lu] : %s \n", store_index, key);
 		/* Prepare temp entry */
-		size_t key_size = strnlen(key, HMAP_INLINE_KEY_SIZE);
+		size_t key_size      = strnlen(key, HMAP_INLINE_KEY_SIZE);
 		const size_t hash    = HREDUCE(HFUNC(key, key_size), hm->hash_shift);
 		const size_t home    = hash_index(hash);
 		const meta_byte meta = hash_meta(hash);
@@ -362,7 +362,8 @@ static inline struct hmap *grow(struct hmap *const hm)
 		// printf(FG_MAGENTA REVERSE " hm->store     -> %p \n" RESET,
 		//        (void *)hm->store);
 
-		// printf(FG_CYAN REVERSE " Grown the store from [%lu] to [%lu] \n" RESET,
+		// printf(FG_CYAN REVERSE " Grown the store from [%lu] to [%lu] \n"
+		// RESET,
 		//        hm->store_capacity,
 		//        max_store_capacity);
 		hm->store_capacity = max_store_capacity;
@@ -502,20 +503,25 @@ void debug_rehash(struct hmap *const hm) { rehash(hm, hm->buckets); }
 size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 {
 	/* Prepare temp entry */
-	size_t key_size = strnlen(key, HMAP_INLINE_KEY_SIZE);
-	const size_t hash    = HREDUCE(HFUNC(key, key_size), hm->hash_shift);
+	size_t key_size   = strnlen(key, HMAP_INLINE_KEY_SIZE);
+	const size_t hash = HREDUCE(HFUNC(key, key_size), hm->hash_shift);
 	// const size_t hash = HFUNC(key, key_size);
-	const size_t home    = hash_index(hash);
+	const size_t home = hash_index(hash);
 	// const size_t home = hash_index(HREDUCE(hash, hm->hash_shift));
 	// const size_t home    = HREDUCE(hash, hm->hash_shift);
 	const meta_byte meta = hash_meta(hash);
 
 	/* Find given key or first empty slot */
 	size_t candidate = find_or_empty(hm, key, home, meta);
-	// printf(FG_BRIGHT_GREEN REVERSE " home %16lu " RESET FG_BRIGHT_GREEN
-	//                                " %-16lu candidate\n" RESET,
-	//        home,
-	//        candidate);
+	printf(FG_BRIGHT_GREEN REVERSE " home %16lu " RESET FG_BRIGHT_GREEN
+	                               " %-16lu candidate" RESET,
+	       home,
+	       candidate);
+	printf(REVERSE "\t%*.*s | %lu \n" RESET,
+	       HMAP_INLINE_KEY_SIZE,
+	       HMAP_INLINE_KEY_SIZE,
+	       key,
+	       value);
 	// printf(FG_BRIGHT_GREEN REVERSE " hash         %lu \n" RESET
 	//                                " hash reduced %lu \n"
 	//                                " home         %lu \n"
@@ -549,8 +555,10 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 
 			if (hm->buckets[bucket].distance <=
 			    hm->buckets[bucket - 1].distance) {
-				// dump_hashmap_horizontal(hm, 0, 21);
-				// printf("slingshot[ %lu -> %lu ]\n", candidate, bucket);
+				dump_hashmap_horizontal(hm, 0, 21, bucket, candidate);
+				printf(REVERSE "slingshot[ %lu -> %lu ]\n" RESET,
+				       bucket,
+				       candidate);
 				hm->buckets[candidate].distance =
 				    hm->buckets[bucket].distance + candidate - bucket;
 
@@ -631,11 +639,11 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 		// printf(FG_BRIGHT_WHITE REVERSE "writing to store[%lu] \n" RESET,
 		//        hm->top);
 		hm->top++;
-		if (hm->top > hm->store_capacity) {
-			grow(hm);
-		}
-		// dump_hashmap_horizontal(hm, 0, 21);
-		// puts(FG_MAGENTA "done\n" RESET);
+		// if (hm->top > hm->store_capacity) {
+		// 	grow(hm);
+		// }
+		dump_hashmap_horizontal(hm, 0, 21, home, candidate);
+		puts(FG_MAGENTA "done\n" RESET);
 	}
 	//------------------------------------------------------ given key found
 	else {
@@ -850,7 +858,7 @@ struct hmap *hmap_new(const size_t requested_capacity)
 
 	const size_t hash_shift =
 	    HWIDTH - 15 - ((HWIDTH - 1) - __builtin_clzll(map_capacity));
-	    // HWIDTH - ((HWIDTH - 1) - __builtin_clzll(map_capacity));
+	// HWIDTH - ((HWIDTH - 1) - __builtin_clzll(map_capacity));
 
 	map_capacity += HMAP_PROBE_LENGTH;
 

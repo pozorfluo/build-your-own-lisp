@@ -154,7 +154,9 @@ void print_bits(const size_t n, void const *const data)
  */
 void dump_hashmap_horizontal(const struct hmap *const hm,
                              size_t offset,
-                             size_t limit)
+                             size_t limit,
+                             size_t highlight,
+                             size_t target)
 {
 	if (offset > hm->capacity) {
 		offset = hm->capacity - HMAP_PROBE_LENGTH;
@@ -172,11 +174,15 @@ void dump_hashmap_horizontal(const struct hmap *const hm,
 	for (size_t i = offset, j = 0; (i < hm->capacity) && (j < limit);
 	     i++, j++) {
 		if (hm->buckets[i].meta == META_EMPTY) {
-			fputs("[  ]", stdout);
+			// fputs("[  ]", stdout);
+			printf("%s[  ]" RESET,
+			       (i == highlight || i == target) ? REVERSE : "");
 		}
 		else {
-			printf("[" FG_YELLOW "%.2lu" RESET "]",
-			       hm->store[(hm->buckets[i].entry)].value);
+			printf("%s[" FG_YELLOW "%.2lu" RESET "%s]" RESET,
+			       (i == highlight || i == target) ? REVERSE : "",
+			       hm->store[(hm->buckets[i].entry)].value,
+			       (i == highlight || i == target) ? REVERSE : "");
 		}
 	}
 	putchar('\n');
