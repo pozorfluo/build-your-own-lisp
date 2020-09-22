@@ -27,25 +27,11 @@
 	    " hmap version 0.26.3 " RESET FG_BRIGHT_BLUE                           \
 	    " type exit to quit\n" RESET FG_BRIGHT_RED REVERSE                     \
 	    "   todo \n" RESET FG_BRIGHT_RED                                       \
-	    "  - [x] Investigate rm command getting stuck"                         \
 	    "  - [ ] Investigate invalid read when growing a hmap initialized "    \
 	    "with a size <= 16\n"                                                  \
 	    "  - [ ] Deal with chain going over HMAP_PROBE_LENGTH at the end of "  \
 	    "the map by triggering a resize, wrapping around, ...\n"               \
-	    "  - [ ] Consider implementing a reserve function to grow to "         \
-	    "specific size\n"                                                      \
-	    "  - [x] Consider xoring full hash with value\n"                       \
-	    "  - [ ] Consider storing sizeof(size_t) bits of hash xored with "     \
-	    "entry ptr\n"                                                          \
-	    "    + [ ] Iterate over the store to rebuild map on resize\n"          \
-	    "  - [ ] Implement ILL STORE\n"                                        \
-	    "    + [ ] Track empty store slots with a stack using an internal "    \
-	    "linked list in the empty slots themselves\n"                          \
-	    "    + [ ] Point top to empty slot where next entry is pushed\n"       \
-	    "    + [ ] Use union on entry value, either its a value or the index " \
-	    "of the next empty slot\n"                                             \
-	    "    + [ ] Consider that it's a tradeoff between pointer stability "   \
-	    "and being able to iterate through an always dense store "             \
+	    "  - [ ] Consider an irregular unrolled linked list for the store\n"   \
 	    "  - [ ] Redo Packing\n"                                               \
 	    "    + [ ] Use the 6 bytes of padding in buckets for extra hash\n"     \
 	    "    + [ ] Consider inlining entry in bucket\n"                        \
@@ -55,66 +41,20 @@
 	    "this. \n"                                                             \
 	    "    + [x] Consider that it may not be a problem as "                  \
 	    "structures are properly aligned/padded here. \n"                      \
-	    "  - [x] Implement Resize\n"                                           \
-	    "  - [x] Use requested capacity to set store size\n"                   \
-	    "    + [x] Derive n, map capacity from store size / HMAP_MAX_LOAD"     \
-	    "  - [x] Consider that hmap count and top are "                        \
 	    "redundant\n" FG_BRIGHT_YELLOW                                         \
 	    "  - [ ] Look for a portable __builtin_clzll alternative in "          \
 	    "hmap_new\n"                                                           \
+	    "  - [ ] Consider simple typedefs to configure k, v types. \n"         \
 	    "  - [ ] Explore pointer tagging to keep track of value type/mode\n"   \
-	    "  - [x] Reconsider tab_hash\n"                                        \
-	    "  - [x] Consider reading fixed size keys as n uint64_t\n"             \
-	    "    + [x] Use it for HFUNC\n"                                         \
-	    "    + [x] Use it for HCMP\n"                                          \
-	    "    + [x] Investigate unpadded strings not found\n"                   \
-	    "    + [x] Consider padding strings to HMAP_INLINE_KEY_SIZE\n"         \
-	    "    + [x] Measure if padding overhead is worth the extra cmp speed\n" \
-	    "  - [x] Decide on return value for key not found on hmap_get\n"       \
-	    "  - [x] Handle any key size lower or equal to HMAP_INLINE_KEY_SIZE\n" \
-	    "    + [x] Replace memcpy on put\n"                                    \
-	    "    + [x] Replace memcmp on find\n"                                   \
-	    "      * [ ] Research efficient alt shortcircuit to compare\n"         \
-	    "    + [ ] Think about a useful thing to do or not do on delete\n"     \
-	    "  - [ ] Wrap up a version satisfying build-your-own-lisp use case\n"  \
-	    "    + [ ] Set up a interface with tentative implementation asap\n"    \
-	    "    + [x] Implement <string => int>\n"                                \
-	    "      * [x] Research ways to accomodate strings in the store\n"       \
-	    "      * [x] Consider making fixed size of inlined key a parameter "   \
-	    "of hmap_new \n"                                                       \
-	    "      * [ ] Bench different hash function\n"                          \
-	    "    + [ ] Implement <string => pointer>\n"                            \
-	    "      * [ ] Bench different hash function\n"                          \
-	    "    + [ ] Implement <string => function pointer>\n"                   \
-	    "      * [ ] Bench different hash function\n"                          \
-	    "    + [ ] Investigate errors with very long collision chains on "     \
-	    "full table\n"                                                         \
-	    "    + [x] Research hashtable resizing strategy\n"                     \
-	    "      * [x] Implement one, move on\n"                                 \
-	    "      * [x] Consider separately allocing the store and buckets to  "  \
-	    "allow resizing in place\n"                                            \
-	    "  - [ ] Move on to next build your own lisp step\n" RESET             \
 	    "  - [ ] Bench against array\n"                                        \
 	    "    + [ ] Find break even point for hmap vs array\n" RESET            \
 	        FG_BRIGHT_GREEN                                                    \
 	    "  - [ ] Consider unions for k and v of types up to size of pointer "  \
 	    "+ size_t for data length\n"                                           \
 	    "  - [ ] Consider parameterizing size of k and v\n"                    \
-	    "  - [ ] Consider a compact alternative where small kvps are in a "    \
-	    "separate array from metadata and are moved around. It saves 8 bytes " \
-	    "from the pointer and an indirection but loses store pointer "         \
-	    "stability\n"                                                          \
-	    "  - [ ] Consider that if you store the full hash instead of "         \
-	    "pointer/index to the store you lose store stability, ease of "        \
-	    "iteration, and will have to move kvp around on resize\n"              \
-	    "  - [ ] Consider 1 full bytes of secondary hash in meta, 7 bits of "  \
-	    "distance + 1 bit of ctrl for empty slots\n"                           \
 	    "  - [ ] Consider for wraparound that some version of abseil hashmap " \
 	    "replicates a probe sized chunk of data from the beginning at the "    \
-	    "end\n"                                                                \
-	    "\n" FG_BRIGHT_MAGENTA REVERSE                                         \
-	    " !!! USE THE BLOODY DEBUGGER INSTEAD OF NOODLING WITH PRINTF "        \
-	    "!!!\n" RESET
+	    "end\n" RESET
 
 //------------------------------------------------------------ MAGIC NUMBERS ---
 

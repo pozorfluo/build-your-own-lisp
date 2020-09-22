@@ -538,77 +538,53 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 	if (is_empty(hm->buckets[candidate].meta)) {
 		/* ------------------------------------------------------------------ */
 		/* Thierry La Fronde method : Slingshot the rich ! */
-		for (size_t bucket = candidate; bucket != home; bucket--) {
-			hm->buckets[candidate].distance = candidate - home;
+		// for (size_t bucket = candidate; bucket != home; bucket--) {
+		// 	hm->buckets[candidate].distance = candidate - home;
 
-			// printf(FG_BRIGHT_GREEN REVERSE
-			//        "---- bucket :" RESET FG_BRIGHT_GREEN " %.2lu " REVERSE
-			//        "---- "
-			//        "hm->buckets[bucket].distance :" RESET FG_BRIGHT_GREEN
-			//        " %.2d " REVERSE
-			//        "----"
-			//        "hm->buckets[bucket - 1].distance :" RESET FG_BRIGHT_GREEN
-			//        " %.2d " REVERSE "----\n" RESET,
-			//        bucket,
-			//        hm->buckets[candidate].distance,
-			//        hm->buckets[bucket - 1].distance);
+		// 	if (hm->buckets[bucket].distance <=
+		// 	    hm->buckets[bucket - 1].distance) {
+		// 		dump_hashmap_horizontal(hm, 0, 21, bucket, candidate);
+		// 		printf(REVERSE "slingshot[ %lu -> %lu ]\n" RESET,
+		// 		       bucket,
+		// 		       candidate);
+		// 		hm->buckets[candidate].distance =
+		// 		    hm->buckets[bucket].distance + candidate - bucket;
 
-			if (hm->buckets[bucket].distance <=
-			    hm->buckets[bucket - 1].distance) {
-				dump_hashmap_horizontal(hm, 0, 21, bucket, candidate);
-				printf(REVERSE "slingshot[ %lu -> %lu ]\n" RESET,
-				       bucket,
-				       candidate);
-				hm->buckets[candidate].distance =
-				    hm->buckets[bucket].distance + candidate - bucket;
-
-				hm->buckets[candidate].meta  = hm->buckets[bucket].meta;
-				hm->buckets[candidate].entry = hm->buckets[bucket].entry;
-				candidate                    = bucket;
-			}
-		}
-		hm->buckets[candidate].meta     = meta;
-		hm->buckets[candidate].distance = candidate - home;
-		hm->buckets[candidate].entry    = hm->top;
+		// 		hm->buckets[candidate].meta  = hm->buckets[bucket].meta;
+		// 		hm->buckets[candidate].entry = hm->buckets[bucket].entry;
+		// 		candidate                    = bucket;
+		// 	}
+		// }
+		// hm->buckets[candidate].meta     = meta;
+		// hm->buckets[candidate].distance = candidate - home;
+		// hm->buckets[candidate].entry    = hm->top;
 		/* ------------------------------------------------------------------ */
 		/* Robin hood method. */
-		// struct hmap_bucket tmp;
-		// struct hmap_bucket swap_bucket = {
-		//     .meta = meta, .distance = 0, .entry = hm->top};
+		struct hmap_bucket tmp;
+		struct hmap_bucket swap_bucket = {
+		    .meta = meta, .distance = 0, .entry = hm->top};
 
-		// candidate = home;
-		// /**
-		//  * While candidate bucket is NOT EMPTY
-		//  *   if candidate bucket distance < swap bucket distance
-		//  *     swap buckets
-		//  *   swap bucket distance ++
-		//  *   candidate bucket ++
-		//  *
-		//  */
-		// while (hm->buckets[candidate].meta != META_EMPTY) {
+		candidate = home;
+		/**
+		 * While candidate bucket is NOT EMPTY
+		 *   if candidate bucket distance < swap bucket distance
+		 *     swap buckets
+		 *   swap bucket distance ++
+		 *   candidate bucket ++
+		 *
+		 */
+		while (hm->buckets[candidate].meta != META_EMPTY) {
 
-		// 	printf(FG_BRIGHT_GREEN REVERSE
-		// 	       "---- candidate :" RESET FG_BRIGHT_GREEN " %.2lu " REVERSE
-		// 	       "---- "
-		// 	       "hm->buckets[candidate].distance :" RESET FG_BRIGHT_GREEN
-		// 	       " %.2d " REVERSE
-		// 	       "----"
-		// 	       "swap_bucket.distance :" RESET FG_BRIGHT_GREEN
-		// 	       " %.2d " REVERSE "----\n" RESET,
-		// 	       candidate,
-		// 	       hm->buckets[candidate].distance,
-		// 	       swap_bucket.distance);
-
-		// 	if (hm->buckets[candidate].distance < swap_bucket.distance) {
-		// 		dump_hashmap(hm, 0, 21);
-		// 		tmp                    = hm->buckets[candidate];
-		// 		hm->buckets[candidate] = swap_bucket;
-		// 		swap_bucket            = tmp;
-		// 	}
-		// 	swap_bucket.distance++;
-		// 	candidate++;
-		// }
-		// hm->buckets[candidate] = swap_bucket;
+			if (hm->buckets[candidate].distance < swap_bucket.distance) {
+				dump_hashmap_horizontal(hm, 0, 21, candidate, candidate);
+				tmp                    = hm->buckets[candidate];
+				hm->buckets[candidate] = swap_bucket;
+				swap_bucket            = tmp;
+			}
+			swap_bucket.distance++;
+			candidate++;
+		}
+		hm->buckets[candidate] = swap_bucket;
 		/* ------------------------------------------------------------------ */
 
 		/* Same as strncpy but not caring about result being null terminated
@@ -643,7 +619,7 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 		// 	grow(hm);
 		// }
 		dump_hashmap_horizontal(hm, 0, 21, home, candidate);
-		puts(FG_MAGENTA "done\n" RESET);
+		// puts(FG_MAGENTA "done\n" RESET);
 	}
 	//------------------------------------------------------ given key found
 	else {
