@@ -577,6 +577,9 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 
 			if (hm->buckets[candidate].distance < swap_bucket.distance) {
 				dump_hashmap_horizontal(hm, 0, 21, candidate, candidate);
+				printf(REVERSE "swap_bucket [%.2lu][%.2d]\n" RESET,
+				       hm->store[swap_bucket.entry].value,
+				       swap_bucket.distance);
 				tmp                    = hm->buckets[candidate];
 				hm->buckets[candidate] = swap_bucket;
 				swap_bucket            = tmp;
