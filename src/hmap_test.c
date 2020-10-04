@@ -40,8 +40,7 @@
 	    "    + [x] Look for the C idiomatic way to split memory and prevent "  \
 	    "this. \n"                                                             \
 	    "    + [x] Consider that it may not be a problem as "                  \
-	    "structures are properly aligned/padded here. \n"                      \
-	    "redundant\n" FG_BRIGHT_YELLOW                                         \
+	    "structures are properly aligned/padded here. \n" FG_BRIGHT_YELLOW     \
 	    "  - [ ] Look for a portable __builtin_clzll alternative in "          \
 	    "hmap_new\n"                                                           \
 	    "  - [ ] Consider simple typedefs to configure k, v types. \n"         \
@@ -140,8 +139,7 @@ void dump_hashmap_horizontal(const struct hmap *const hm,
 	}
 	putchar('\n');
 }
-//----------------------------------------------------------------- Function
-//---
+//----------------------------------------------------------------- Function ---
 /**
  * Dump given Hashmap content
  *   -> nothing
@@ -253,8 +251,7 @@ void dump_hashmap(const struct hmap *const hm, size_t offset, size_t limit)
 	//            100);
 	// printf("max_distance        : %d\n", max_distance);
 }
-//----------------------------------------------------------------- Function
-//---
+//----------------------------------------------------------------- Function ---
 /**
  * Dump given Hashmap store
  *   -> nothing
@@ -278,8 +275,7 @@ void dump_store(const struct hmap *const hm)
 	}
 }
 
-//----------------------------------------------------------------- Function
-//---
+//----------------------------------------------------------------- Function ---
 /**
  * Dump given Hashmap stats
  *   -> nothing
@@ -325,8 +321,7 @@ void dump_stats(const struct hmap *const hm)
 	printf("max_empty_chain      : %lu \n", max_empty_chain);
 }
 
-//----------------------------------------------------------------- Function
-//---
+//----------------------------------------------------------------- Function ---
 /**
  * Go through all buckets
  * Access the store
@@ -348,8 +343,7 @@ void sum_bucket(const struct hmap *const hm)
 	       sum_key,
 	       sum_value);
 }
-//----------------------------------------------------------------- Function
-//---
+//----------------------------------------------------------------- Function ---
 size_t sum_store(const struct hmap *const hashmap)
 {
 	// size_t sum_key   = 0;
@@ -364,8 +358,7 @@ size_t sum_store(const struct hmap *const hashmap)
 	}
 	return sum_value;
 }
-//----------------------------------------------------------------- Function
-//---
+//----------------------------------------------------------------- Function ---
 /**
  * Return a pseudo-random uint64_t number.
  */
@@ -374,8 +367,7 @@ uint64_t mcg64()
 	static uint64_t seed = 1;
 	return (seed = (164603309694725029ull * seed) % 14738995463583502973ull);
 }
-//--------------------------------------------------------------------- MAIN
-//---
+//--------------------------------------------------------------------- MAIN ---
 /**
  *
  */

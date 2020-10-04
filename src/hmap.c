@@ -537,57 +537,88 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 	//----------------------------------------------------- empty slot found
 	if (is_empty(hm->buckets[candidate].meta)) {
 		/* ------------------------------------------------------------------ */
-		/* Thierry La Fronde method : Slingshot the rich ! */
-		// for (size_t bucket = candidate; bucket != home; bucket--) {
-		// 	hm->buckets[candidate].distance = candidate - home;
-
-		// 	if (hm->buckets[bucket].distance <=
-		// 	    hm->buckets[bucket - 1].distance) {
-		// 		dump_hashmap_horizontal(hm, 0, 21, bucket, candidate);
-		// 		printf(REVERSE "slingshot[ %lu -> %lu ]\n" RESET,
-		// 		       bucket,
-		// 		       candidate);
-		// 		hm->buckets[candidate].distance =
-		// 		    hm->buckets[bucket].distance + candidate - bucket;
-
-		// 		hm->buckets[candidate].meta  = hm->buckets[bucket].meta;
-		// 		hm->buckets[candidate].entry = hm->buckets[bucket].entry;
-		// 		candidate                    = bucket;
-		// 	}
-		// }
-		// hm->buckets[candidate].meta     = meta;
-		// hm->buckets[candidate].distance = candidate - home;
-		// hm->buckets[candidate].entry    = hm->top;
-		/* ------------------------------------------------------------------ */
-		/* Robin hood method. */
-		struct hmap_bucket tmp;
-		struct hmap_bucket swap_bucket = {
-		    .meta = meta, .distance = 0, .entry = hm->top};
-
-		candidate = home;
 		/**
-		 * While candidate bucket is NOT EMPTY
-		 *   if candidate bucket distance < swap bucket distance
-		 *     swap buckets
-		 *   swap bucket distance ++
-		 *   candidate bucket ++
+		 *  Thierry La Fronde method : Slingshot the rich !
 		 *
+		 * todo
+		 *   - [ ] Have another look at the 'blank slingshot' happening on
+		 first
+		 *         go around. Consider if it is worth avoiding.
 		 */
-		while (hm->buckets[candidate].meta != META_EMPTY) {
+		hm->buckets[candidate].distance = candidate - home;
+		for (size_t bucket = candidate; bucket != home; bucket--) {
+			// for (int bucket = candidate - 1; bucket > (int)home; bucket--) {
 
-			if (hm->buckets[candidate].distance < swap_bucket.distance) {
-				dump_hashmap_horizontal(hm, 0, 21, candidate, candidate);
-				printf(REVERSE "swap_bucket [%.2lu][%.2d]\n" RESET,
-				       hm->store[swap_bucket.entry].value,
-				       swap_bucket.distance);
-				tmp                    = hm->buckets[candidate];
-				hm->buckets[candidate] = swap_bucket;
-				swap_bucket            = tmp;
+			if (hm->buckets[bucket].distance <=
+			        hm->buckets[bucket - 1].distance) {
+				printf(REVERSE
+				       "candidate %lu[__][" FG_RED "%.2d" FG_DEFAULT
+				       "] | bucket %d <= %d ? slingshot[ %lu -> %lu ]\n" RESET,
+				       candidate,
+				       hm->buckets[candidate].distance,
+				       hm->buckets[bucket].distance,
+				       hm->buckets[bucket - 1].distance,
+				       bucket,
+				       candidate);
+				dump_hashmap_horizontal(hm, 0, 21, bucket, candidate);
+
+				/* This rewrites the same value on 'blank slingshots' */
+				hm->buckets[candidate].distance =
+				    hm->buckets[bucket].distance + candidate - bucket;
+
+				hm->buckets[candidate].meta  = hm->buckets[bucket].meta;
+				hm->buckets[candidate].entry = hm->buckets[bucket].entry;
+				candidate                    = bucket;
+				// bucket--;
 			}
-			swap_bucket.distance++;
-			candidate++;
 		}
-		hm->buckets[candidate] = swap_bucket;
+		hm->buckets[candidate].meta     = meta;
+		hm->buckets[candidate].distance = candidate - home;
+		hm->buckets[candidate].entry    = hm->top;
+		/* ------------------------------------------------------------------ */
+		// /* Robin hood method. */
+		// struct hmap_bucket tmp;
+		// struct hmap_bucket swap_bucket = {
+		//     .meta = meta, .distance = 0, .entry = hm->top};
+
+		// candidate = home;
+		// /**
+		//  * While candidate bucket is NOT EMPTY
+		//  *   if candidate bucket distance < swap bucket distance
+		//  *     swap buckets
+		//  *   swap bucket distance ++
+		//  *   candidate bucket ++
+		//  *
+		//  * note
+		//  *   On first swap, swap_bucket will point to an top empty entry with
+		//  a
+		//  *   default value (0 here).
+		//  *
+		//  * todo
+		//  *   - [ ] Consider that if home is not empty it is NEVER SWAPPED
+		//  *         with swap_bucket. Is it worth starting at home + 1 ?
+		//  */
+		// while (hm->buckets[candidate].meta != META_EMPTY) {
+
+		// 	if (hm->buckets[candidate].distance < swap_bucket.distance) {
+		// 		swap_bucket.entry == hm->top
+		// 		    ? printf(REVERSE "swap_bucket [" FG_YELLOW "__" FG_DEFAULT
+		// 		                     "][" FG_RED "%.2d" FG_DEFAULT "]\n" RESET,
+		// 		             swap_bucket.distance)
+		// 		    : printf(REVERSE "swap_bucket [" FG_YELLOW
+		// 		                     "%.2lu" FG_DEFAULT "][" FG_RED
+		// 		                     "%.2d" FG_DEFAULT "]\n" RESET,
+		// 		             hm->store[swap_bucket.entry].value,
+		// 		             swap_bucket.distance);
+		// 		dump_hashmap_horizontal(hm, 0, 21, candidate, candidate);
+		// 		tmp                    = hm->buckets[candidate];
+		// 		hm->buckets[candidate] = swap_bucket;
+		// 		swap_bucket            = tmp;
+		// 	}
+		// 	swap_bucket.distance++;
+		// 	candidate++;
+		// }
+		// hm->buckets[candidate] = swap_bucket;
 		/* ------------------------------------------------------------------ */
 
 		/* Same as strncpy but not caring about result being null terminated
@@ -867,7 +898,7 @@ struct hmap *hmap_new(const size_t requested_capacity)
 	                       .hash_shift     = hash_shift,
 	                       .capacity       = map_capacity,
 	                       .store_capacity = requested_capacity};
-	*new_hm = init_hm;
+	*new_hm             = init_hm;
 
 	/* XMALLOC is calling calloc / takes cares of setting mem to 0 */
 	// memset(new_hm->buckets, 0, buckets_size);

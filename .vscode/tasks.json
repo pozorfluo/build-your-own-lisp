@@ -11,7 +11,8 @@
                 "-Wextra",
                 "-Werror",
                 "-pedantic",
-                "-g",
+                // "-Wstrict-aliasing=3", // included in -Wall
+                // "-g",
                 // "-fPIC",
                 "-DDEBUG_MALLOC",
 				// "-DDEBUG_MPC",
