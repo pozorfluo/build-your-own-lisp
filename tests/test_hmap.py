@@ -22,10 +22,26 @@ import os
 import sys
 
 inputs = [
-    "10",
-    "fill10",
-    "fill10",
+    "3768320",
+    "fill3Mf",
+    "findin",
+    "findrandin",
+    "findrand",
+    "findallsilent",
+    "stats",
+    "rm",
+    "fill3Mf",
+    "findin",
+    "findrandin",
+    "findrand",
+    "findallsilent",
+    "stats"
 ]
+# inputs = [
+#     "10",
+#     "fill10",
+#     "fill10",
+# ]
 
 
 def main() -> None:

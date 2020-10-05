@@ -518,27 +518,27 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 
 	/* Find given key or first empty slot */
 	size_t candidate = find_or_empty(hm, key, home, meta);
-	printf(FG_BRIGHT_GREEN REVERSE " home %16lu " RESET FG_BRIGHT_GREEN
-	                               " %-16lu candidate" RESET,
-	       home,
-	       candidate);
-	printf(REVERSE "\t%*.*s | %lu \n" RESET,
-	       HMAP_INLINE_KEY_SIZE,
-	       HMAP_INLINE_KEY_SIZE,
-	       key,
-	       value);
-	printf(FG_BRIGHT_GREEN REVERSE " hash         %lu \n" RESET
-	                               " hash reduced %lu \n"
-	                               " home         %lu \n"
-	                               " candidate    %lu \n"
-	                               " meta         %lu \n"
-	                               " entry        %lu \n",
-	       hash,
-	       HREDUCE(HFUNC(key, key_size), hm->hash_shift),
-	       home,
-	       candidate,
-	       (size_t)meta,
-	       (size_t)hm->buckets[candidate].entry);
+	// printf(FG_BRIGHT_GREEN REVERSE " home %16lu " RESET FG_BRIGHT_GREEN
+	//                                " %-16lu candidate" RESET,
+	//        home,
+	//        candidate);
+	// printf(REVERSE "\t%*.*s | %lu \n" RESET,
+	//        HMAP_INLINE_KEY_SIZE,
+	//        HMAP_INLINE_KEY_SIZE,
+	//        key,
+	//        value);
+	// printf(FG_BRIGHT_GREEN REVERSE " hash         %lu \n" RESET
+	//                                " hash reduced %lu \n"
+	//                                " home         %lu \n"
+	//                                " candidate    %lu \n"
+	//                                " meta         %lu \n"
+	//                                " entry        %lu \n",
+	//        hash,
+	//        HREDUCE(HFUNC(key, key_size), hm->hash_shift),
+	//        home,
+	//        candidate,
+	//        (size_t)meta,
+	//        (size_t)hm->buckets[candidate].entry);
 	//----------------------------------------------------- empty slot found
 	if (is_empty(hm->buckets[candidate].meta)) {
 		/* ------------------------------------------------------------------ */
@@ -550,17 +550,18 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 		 first
 		 *         go around. Consider if it is worth avoiding.
 		 */
+		hm->buckets[candidate].distance = candidate - home;
 		for (size_t bucket = candidate; bucket != home; bucket--) {
-			hm->buckets[candidate].distance = candidate - home;
 			// for (int bucket = candidate - 1; bucket > (int)home; bucket--) {
 
-			int bucket_distance        = hm->buckets[bucket].distance;
-			int candidate_distance     = candidate - home;
-			int candidate_bucket_delta = candidate - bucket;
+			// int bucket_distance        = hm->buckets[bucket].distance;
+			// int candidate_distance     = candidate - home;
+			// int candidate_bucket_delta = candidate - bucket;
 
-			if (bucket_distance <= hm->buckets[bucket - 1].distance &&
-			    bucket_distance + candidate_bucket_delta <=
-			        candidate_distance) {
+			if (hm->buckets[bucket].distance <= hm->buckets[bucket - 1].distance) {
+			// if (bucket_distance <= hm->buckets[bucket - 1].distance &&
+			//     bucket_distance + candidate_bucket_delta <=
+			//         candidate_distance) {
 				// printf(REVERSE
 				//        "candidate %lu[__][" FG_RED "%.2d" FG_DEFAULT
 				//        "] | bucket %d <= %d ? slingshot[ %lu -> %lu ]\n"
@@ -573,7 +574,7 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 
 				/* This rewrites the same value on 'blank slingshots' */
 				hm->buckets[candidate].distance =
-				    hm->buckets[bucket].distance + candidate_bucket_delta;
+				    hm->buckets[bucket].distance + candidate - bucket;
 
 				hm->buckets[candidate].meta  = hm->buckets[bucket].meta;
 				hm->buckets[candidate].entry = hm->buckets[bucket].entry;
@@ -610,19 +611,19 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 		// while (hm->buckets[candidate].meta != META_EMPTY) {
 
 		// 	if (hm->buckets[candidate].distance < swap_bucket.distance) {
-		// 		swap_bucket.entry == hm->top
-		// 		    ? printf(REVERSE "swap_bucket [" FG_YELLOW "__" FG_DEFAULT
-		// 		                     "][" FG_RED "%.2d" FG_DEFAULT "]\n" RESET,
-		// 		             swap_bucket.distance)
-		// 		    : printf(REVERSE "swap_bucket [" FG_YELLOW
-		// 		                     "%.2lu" FG_DEFAULT "][" FG_RED
-		// 		                     "%.2d" FG_DEFAULT "]\n" RESET,
-		// 		             hm->store[swap_bucket.entry].value,
+		// 		// swap_bucket.entry == hm->top
+		// 		//     ? printf(REVERSE "swap_bucket [" FG_YELLOW "__" FG_DEFAULT
+		// 		//                      "][" FG_RED "%.2d" FG_DEFAULT "]\n" RESET,
+		// 		//              swap_bucket.distance)
+		// 		//     : printf(REVERSE "swap_bucket [" FG_YELLOW
+		// 		//                      "%.2lu" FG_DEFAULT "][" FG_RED
+		// 		//                      "%.2d" FG_DEFAULT "]\n" RESET,
+		// 		//              hm->store[swap_bucket.entry].value,
 
-		// 		             swap_bucket.distance);
+		// 		//              swap_bucket.distance);
 
-		// 		dump_hashmap_horizontal(
-		// 		    hm, home, 21, candidate, candidate);
+		// 		// dump_hashmap_horizontal(
+		// 		//     hm, home, 21, candidate, candidate);
 
 		// 		tmp                    = hm->buckets[candidate];
 		// 		hm->buckets[candidate] = swap_bucket;
