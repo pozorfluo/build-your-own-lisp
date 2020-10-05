@@ -22,20 +22,24 @@ import os
 import sys
 
 inputs = [
-    "3768320",
+    "256",
     "fill3Mf",
-    "findin",
-    "findrandin",
-    "findrand",
-    "findallsilent",
-    "stats",
     "rm",
-    "fill3Mf",
-    "findin",
-    "findrandin",
-    "findrand",
-    "findallsilent",
-    "stats"
+    "fill",
+    # "fill1M",
+    # "fill3Mf",
+    # "findin",
+    # "findrandin",
+    # "findrand",
+    # "findallsilent",
+    # "stats",
+    # "rm",
+    # "fill3Mf",
+    # "findin",
+    # "findrandin",
+    # "findrand",
+    # "findallsilent",
+    "stats",
 ]
 # inputs = [
 #     "10",
