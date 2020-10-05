@@ -480,21 +480,21 @@ int main(void)
 			// for (size_t k = 0; k < load_count; k++) {
 			size_t is_stuck = hashmap->top;
 			while (hashmap->top) {
-				printf(FG_BRIGHT_YELLOW REVERSE
-				       "hmap->top : %lu"
-				       " : store[%lu]"
-				       " : k %.*s"
-				       " : v %lu"
-				       " : bucket[%lu]"
-				       " : strlen %lu\n" RESET,
-				       hashmap->top,
-				       hashmap->top - 1,
-				       HMAP_INLINE_KEY_SIZE,
-				       hashmap->store[hashmap->top - 1].key,
-				       hashmap->store[hashmap->top - 1].value,
-				       hmap_find(hashmap, hashmap->store[hashmap->top - 1].key),
-				       strnlen(hashmap->store[hashmap->top - 1].key,
-				               HMAP_INLINE_KEY_SIZE));
+				// printf(FG_BRIGHT_YELLOW REVERSE
+				//        "hmap->top : %lu"
+				//        " : store[%lu]"
+				//        " : k %.*s"
+				//        " : v %lu"
+				//        " : bucket[%lu]"
+				//        " : strlen %lu\n" RESET,
+				//        hashmap->top,
+				//        hashmap->top - 1,
+				//        HMAP_INLINE_KEY_SIZE,
+				//        hashmap->store[hashmap->top - 1].key,
+				//        hashmap->store[hashmap->top - 1].value,
+				//        hmap_find(hashmap, hashmap->store[hashmap->top -
+				//        1].key), strnlen(hashmap->store[hashmap->top - 1].key,
+				//                HMAP_INLINE_KEY_SIZE));
 
 				hmap_remove(hashmap, hashmap->store[hashmap->top - 1].key);
 				if (hashmap->top == is_stuck) {
@@ -901,22 +901,25 @@ int main(void)
 			char *key_end;
 			size_t bucket;
 			errno = 0;
-			// Allow seed written in bases other than 10
+			// Allow bucket number written in bases other than 10
 			// Prefix with 0x for base 16
 			// Prefix 0 for base 8
 			bucket = strtoumax(key + 1, &key_end, 0);
 
 			// Abort on errors
 			if ((errno != 0) && (bucket == 0)) {
-				perror("Error : strtoumax () could NOT process given seed ");
+				perror(
+				    "Error : strtoumax () could NOT process given bucket "
+				    "number ");
 				continue;
 			}
-			// Abort if seed is only junk or prefixed with junk
-			// Ignore junk after valid seed though
+			// Abort if bucket number is only junk or prefixed with junk
+			// Ignore junk after valid bucket number though
 			// Note : a leading 0 means base 8, thus 09 will yield 0 as 9
 			//        is considered junk in base 8
 			if (key_end == key) {
-				printf("Error : could NOT process given seed : junk !\n");
+				printf(
+				    "Error : could NOT process given bucket number : junk !\n");
 				continue;
 			}
 			size_t entry     = hashmap->buckets[bucket].entry;
@@ -932,7 +935,7 @@ int main(void)
 			       hashmap->store[entry].value);
 			print_bits(HMAP_INLINE_KEY_SIZE, hashmap->store[entry].key);
 
-			dump_hashmap(hashmap, bucket - 10, 20);
+			dump_hashmap(hashmap, bucket, 30);
 
 			printf("hashes to : %lu\n",
 			       (HREDUCE(HFUNC(bucket_key,

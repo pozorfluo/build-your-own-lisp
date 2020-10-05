@@ -289,17 +289,22 @@ static inline void rehash(struct hmap *const hm, struct hmap_bucket *const map)
 		} while (candidate < hm->capacity);
 
 		/* Thierry La Fronde method : Slingshot the rich ! */
+		map[candidate].distance = candidate - home;
 		for (size_t bucket = candidate; bucket != home; bucket--) {
-			map[candidate].distance = candidate - home;
 
-			if (map[bucket].distance <= map[bucket - 1].distance) {
+			int bucket_distance        = map[bucket].distance;
+			int candidate_distance     = candidate - home;
+			int candidate_bucket_delta = candidate - bucket;
+
+			if (bucket_distance <= map[bucket - 1].distance &&
+			    bucket_distance + candidate_bucket_delta <=
+			        candidate_distance) {
 
 				// printf("slingshot[ %lu -> %lu ]\n", candidate, bucket);
 				map[candidate].distance =
-				    map[bucket].distance + candidate - bucket;
+				    map[bucket].distance + candidate_bucket_delta;
 
-				map[candidate].meta = map[bucket].meta;
-
+				map[candidate].meta  = map[bucket].meta;
 				map[candidate].entry = map[bucket].entry;
 				candidate            = bucket;
 			}
@@ -522,18 +527,18 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 	       HMAP_INLINE_KEY_SIZE,
 	       key,
 	       value);
-	// printf(FG_BRIGHT_GREEN REVERSE " hash         %lu \n" RESET
-	//                                " hash reduced %lu \n"
-	//                                " home         %lu \n"
-	//                                " candidate    %lu \n"
-	//                                " meta         %lu \n"
-	//                                " entry        %lu \n",
-	//        hash,
-	//        HREDUCE(HFUNC(key, key_size), hm->hash_shift),
-	//        home,
-	//        candidate,
-	//        (size_t)meta,
-	//        (size_t)hm->buckets[candidate].entry);
+	printf(FG_BRIGHT_GREEN REVERSE " hash         %lu \n" RESET
+	                               " hash reduced %lu \n"
+	                               " home         %lu \n"
+	                               " candidate    %lu \n"
+	                               " meta         %lu \n"
+	                               " entry        %lu \n",
+	       hash,
+	       HREDUCE(HFUNC(key, key_size), hm->hash_shift),
+	       home,
+	       candidate,
+	       (size_t)meta,
+	       (size_t)hm->buckets[candidate].entry);
 	//----------------------------------------------------- empty slot found
 	if (is_empty(hm->buckets[candidate].meta)) {
 		/* ------------------------------------------------------------------ */
@@ -545,28 +550,30 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 		 first
 		 *         go around. Consider if it is worth avoiding.
 		 */
-		hm->buckets[candidate].distance = candidate - home;
 		for (size_t bucket = candidate; bucket != home; bucket--) {
+			hm->buckets[candidate].distance = candidate - home;
 			// for (int bucket = candidate - 1; bucket > (int)home; bucket--) {
 
-			if (hm->buckets[bucket].distance <=
-			        hm->buckets[bucket - 1].distance &&
-			    hm->buckets[bucket].distance + candidate - bucket <=
-			        candidate - home) {
-				printf(REVERSE
-				       "candidate %lu[__][" FG_RED "%.2d" FG_DEFAULT
-				       "] | bucket %d <= %d ? slingshot[ %lu -> %lu ]\n" RESET,
-				       candidate,
-				       hm->buckets[candidate].distance,
-				       hm->buckets[bucket].distance,
-				       hm->buckets[bucket - 1].distance,
-				       bucket,
-				       candidate);
-				dump_hashmap_horizontal(hm, home, 21, bucket, candidate);
+			int bucket_distance        = hm->buckets[bucket].distance;
+			int candidate_distance     = candidate - home;
+			int candidate_bucket_delta = candidate - bucket;
+
+			if (bucket_distance <= hm->buckets[bucket - 1].distance &&
+			    bucket_distance + candidate_bucket_delta <=
+			        candidate_distance) {
+				// printf(REVERSE
+				//        "candidate %lu[__][" FG_RED "%.2d" FG_DEFAULT
+				//        "] | bucket %d <= %d ? slingshot[ %lu -> %lu ]\n"
+				//        RESET, candidate, hm->buckets[candidate].distance,
+				//        hm->buckets[bucket].distance,
+				//        hm->buckets[bucket - 1].distance,
+				//        bucket,
+				//        candidate);
+				// dump_hashmap_horizontal(hm, home, 21, bucket, candidate);
 
 				/* This rewrites the same value on 'blank slingshots' */
 				hm->buckets[candidate].distance =
-				    hm->buckets[bucket].distance + candidate - bucket;
+				    hm->buckets[bucket].distance + candidate_bucket_delta;
 
 				hm->buckets[candidate].meta  = hm->buckets[bucket].meta;
 				hm->buckets[candidate].entry = hm->buckets[bucket].entry;
@@ -655,10 +662,10 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 		// printf(FG_BRIGHT_WHITE REVERSE "writing to store[%lu] \n" RESET,
 		//        hm->top);
 		hm->top++;
-		// if (hm->top > hm->store_capacity) {
-		// 	grow(hm);
-		// }
-		dump_hashmap_horizontal(hm, home, 21, home, candidate);
+		if (hm->top > hm->store_capacity) {
+			grow(hm);
+		}
+		// dump_hashmap_horizontal(hm, home, 21, home, candidate);
 		// puts(FG_MAGENTA "done\n" RESET);
 	}
 	//------------------------------------------------------ given key found
@@ -761,11 +768,11 @@ size_t hmap_remove(struct hmap *const hm, const char *const key)
 
 		if (stop_bucket != entry + 1) {
 			for (size_t bucket = entry; bucket < stop_bucket; bucket++) {
-				printf("backwardshiftdel[ %lu -> %lu ] d %hu -> %hu \n",
-				       bucket + 1,
-				       bucket,
-				       hm->buckets[bucket + 1].distance,
-				       hm->buckets[bucket + 1].distance - 1);
+				// printf("backwardshiftdel[ %lu -> %lu ] d %hu -> %hu \n",
+				//        bucket + 1,
+				//        bucket,
+				//        hm->buckets[bucket + 1].distance,
+				//        hm->buckets[bucket + 1].distance - 1);
 				hm->buckets[bucket] = hm->buckets[bucket + 1];
 				hm->buckets[bucket].distance--;
 			}
