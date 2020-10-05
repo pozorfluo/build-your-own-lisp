@@ -550,7 +550,9 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 			// for (int bucket = candidate - 1; bucket > (int)home; bucket--) {
 
 			if (hm->buckets[bucket].distance <=
-			        hm->buckets[bucket - 1].distance) {
+			        hm->buckets[bucket - 1].distance &&
+			    hm->buckets[bucket].distance + candidate - bucket <=
+			        candidate - home) {
 				printf(REVERSE
 				       "candidate %lu[__][" FG_RED "%.2d" FG_DEFAULT
 				       "] | bucket %d <= %d ? slingshot[ %lu -> %lu ]\n" RESET,
@@ -560,7 +562,7 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 				       hm->buckets[bucket - 1].distance,
 				       bucket,
 				       candidate);
-				dump_hashmap_horizontal(hm, 0, 21, bucket, candidate);
+				dump_hashmap_horizontal(hm, home, 21, bucket, candidate);
 
 				/* This rewrites the same value on 'blank slingshots' */
 				hm->buckets[candidate].distance =
@@ -609,8 +611,12 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 		// 		                     "%.2lu" FG_DEFAULT "][" FG_RED
 		// 		                     "%.2d" FG_DEFAULT "]\n" RESET,
 		// 		             hm->store[swap_bucket.entry].value,
+
 		// 		             swap_bucket.distance);
-		// 		dump_hashmap_horizontal(hm, 0, 21, candidate, candidate);
+
+		// 		dump_hashmap_horizontal(
+		// 		    hm, home, 21, candidate, candidate);
+
 		// 		tmp                    = hm->buckets[candidate];
 		// 		hm->buckets[candidate] = swap_bucket;
 		// 		swap_bucket            = tmp;
@@ -652,7 +658,7 @@ size_t hmap_put(struct hmap *const hm, const char *key, const size_t value)
 		// if (hm->top > hm->store_capacity) {
 		// 	grow(hm);
 		// }
-		dump_hashmap_horizontal(hm, 0, 21, home, candidate);
+		dump_hashmap_horizontal(hm, home, 21, home, candidate);
 		// puts(FG_MAGENTA "done\n" RESET);
 	}
 	//------------------------------------------------------ given key found
