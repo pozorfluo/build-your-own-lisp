@@ -14,7 +14,7 @@
 
 void *xmalloc(size_t size, const char *origin, const char *destination)
 {
-	void *return_pointer = malloc(size);
+	void *return_pointer = calloc(1, size); // malloc(size); 
 	if ((return_pointer == NULL) && !size) {
 		return_pointer = malloc(1);
 	}
@@ -34,7 +34,7 @@ void *xmalloc(size_t size, const char *origin, const char *destination)
 	       destination,
 	       size,
 	       origin);
-	memset(return_pointer, 0xFB, size);
+	// memset(return_pointer, 0xFB, size);
 	return return_pointer;
 }
 
